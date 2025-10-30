@@ -167,14 +167,12 @@ sequenceDiagram
 - **Voice Integration**: Supports both text and voice input/output modes
 - **Assessment Display**: Shows real-time feedback, scores, and progress indicators
 - **Session Management**: Handles interview state, timing, and navigation
-- **Responsive Design**: Works across desktop and mobile devices
-- **Accessibility**: Supports screen readers and keyboard navigation
 
 **Tech Stack:**
-- **Frontend Framework**: React with TypeScript for type safety
+- **Frontend Framework**: React with pure JavaScript (no `*.jsx`, `*.ts`, `*.tsx`)
 - **Real-time Communication**: WebSocket for live chat functionality
 - **HTTP Client**: Axios for REST API calls
-- **UI Components**: Material-UI or Ant Design for consistent interface
+- **UI Components**: Material-UI or remix-icon for consistent interface
 - **State Management**: Redux Toolkit or Zustand for application state
 
 ### 6. 🎤 Voice Answer Component (Speech-to-Text)
@@ -188,7 +186,7 @@ sequenceDiagram
 
 **Tech Stack:**
 - **Primary Service**: Azure Speech-to-Text API for cloud-based transcription
-- **Alternative Options**: Google Speech-to-Text or AWS Transcribe
+- **Alternative Options**: Google Speech-to-Text
 - **Audio Processing**: Web Audio API for browser-based recording
 - **Language Support**: Multiple language models and accents
 
@@ -203,7 +201,7 @@ sequenceDiagram
 
 **Tech Stack:**
 - **Primary Service**: Edge TTS (Microsoft Text-to-Speech) for natural voice generation
-- **Alternative Options**: Google Text-to-Speech or Amazon Polly
+- **Alternative Options**: Google Text-to-Speech
 - **Audio Streaming**: Web Audio API for browser-based playback
 - **Voice Models**: Multiple neural voice models for different languages
 
@@ -222,20 +220,3 @@ sequenceDiagram
 - **Data Processing**: Pandas and NumPy for data manipulation
 - **Report Generation**: Jinja2 templates for dynamic report creation
 - **Storage**: Integration with PostgreSQL for analytics data persistence
-
----
-
-## 🧠 Tech Stack
-
-| **Layer / Purpose**              | **Technologies**                                                       |
-| -------------------------------- | ---------------------------------------------------------------------- |
-| **AI Orchestration**             | Python + LangChain                                                     |
-| **LLM Models**                   | OpenAI GPT-4, Hugging Face Transformers                                |
-| **NLP Processing**               | spaCy, scikit-learn                                                    |
-| **Embeddings & Semantic Search** | OpenAI Embeddings API, Pinecone                                        |
-| **Backend APIs**                 | FastAPI for RESTful and WebSocket communication                        |
-| **Databases**                    | PostgreSQL (relational data), Pinecone (vector data)                   |
-| **Data Layer & ORM**             | SQLAlchemy, Pydantic for validation                                    |
-| **Frontend**                     | ReactJS                                                                |
-| **Speech Services**              | Azure Speech-to-Text, Edge TTS                                         |
-| **Data & Analytics**             | Pandas, NumPy, Jinja2 for reports                                      |
