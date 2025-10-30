@@ -183,3 +183,21 @@ fabric.properties
 
 # idea folder
 .idea
+
+# Elios-specific uploads and data
+uploads/
+*.pdf
+*.doc
+*.docx
+*.wav
+*.mp3
+
+# Database files
+*.db
+*.sqlite3
+
+# Pytest cache
+.pytest_cache/
+
+# MyPy cache
+.mypy_cache/
