@@ -95,7 +95,7 @@ POSTGRES_PASSWORD=""
 
 ```bash
 # Run from project root
-python src/main.py
+python -m src.main
 ```
 
 OR using uvicorn directly:
