@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+      "Bash(mkdir:*)"
     ],
     "deny": [
       "Read(*.csv)",
@@ -41,5 +42,6 @@
         ]
       }
     ]
-  }
+  },
+  "outputStyle": "Explanatory"
 }
