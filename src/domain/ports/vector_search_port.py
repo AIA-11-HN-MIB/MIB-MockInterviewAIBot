@@ -1,0 +1,108 @@
+"""Vector search port interface."""
+
+from abc import ABC, abstractmethod
+from typing import List, Dict, Any, Optional
+from uuid import UUID
+
+
+class VectorSearchPort(ABC):
+    """Interface for vector database operations.
+
+    This port abstracts vector storage and semantic search, allowing easy
+    switching between Pinecone, Weaviate, ChromaDB, etc.
+    """
+
+    @abstractmethod
+    async def store_question_embedding(
+        self,
+        question_id: UUID,
+        embedding: List[float],
+        metadata: Dict[str, Any],
+    ) -> None:
+        """Store a question's vector embedding.
+
+        Args:
+            question_id: Unique question identifier
+            embedding: Vector embedding
+            metadata: Additional metadata (skills, tags, difficulty, etc.)
+        """
+        pass
+
+    @abstractmethod
+    async def store_cv_embedding(
+        self,
+        cv_analysis_id: UUID,
+        embedding: List[float],
+        metadata: Dict[str, Any],
+    ) -> None:
+        """Store a CV analysis vector embedding.
+
+        Args:
+            cv_analysis_id: Unique CV analysis identifier
+            embedding: Vector embedding
+            metadata: Additional metadata (skills, experience, etc.)
+        """
+        pass
+
+    @abstractmethod
+    async def find_similar_questions(
+        self,
+        query_embedding: List[float],
+        top_k: int = 5,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Find similar questions using semantic search.
+
+        Args:
+            query_embedding: Query vector (e.g., from CV or previous context)
+            top_k: Number of results to return
+            filters: Optional filters (e.g., difficulty, skills)
+
+        Returns:
+            List of similar questions with similarity scores
+        """
+        pass
+
+    @abstractmethod
+    async def find_similar_answers(
+        self,
+        answer_embedding: List[float],
+        reference_embeddings: List[List[float]],
+    ) -> float:
+        """Calculate similarity between answer and reference answers.
+
+        Args:
+            answer_embedding: Candidate's answer embedding
+            reference_embeddings: Reference answer embeddings
+
+        Returns:
+            Similarity score (0-1)
+        """
+        pass
+
+    @abstractmethod
+    async def get_embedding(
+        self,
+        text: str,
+    ) -> List[float]:
+        """Generate embedding for text.
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            Vector embedding
+        """
+        pass
+
+    @abstractmethod
+    async def delete_embeddings(
+        self,
+        ids: List[UUID],
+    ) -> None:
+        """Delete embeddings by IDs.
+
+        Args:
+            ids: List of IDs to delete
+        """
+        pass
