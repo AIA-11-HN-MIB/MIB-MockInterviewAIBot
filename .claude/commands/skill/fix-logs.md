@@ -1,11 +1,11 @@
 ---
-description: Create a new agent skill
-argument-hint: [prompt-or-llms-or-github-url]
+description: Fix the agent skill based on `logs.txt` file.
+argument-hint: [prompt-or-path-to-skill]
 ---
 
 Ultrathink.
 
-Create a new **Agent Skill** for Claude Code based on the given prompt:
+Fix the agent skill based on the current `logs.txt` file (in the project root directory):
 <prompt>$ARGUMENTS</prompt>
 
 ## Before Starting:
@@ -24,7 +24,7 @@ Create a new **Agent Skill** for Claude Code based on the given prompt:
 - Script files (if any): `./.claude/skills/<skill-name>/scripts/my-script.py` or `./.claude/skills/<skill-name>/scripts/my-script.sh`
 - Reference files (if any): `./.claude/skills/<skill-name>/references/ref-0.md`
 
-## Rules of Skill Creation:
+## Rules of Skill Fixing:
 - If you're given an URL, it's documentation page, use `Explorer` subagent to explore every internal link and report back to main agent, don't skip any link.
 - If you receive a lot of URLs, use multiple `Explorer` subagents to explore them in parallel, then report back to main agent.
 - If you receive a lot of files, use multiple `Explorer` subagents to explore them in parallel, then report back to main agent.
