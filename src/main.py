@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .infrastructure.config import get_settings
+from .infrastructure.database import init_db, close_db
 from .adapters.api.rest import health_routes
 
 # Configure logging
@@ -32,10 +33,18 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Debug mode: {settings.debug}")
 
+    # Initialize database
+    logger.info("Initializing database connection...")
+    await init_db()
+    logger.info("Database connection established")
+
     yield
 
     # Shutdown
     logger.info("Shutting down application...")
+    logger.info("Closing database connections...")
+    await close_db()
+    logger.info("Database connections closed")
 
 
 def create_app() -> FastAPI:

@@ -1,8 +1,14 @@
 """Application settings using Pydantic."""
 
+import os
+import re
 from functools import lru_cache
 from typing import Optional
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class Settings(BaseSettings):
@@ -48,10 +54,38 @@ class Settings(BaseSettings):
     postgres_user: str = "elios"
     postgres_password: str = ""
     postgres_db: str = "elios_interviews"
+    database_url: Optional[str] = None  # Full DATABASE_URL from environment
 
     @property
-    def database_url(self) -> str:
-        """Generate PostgreSQL connection URL."""
+    def async_database_url(self) -> str:
+        """Generate async PostgreSQL connection URL.
+
+        Converts postgresql:// to postgresql+asyncpg:// for async support.
+        Strips out sslmode and channel_binding parameters (not supported by asyncpg).
+        If DATABASE_URL is set in environment, use that; otherwise construct from parts.
+
+        Note: For Neon and other cloud PostgreSQL providers, asyncpg handles SSL
+        automatically - no explicit SSL parameters needed.
+        """
+        # First check if DATABASE_URL is provided directly
+        db_url = self.database_url or os.getenv("DATABASE_URL")
+
+        if db_url:
+            # Convert postgresql:// to postgresql+asyncpg://
+            db_url = re.sub(r'^postgresql:', 'postgresql+asyncpg:', db_url)
+
+            # Strip out SSL parameters that asyncpg doesn't support in URL format
+            # asyncpg handles SSL automatically for cloud providers like Neon
+            db_url = re.sub(r'\?sslmode=[^&]*', '', db_url)  # Remove sslmode param
+            db_url = re.sub(r'&sslmode=[^&]*', '', db_url)   # Remove if not first param
+            db_url = re.sub(r'\?channel_binding=[^&]*', '', db_url)  # Remove channel_binding
+            db_url = re.sub(r'&channel_binding=[^&]*', '', db_url)   # Remove if not first param
+            db_url = re.sub(r'\?&', '?', db_url)  # Clean up malformed query string
+            db_url = re.sub(r'\?$', '', db_url)   # Remove trailing ?
+
+            return db_url
+
+        # Otherwise construct from individual parts
         return (
             f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"

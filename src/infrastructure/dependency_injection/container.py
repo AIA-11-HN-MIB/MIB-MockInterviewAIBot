@@ -7,10 +7,16 @@ It's the only place that knows about concrete implementations.
 from functools import lru_cache
 
 from ...infrastructure.config.settings import Settings, get_settings
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from ...domain.ports import (
     LLMPort,
     VectorSearchPort,
     QuestionRepositoryPort,
+    CandidateRepositoryPort,
+    InterviewRepositoryPort,
+    AnswerRepositoryPort,
+    CVAnalysisRepositoryPort,
     CVAnalyzerPort,
     SpeechToTextPort,
     TextToSpeechPort,
@@ -20,6 +26,15 @@ from ...domain.ports import (
 # Import adapters
 from ...adapters.llm.openai_adapter import OpenAIAdapter
 from ...adapters.vector_db.pinecone_adapter import PineconeAdapter
+
+# Import persistence adapters
+from ...adapters.persistence import (
+    PostgreSQLCandidateRepository,
+    PostgreSQLQuestionRepository,
+    PostgreSQLInterviewRepository,
+    PostgreSQLAnswerRepository,
+    PostgreSQLCVAnalysisRepository,
+)
 
 
 class Container:
@@ -115,19 +130,62 @@ class Container:
 
         return self._vector_search_port
 
-    def question_repository_port(self) -> QuestionRepositoryPort:
+    def question_repository_port(self, session: AsyncSession) -> QuestionRepositoryPort:
         """Get question repository port implementation.
+
+        Args:
+            session: Async database session
 
         Returns:
             Configured question repository
-
-        Raises:
-            NotImplementedError: Implementation pending
         """
-        # TODO: Implement PostgreSQL repository
-        # from ...adapters.persistence.postgres_repository import PostgresQuestionRepository
-        # return PostgresQuestionRepository(database_url=self.settings.database_url)
-        raise NotImplementedError("Question repository not yet implemented")
+        return PostgreSQLQuestionRepository(session)
+
+    def candidate_repository_port(self, session: AsyncSession) -> CandidateRepositoryPort:
+        """Get candidate repository port implementation.
+
+        Args:
+            session: Async database session
+
+        Returns:
+            Configured candidate repository
+        """
+        return PostgreSQLCandidateRepository(session)
+
+    def interview_repository_port(self, session: AsyncSession) -> InterviewRepositoryPort:
+        """Get interview repository port implementation.
+
+        Args:
+            session: Async database session
+
+        Returns:
+            Configured interview repository
+        """
+        return PostgreSQLInterviewRepository(session)
+
+    def answer_repository_port(self, session: AsyncSession) -> AnswerRepositoryPort:
+        """Get answer repository port implementation.
+
+        Args:
+            session: Async database session
+
+        Returns:
+            Configured answer repository
+        """
+        return PostgreSQLAnswerRepository(session)
+
+    def cv_analysis_repository_port(
+        self, session: AsyncSession
+    ) -> CVAnalysisRepositoryPort:
+        """Get CV analysis repository port implementation.
+
+        Args:
+            session: Async database session
+
+        Returns:
+            Configured CV analysis repository
+        """
+        return PostgreSQLCVAnalysisRepository(session)
 
     def cv_analyzer_port(self) -> CVAnalyzerPort:
         """Get CV analyzer port implementation.
