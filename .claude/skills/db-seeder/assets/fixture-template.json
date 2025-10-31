@@ -1,0 +1,106 @@
+{
+  "_comment": "Test Fixture Template - Replace with your actual data models and records",
+  "_description": "This template shows the structure for JSON fixtures. Each key is a model name, and the value is an array of records to create.",
+
+  "User": [
+    {
+      "id": 1,
+      "username": "john_doe",
+      "email": "john@example.com",
+      "first_name": "John",
+      "last_name": "Doe",
+      "date_of_birth": "1990-05-15",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00"
+    },
+    {
+      "id": 2,
+      "username": "jane_smith",
+      "email": "jane@example.com",
+      "first_name": "Jane",
+      "last_name": "Smith",
+      "date_of_birth": "1992-08-20",
+      "is_active": true,
+      "created_at": "2024-01-02T00:00:00"
+    }
+  ],
+
+  "Post": [
+    {
+      "id": 1,
+      "title": "First Blog Post",
+      "slug": "first-blog-post",
+      "content": "This is the content of the first blog post.",
+      "author_id": 1,
+      "published_at": "2024-02-01T10:00:00",
+      "is_published": true
+    },
+    {
+      "id": 2,
+      "title": "Second Blog Post",
+      "slug": "second-blog-post",
+      "content": "This is the content of the second blog post.",
+      "author_id": 2,
+      "published_at": "2024-02-02T11:00:00",
+      "is_published": true
+    }
+  ],
+
+  "Candidate": [
+    {
+      "id": 1,
+      "full_name": "Alice Johnson",
+      "email": "alice@example.com",
+      "phone": "+1-555-0101",
+      "years_of_experience": 5,
+      "skills": ["Python", "JavaScript", "SQL", "React"],
+      "education_degree": "Bachelor",
+      "education_major": "Computer Science",
+      "university": "Tech University",
+      "graduation_year": 2019,
+      "cv_url": "s3://bucket/cvs/candidate_1.pdf",
+      "linkedin_url": "https://linkedin.com/in/alicejohnson",
+      "created_at": "2024-06-01T00:00:00",
+      "status": "interviewed"
+    }
+  ],
+
+  "Question": [
+    {
+      "id": 1,
+      "text": "What is the difference between == and === in JavaScript?",
+      "category": "technical",
+      "difficulty": "easy",
+      "related_skill": "JavaScript",
+      "expected_keywords": ["equality", "type", "coercion", "strict"],
+      "model_answer": "The == operator performs type coercion before comparison, while === performs strict equality without type conversion.",
+      "time_limit_minutes": 5,
+      "created_at": "2024-01-01T00:00:00"
+    }
+  ],
+
+  "InterviewSession": [
+    {
+      "id": 1,
+      "candidate_id": 1,
+      "started_at": "2024-08-01T14:00:00",
+      "completed_at": "2024-08-01T15:30:00",
+      "status": "completed",
+      "interview_type": "technical",
+      "answers": [
+        {
+          "question_id": 1,
+          "answer_text": "In JavaScript, == checks equality with type coercion, while === checks both value and type.",
+          "duration_seconds": 120,
+          "score": 85,
+          "feedback": "Good understanding of the concept."
+        }
+      ],
+      "overall_score": 85,
+      "feedback_summary": "Strong technical knowledge, good communication skills.",
+      "strengths": ["Clear explanations", "Good examples"],
+      "weaknesses": ["Could provide more depth"],
+      "recommendations": "Continue practicing system design questions."
+    }
+  ]
+}

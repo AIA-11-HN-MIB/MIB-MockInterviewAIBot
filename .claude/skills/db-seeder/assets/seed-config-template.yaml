@@ -1,0 +1,95 @@
+# Database Seeding Configuration Template
+#
+# This configuration file defines how to seed your database with fake data.
+# Copy this file and customize it for your project.
+
+# Database connection configuration
+database:
+  # Database type: postgresql, mysql, sqlite, mongodb
+  type: postgresql
+
+  # Connection string (alternative to individual components)
+  connection: postgresql://postgres:password@localhost:5432/mydb
+
+  # Or use individual components
+  # host: localhost
+  # port: 5432
+  # name: mydb
+  # user: postgres
+  # password: password
+
+# Faker configuration
+faker:
+  # Locale for generated data (en_US, en_GB, fr_FR, etc.)
+  locale: en_US
+
+  # Seed for reproducible data (optional)
+  # seed: 12345
+
+# Models to seed
+models:
+  # User model
+  - name: User
+    # Number of records to create
+    count: 100
+
+    # Factory function or dictionary mapping fields to generators
+    factory:
+      username: "lambda fake: fake.user_name()"
+      email: "lambda fake: fake.email()"
+      first_name: "lambda fake: fake.first_name()"
+      last_name: "lambda fake: fake.last_name()"
+      date_of_birth: "lambda fake: fake.date_of_birth(minimum_age=18, maximum_age=70)"
+      is_active: "lambda fake: fake.boolean(chance_of_getting_true=80)"
+      created_at: "lambda fake: fake.date_time_between(start_date='-2y', end_date='now')"
+
+    # Module path where model is defined
+    module: "src.domain.models"
+
+  # Post model
+  - name: Post
+    count: 500
+    factory:
+      title: "lambda fake: fake.sentence(nb_words=6)"
+      content: "lambda fake: fake.text(max_nb_chars=2000)"
+      # Foreign key reference to User
+      author_id: "lambda fake: fake.random_int(min=1, max=100)"
+      published_at: "lambda fake: fake.date_time_between(start_date='-1y', end_date='now')"
+      is_published: "lambda fake: fake.boolean(chance_of_getting_true=70)"
+    module: "src.domain.models"
+
+  # Candidate model (Elios-specific example)
+  - name: Candidate
+    count: 50
+    factory:
+      full_name: "lambda fake: fake.name()"
+      email: "lambda fake: fake.email()"
+      phone: "lambda fake: fake.phone_number()"
+      years_of_experience: "lambda fake: fake.random_int(min=0, max=15)"
+      # Skills as JSON array
+      skills: "lambda fake: fake.random_elements(['Python', 'JavaScript', 'SQL', 'React'], length=fake.random_int(min=2, max=4), unique=True)"
+      linkedin_url: "lambda fake: f'https://linkedin.com/in/{fake.user_name()}'"
+      created_at: "lambda fake: fake.date_time_between(start_date='-6m', end_date='now')"
+      status: "lambda fake: fake.random_element(['pending', 'interviewed', 'hired', 'rejected'])"
+    module: "src.domain.models"
+
+# Seeding options
+options:
+  # Batch size for commits
+  batch_size: 1000
+
+  # Clear existing data before seeding
+  clear_existing: false
+
+  # Skip if already seeded (idempotent)
+  skip_if_exists: true
+
+  # Show progress during seeding
+  show_progress: true
+
+# Post-seeding hooks (optional)
+hooks:
+  # Run after seeding completes
+  post_seed:
+    - "python scripts/update_search_index.py"
+    - "python scripts/generate_statistics.py"

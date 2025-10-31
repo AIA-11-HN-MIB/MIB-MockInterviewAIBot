@@ -1,0 +1,187 @@
+{
+  "_comment": "Mẫu dữ liệu thử nghiệm - Tiếng Việt",
+  "_description": "Mẫu này hiển thị cấu trúc cho fixtures JSON bằng tiếng Việt. Mỗi key là tên model, và value là mảng các bản ghi cần tạo.",
+
+  "User": [
+    {
+      "id": 1,
+      "username": "nguyenvana",
+      "email": "nguyenvana@example.com",
+      "first_name": "Văn A",
+      "last_name": "Nguyễn",
+      "date_of_birth": "1995-03-15",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00"
+    },
+    {
+      "id": 2,
+      "username": "tranthib",
+      "email": "tranthib@example.com",
+      "first_name": "Thị B",
+      "last_name": "Trần",
+      "date_of_birth": "1998-08-20",
+      "is_active": true,
+      "created_at": "2024-01-02T00:00:00"
+    }
+  ],
+
+  "Post": [
+    {
+      "id": 1,
+      "title": "Bài viết đầu tiên về Lập trình Python",
+      "slug": "bai-viet-dau-tien-lap-trinh-python",
+      "content": "Đây là nội dung của bài viết đầu tiên về lập trình Python. Python là ngôn ngữ lập trình mạnh mẽ và dễ học.",
+      "author_id": 1,
+      "published_at": "2024-02-01T10:00:00",
+      "is_published": true
+    },
+    {
+      "id": 2,
+      "title": "Hướng dẫn về FastAPI",
+      "slug": "huong-dan-fastapi",
+      "content": "FastAPI là framework hiện đại để xây dựng API với Python. Nó nhanh, dễ sử dụng và có tài liệu tốt.",
+      "author_id": 2,
+      "published_at": "2024-02-02T11:00:00",
+      "is_published": true
+    }
+  ],
+
+  "Candidate": [
+    {
+      "id": 1,
+      "full_name": "Nguyễn Văn Minh",
+      "email": "nguyenvanminh@example.com",
+      "phone": "+84 912 345 678",
+      "years_of_experience": 5,
+      "skills": ["Python", "JavaScript", "SQL", "React"],
+      "education_degree": "Cử nhân",
+      "education_major": "Khoa học Máy tính",
+      "university": "Đại học Bách Khoa Hà Nội",
+      "graduation_year": 2019,
+      "cv_url": "s3://bucket/cvs/candidate_1.pdf",
+      "linkedin_url": "https://linkedin.com/in/nguyenvanminh",
+      "created_at": "2024-06-01T00:00:00",
+      "status": "đã phỏng vấn"
+    },
+    {
+      "id": 2,
+      "full_name": "Trần Thị Hương",
+      "email": "tranthihuong@example.com",
+      "phone": "+84 987 654 321",
+      "years_of_experience": 3,
+      "skills": ["Java", "Spring Boot", "MySQL", "Docker"],
+      "education_degree": "Thạc sĩ",
+      "education_major": "Kỹ thuật Phần mềm",
+      "university": "Đại học FPT",
+      "graduation_year": 2021,
+      "cv_url": "s3://bucket/cvs/candidate_2.pdf",
+      "linkedin_url": "https://linkedin.com/in/tranthihuong",
+      "created_at": "2024-07-15T00:00:00",
+      "status": "đang chờ"
+    }
+  ],
+
+  "Question": [
+    {
+      "id": 1,
+      "text": "Sự khác biệt giữa == và === trong JavaScript là gì?",
+      "category": "technical",
+      "difficulty": "easy",
+      "related_skill": "JavaScript",
+      "expected_keywords": ["so sánh", "kiểu dữ liệu", "ép kiểu", "strict"],
+      "model_answer": "Toán tử == thực hiện ép kiểu trước khi so sánh, trong khi === thực hiện so sánh nghiêm ngặt mà không ép kiểu.",
+      "time_limit_minutes": 5,
+      "created_at": "2024-01-01T00:00:00"
+    },
+    {
+      "id": 2,
+      "text": "List Comprehension trong Python là gì? Cho ví dụ.",
+      "category": "technical",
+      "difficulty": "medium",
+      "related_skill": "Python",
+      "expected_keywords": ["list", "vòng lặp", "filter", "map", "cú pháp ngắn gọn"],
+      "model_answer": "List comprehension là cách tạo list mới từ một iterable có sẵn bằng cú pháp ngắn gọn. Ví dụ: [x**2 for x in range(10)] tạo list các số bình phương từ 0 đến 81.",
+      "time_limit_minutes": 7,
+      "created_at": "2024-01-05T00:00:00"
+    },
+    {
+      "id": 3,
+      "text": "Giải thích về Design Pattern Singleton và ứng dụng thực tế.",
+      "category": "system-design",
+      "difficulty": "hard",
+      "related_skill": "System Design",
+      "expected_keywords": ["singleton", "instance duy nhất", "global access", "thread-safe"],
+      "model_answer": "Singleton là pattern đảm bảo một class chỉ có một instance duy nhất và cung cấp điểm truy cập toàn cục. Ứng dụng: Database connection pool, Logger, Configuration manager.",
+      "time_limit_minutes": 15,
+      "created_at": "2024-01-10T00:00:00"
+    }
+  ],
+
+  "InterviewSession": [
+    {
+      "id": 1,
+      "candidate_id": 1,
+      "started_at": "2024-08-01T14:00:00",
+      "completed_at": "2024-08-01T15:30:00",
+      "status": "completed",
+      "interview_type": "technical",
+      "answers": [
+        {
+          "question_id": 1,
+          "answer_text": "Trong JavaScript, toán tử == kiểm tra bằng nhau với việc ép kiểu, trong khi === kiểm tra cả giá trị và kiểu dữ liệu.",
+          "duration_seconds": 120,
+          "score": 85,
+          "feedback": "Hiểu rõ khái niệm, giải thích tốt."
+        },
+        {
+          "question_id": 2,
+          "answer_text": "List comprehension cho phép tạo list mới một cách ngắn gọn. Ví dụ: squares = [x**2 for x in range(10)]",
+          "duration_seconds": 180,
+          "score": 90,
+          "feedback": "Trả lời xuất sắc với ví dụ cụ thể."
+        }
+      ],
+      "overall_score": 87,
+      "feedback_summary": "Ứng viên có kiến thức kỹ thuật tốt, kỹ năng giao tiếp rõ ràng. Thể hiện sự hiểu biết sâu về JavaScript và Python.",
+      "strengths": [
+        "Giải thích rõ ràng các khái niệm",
+        "Đưa ra ví dụ cụ thể",
+        "Tư duy logic tốt"
+      ],
+      "weaknesses": [
+        "Có thể cải thiện tốc độ trả lời",
+        "Cần thêm kinh nghiệm về system design"
+      ],
+      "recommendations": "Ứng viên phù hợp cho vị trí Middle Developer. Nên tiếp tục phát triển kỹ năng về system design và kiến trúc phần mềm."
+    },
+    {
+      "id": 2,
+      "candidate_id": 2,
+      "started_at": "2024-08-05T09:00:00",
+      "completed_at": "2024-08-05T10:45:00",
+      "status": "completed",
+      "interview_type": "technical",
+      "answers": [
+        {
+          "question_id": 3,
+          "answer_text": "Singleton pattern đảm bảo class chỉ có một instance. Sử dụng trong database connection để tránh tạo nhiều kết nối không cần thiết.",
+          "duration_seconds": 300,
+          "score": 80,
+          "feedback": "Hiểu được pattern, nhưng có thể giải thích sâu hơn về implementation."
+        }
+      ],
+      "overall_score": 80,
+      "feedback_summary": "Ứng viên có nền tảng tốt về Java và Spring Boot. Cần cải thiện kiến thức về design patterns.",
+      "strengths": [
+        "Kiến thức vững về Java",
+        "Kinh nghiệm thực tế với Spring Boot",
+        "Thái độ học hỏi tích cực"
+      ],
+      "weaknesses": [
+        "Design patterns còn hạn chế",
+        "Cần thực hành thêm về system design"
+      ],
+      "recommendations": "Ứng viên có tiềm năng. Đề xuất đào tạo thêm về design patterns và clean architecture trước khi bắt đầu làm việc."
+    }
+  ]
+}
