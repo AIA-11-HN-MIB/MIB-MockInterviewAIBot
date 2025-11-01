@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     # API Configuration
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    api_prefix: str = "/api/v1"
+    api_prefix: str = "/api"
 
     # LLM Provider Selection
     llm_provider: str = "openai"  # openai, claude, llama

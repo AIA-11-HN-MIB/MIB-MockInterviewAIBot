@@ -622,7 +622,7 @@ def get_container() -> Container:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Client Request                            │
-│                  POST /api/v1/cv/upload                          │
+│                  POST /api/cv/upload                          │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ↓
@@ -705,7 +705,7 @@ def get_container() -> Container:
 
 ```
 1. User Uploads CV
-   ├─→ POST /api/v1/cv/upload
+   ├─→ POST /api/cv/upload
    │   ├─ file: CV document (PDF/DOC)
    │   └─ candidate_id: UUID
 
@@ -733,7 +733,7 @@ def get_container() -> Container:
    └─ Status 201 Created
 
 5. Start Interview Flow (separate request)
-   ├─→ POST /api/v1/interviews
+   ├─→ POST /api/interviews
    │   ├─ candidate_id: UUID
    │   └─ cv_analysis_id: UUID
    │
@@ -752,7 +752,7 @@ def get_container() -> Container:
 
 ```
 1. Candidate Submits Answer
-   ├─→ POST /api/v1/interviews/{id}/answers
+   ├─→ POST /api/interviews/{id}/answers
    │   ├─ question_id: UUID
    │   └─ answer_text: string
 
@@ -1058,7 +1058,7 @@ create_async_engine(
 
 ### REST API Design
 
-**Base URL**: `/api/v1`
+**Base URL**: `/api`
 
 **Endpoints**:
 
@@ -1067,35 +1067,35 @@ create_async_engine(
 GET  /health                           # Health check
 
 # Candidates
-POST   /api/v1/candidates              # Create candidate
-GET    /api/v1/candidates/{id}         # Get candidate
-PUT    /api/v1/candidates/{id}         # Update candidate
-DELETE /api/v1/candidates/{id}         # Delete candidate
+POST   /api/candidates              # Create candidate
+GET    /api/candidates/{id}         # Get candidate
+PUT    /api/candidates/{id}         # Update candidate
+DELETE /api/candidates/{id}         # Delete candidate
 
 # CV Analysis
-POST /api/v1/cv/upload                 # Upload and analyze CV
-GET  /api/v1/cv/{id}                   # Get CV analysis
+POST /api/cv/upload                 # Upload and analyze CV
+GET  /api/cv/{id}                   # Get CV analysis
 
 # Interviews
-POST   /api/v1/interviews              # Create interview
-GET    /api/v1/interviews/{id}         # Get interview
-PUT    /api/v1/interviews/{id}/start   # Start interview
-PUT    /api/v1/interviews/{id}/complete # Complete interview
-GET    /api/v1/interviews/{id}/questions/{index} # Get question
+POST   /api/interviews              # Create interview
+GET    /api/interviews/{id}         # Get interview
+PUT    /api/interviews/{id}/start   # Start interview
+PUT    /api/interviews/{id}/complete # Complete interview
+GET    /api/interviews/{id}/questions/{index} # Get question
 
 # Answers
-POST /api/v1/interviews/{id}/answers   # Submit answer
-GET  /api/v1/interviews/{id}/answers   # Get all answers
+POST /api/interviews/{id}/answers   # Submit answer
+GET  /api/interviews/{id}/answers   # Get all answers
 
 # Questions (Admin)
-POST   /api/v1/questions               # Create question
-GET    /api/v1/questions               # List questions
-GET    /api/v1/questions/{id}          # Get question
-PUT    /api/v1/questions/{id}          # Update question
-DELETE /api/v1/questions/{id}          # Delete question
+POST   /api/questions               # Create question
+GET    /api/questions               # List questions
+GET    /api/questions/{id}          # Get question
+PUT    /api/questions/{id}          # Update question
+DELETE /api/questions/{id}          # Delete question
 
 # Feedback
-GET /api/v1/interviews/{id}/feedback   # Get comprehensive feedback
+GET /api/interviews/{id}/feedback   # Get comprehensive feedback
 ```
 
 ### WebSocket API (Planned)
@@ -1137,7 +1137,7 @@ GET /api/v1/interviews/{id}/feedback   # Get comprehensive feedback
   "type": "complete",
   "interview_id": "uuid",
   "overall_score": 78.5,
-  "feedback_url": "/api/v1/interviews/{id}/feedback"
+  "feedback_url": "/api/interviews/{id}/feedback"
 }
 ```
 

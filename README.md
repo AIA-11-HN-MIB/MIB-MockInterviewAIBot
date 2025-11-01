@@ -305,7 +305,7 @@ import httpx
 
 async with httpx.AsyncClient() as client:
     response = await client.post(
-        "http://localhost:8000/api/v1/candidates",
+        "http://localhost:8000/api/candidates",
         json={
             "name": "John Doe",
             "email": "john.doe@example.com"
@@ -321,7 +321,7 @@ async with httpx.AsyncClient() as client:
 async with httpx.AsyncClient() as client:
     with open("resume.pdf", "rb") as cv_file:
         response = await client.post(
-            "http://localhost:8000/api/v1/cv/upload",
+            "http://localhost:8000/api/cv/upload",
             files={"file": cv_file},
             data={"candidate_id": candidate['id']}
         )
@@ -334,7 +334,7 @@ async with httpx.AsyncClient() as client:
 ```python
 async with httpx.AsyncClient() as client:
     response = await client.post(
-        "http://localhost:8000/api/v1/interviews",
+        "http://localhost:8000/api/interviews",
         json={
             "candidate_id": candidate['id'],
             "cv_analysis_id": cv_analysis['id']
@@ -349,7 +349,7 @@ async with httpx.AsyncClient() as client:
 ```python
 async with httpx.AsyncClient() as client:
     response = await client.post(
-        f"http://localhost:8000/api/v1/interviews/{interview['id']}/answers",
+        f"http://localhost:8000/api/interviews/{interview['id']}/answers",
         json={
             "question_id": interview['question_ids'][0],
             "answer_text": "My answer here..."

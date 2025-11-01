@@ -6960,80 +6960,80 @@ claude --debug "implement feature"
 
 **Get Usage Report**
 ```bash
-GET /v1/admin/claude-code/usage
+GET /admin/claude-code/usage
 ```
 
 **Get Cost Report**
 ```bash
-GET /v1/admin/usage/cost
+GET /admin/usage/cost
 ```
 
 **List Users**
 ```bash
-GET /v1/admin/users
+GET /admin/users
 ```
 
 ### Messages API
 
 **Create Message**
 ```bash
-POST /v1/messages
+POST /messages
 ```
 
 **Stream Message**
 ```bash
-POST /v1/messages (with stream=true)
+POST /messages (with stream=true)
 ```
 
 **Count Tokens**
 ```bash
-POST /v1/messages/count_tokens
+POST /messages/count_tokens
 ```
 
 ### Files API
 
 **Upload File**
 ```bash
-POST /v1/files
+POST /files
 ```
 
 **List Files**
 ```bash
-GET /v1/files
+GET /files
 ```
 
 **Delete File**
 ```bash
-DELETE /v1/files/:file_id
+DELETE /files/:file_id
 ```
 
 ### Models API
 
 **List Models**
 ```bash
-GET /v1/models
+GET /models
 ```
 
 **Get Model**
 ```bash
-GET /v1/models/:model_id
+GET /models/:model_id
 ```
 
 ### Skills API
 
 **Create Skill**
 ```bash
-POST /v1/skills
+POST /skills
 ```
 
 **List Skills**
 ```bash
-GET /v1/skills
+GET /skills
 ```
 
 **Update Skill**
 ```bash
-PATCH /v1/skills/:skill_id
+PATCH /skills/:skill_id
 ```
 
 ## Conclusion
@@ -21391,7 +21391,7 @@ Production: https://api.elios-interview.com
 
 ## API Prefix
 
-All endpoints are prefixed with `/api/v1`
+All endpoints are prefixed with `/api`
 
 ## Authentication
 
@@ -21426,7 +21426,7 @@ Check if the service is running.
 
 ### 2. Upload CV
 
-#### `POST /api/v1/cv/upload`
+#### `POST /api/cv/upload`
 
 Upload a candidate's CV for analysis.
 
@@ -21456,7 +21456,7 @@ Upload a candidate's CV for analysis.
 
 ### 3. Get CV Analysis
 
-#### `GET /api/v1/cv/{cv_analysis_id}`
+#### `GET /api/cv/{cv_analysis_id}`
 
 Retrieve CV analysis results.
 
@@ -21509,7 +21509,7 @@ Retrieve CV analysis results.
 
 ### 4. Create Interview
 
-#### `POST /api/v1/interviews`
+#### `POST /api/interviews`
 
 Create a new interview session.
 
@@ -21543,7 +21543,7 @@ Create a new interview session.
 
 ### 5. Start Interview
 
-#### `POST /api/v1/interviews/{interview_id}/start`
+#### `POST /api/interviews/{interview_id}/start`
 
 Start an interview session.
 
@@ -21561,7 +21561,7 @@ Start an interview session.
     "text": "Can you explain the difference between async and sync programming in Python?",
     "question_type": "technical",
     "difficulty": "medium",
-    "audio_url": "/api/v1/audio/questions/850e8400-e29b-41d4-a716-446655440000.mp3"
+    "audio_url": "/api/audio/questions/850e8400-e29b-41d4-a716-446655440000.mp3"
   }
 }
 ```
@@ -21574,7 +21574,7 @@ Start an interview session.
 
 ### 6. Get Current Question
 
-#### `GET /api/v1/interviews/{interview_id}/current-question`
+#### `GET /api/interviews/{interview_id}/current-question`
 
 Get the current question for an active interview.
 
@@ -21592,7 +21592,7 @@ Get the current question for an active interview.
   "tags": ["concurrency", "performance"],
   "question_number": 1,
   "total_questions": 10,
-  "audio_url": "/api/v1/audio/questions/850e8400-e29b-41d4-a716-446655440000.mp3"
+  "audio_url": "/api/audio/questions/850e8400-e29b-41d4-a716-446655440000.mp3"
 }
 ```
 
@@ -21604,7 +21604,7 @@ Get the current question for an active interview.
 
 ### 7. Submit Answer
 
-#### `POST /api/v1/interviews/{interview_id}/answers`
+#### `POST /api/interviews/{interview_id}/answers`
 
 Submit an answer to the current question.
 
@@ -21668,7 +21668,7 @@ Submit an answer to the current question.
 
 ### 8. Complete Interview
 
-#### `POST /api/v1/interviews/{interview_id}/complete`
+#### `POST /api/interviews/{interview_id}/complete`
 
 Complete the interview and generate feedback.
 
@@ -21684,7 +21684,7 @@ Complete the interview and generate feedback.
   "overall_score": 78.5,
   "duration_minutes": 25,
   "questions_answered": 10,
-  "feedback_url": "/api/v1/interviews/750e8400-e29b-41d4-a716-446655440000/feedback"
+  "feedback_url": "/api/interviews/750e8400-e29b-41d4-a716-446655440000/feedback"
 }
 ```
 
@@ -21696,7 +21696,7 @@ Complete the interview and generate feedback.
 
 ### 9. Get Interview Feedback
 
-#### `GET /api/v1/interviews/{interview_id}/feedback`
+#### `GET /api/interviews/{interview_id}/feedback`
 
 Get comprehensive interview feedback report.
 
@@ -21744,7 +21744,7 @@ Get comprehensive interview feedback report.
 
 ### 10. Get Interview History
 
-#### `GET /api/v1/candidates/{candidate_id}/interviews`
+#### `GET /api/candidates/{candidate_id}/interviews`
 
 Get interview history for a candidate.
 
@@ -21790,7 +21790,7 @@ Get interview history for a candidate.
 
 ### 11. Create Question
 
-#### `POST /api/v1/questions`
+#### `POST /api/questions`
 
 Create a new interview question.
 
@@ -21825,7 +21825,7 @@ Create a new interview question.
 
 ### 12. List Questions
 
-#### `GET /api/v1/questions`
+#### `GET /api/questions`
 
 List all questions with filtering and pagination.
 
@@ -21863,13 +21863,13 @@ List all questions with filtering and pagination.
 
 ### Interview Chat WebSocket
 
-#### `WS /api/v1/ws/interviews/{interview_id}`
+#### `WS /api/ws/interviews/{interview_id}`
 
 Real-time interview chat via WebSocket.
 
 **Connection:**
 ```javascript
-const ws = new WebSocket('ws://localhost:8000/api/v1/ws/interviews/750e8400-e29b-41d4-a716-446655440000');
+const ws = new WebSocket('ws://localhost:8000/api/ws/interviews/750e8400-e29b-41d4-a716-446655440000');
 ```
 
 **Client → Server Messages:**
@@ -21929,7 +21929,7 @@ const ws = new WebSocket('ws://localhost:8000/api/v1/ws/interviews/750e8400-e29b
 {
   "type": "interview_complete",
   "overall_score": 78.5,
-  "feedback_url": "/api/v1/interviews/750e8400-e29b-41d4-a716-446655440000/feedback"
+  "feedback_url": "/api/interviews/750e8400-e29b-41d4-a716-446655440000/feedback"
 }
 ```
 
@@ -21948,7 +21948,7 @@ const ws = new WebSocket('ws://localhost:8000/api/v1/ws/interviews/750e8400-e29b
 
 ### 13. Get Question Audio
 
-#### `GET /api/v1/audio/questions/{question_id}.mp3`
+#### `GET /api/audio/questions/{question_id}.mp3`
 
 Get text-to-speech audio for a question.
 
@@ -21967,7 +21967,7 @@ Get text-to-speech audio for a question.
 
 ### 14. Upload Answer Audio
 
-#### `POST /api/v1/audio/answers`
+#### `POST /api/audio/answers`
 
 Upload audio answer for transcription.
 
@@ -21985,7 +21985,7 @@ Upload audio answer for transcription.
 {
   "answer_id": "950e8400-e29b-41d4-a716-446655440000",
   "transcribed_text": "Async programming allows...",
-  "audio_url": "/api/v1/audio/answers/950e8400-e29b-41d4-a716-446655440000.mp3",
+  "audio_url": "/api/audio/answers/950e8400-e29b-41d4-a716-446655440000.mp3",
   "duration_seconds": 45.2
 }
 ```
@@ -22042,7 +22042,7 @@ All list endpoints support pagination:
 
 **Request:**
 ```
-GET /api/v1/questions?limit=20&offset=40
+GET /api/questions?limit=20&offset=40
 ```
 
 **Response:**
@@ -22052,8 +22052,8 @@ GET /api/v1/questions?limit=20&offset=40
   "limit": 20,
   "offset": 40,
   "has_more": true,
-  "next_url": "/api/v1/questions?limit=20&offset=60",
-  "prev_url": "/api/v1/questions?limit=20&offset=20",
+  "next_url": "/api/questions?limit=20&offset=60",
+  "prev_url": "/api/questions?limit=20&offset=20",
   "data": [...]
 }
 ```
@@ -22062,7 +22062,7 @@ GET /api/v1/questions?limit=20&offset=40
 
 ## Versioning
 
-API version is specified in the URL: `/api/v1/`
+API version is specified in the URL: `/api/`
 
 Breaking changes will increment the version: `/api/v2/`
 
@@ -22080,7 +22080,7 @@ client = httpx.AsyncClient(base_url="http://localhost:8000")
 # Upload CV
 with open("cv.pdf", "rb") as f:
     response = await client.post(
-        "/api/v1/cv/upload",
+        "/api/cv/upload",
         files={"cv_file": f},
         data={"candidate_id": str(candidate_id)}
     )
@@ -22089,7 +22089,7 @@ cv_analysis_id = response.json()["cv_analysis_id"]
 
 # Create interview
 response = await client.post(
-    "/api/v1/interviews",
+    "/api/interviews",
     json={
         "candidate_id": str(candidate_id),
         "cv_analysis_id": str(cv_analysis_id),
@@ -22108,7 +22108,7 @@ const formData = new FormData();
 formData.append('cv_file', fileInput.files[0]);
 formData.append('candidate_id', candidateId);
 
-const cvResponse = await fetch('http://localhost:8000/api/v1/cv/upload', {
+const cvResponse = await fetch('http://localhost:8000/api/cv/upload', {
   method: 'POST',
   body: formData
 });
@@ -22116,7 +22116,7 @@ const cvResponse = await fetch('http://localhost:8000/api/v1/cv/upload', {
 const { cv_analysis_id } = await cvResponse.json();
 
 // Create interview
-const interviewResponse = await fetch('http://localhost:8000/api/v1/interviews', {
+const interviewResponse = await fetch('http://localhost:8000/api/interviews', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -22636,17 +22636,17 @@ Test complete user flows through API.
 @pytest.mark.asyncio
 async def test_complete_interview_flow(api_client):
     # Upload CV
-    cv_response = await api_client.post("/api/v1/cv/upload", ...)
+    cv_response = await api_client.post("/api/cv/upload", ...)
 
     # Start interview
-    interview_response = await api_client.post("/api/v1/interviews/start", ...)
+    interview_response = await api_client.post("/api/interviews/start", ...)
 
     # Answer questions
     for i in range(5):
-        answer_response = await api_client.post(f"/api/v1/interviews/{id}/answer", ...)
+        answer_response = await api_client.post(f"/api/interviews/{id}/answer", ...)
 
     # Get feedback
-    feedback_response = await api_client.get(f"/api/v1/interviews/{id}/feedback")
+    feedback_response = await api_client.get(f"/api/interviews/{id}/feedback")
 
     assert feedback_response.status_code == 200
 ```
@@ -25412,10 +25412,10 @@ Empower candidates to confidently prepare for real interviews by:
 
 ### Appendix B: API Endpoint Summary
 - `/health` - Health check
-- `/api/v1/cv/upload` - Upload and analyze CV
-- `/api/v1/interviews` - Interview CRUD
-- `/api/v1/questions` - Question management
-- `/api/v1/ws/interviews/{id}` - WebSocket chat
+- `/api/cv/upload` - Upload and analyze CV
+- `/api/interviews` - Interview CRUD
+- `/api/questions` - Question management
+- `/api/ws/interviews/{id}` - WebSocket chat
 
 ### Appendix C: Development Setup Summary
 1. Install Python 3.11+
@@ -26298,7 +26298,7 @@ def get_container() -> Container:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Client Request                            │
-│                  POST /api/v1/cv/upload                          │
+│                  POST /api/cv/upload                          │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ↓
@@ -26381,7 +26381,7 @@ def get_container() -> Container:
 
 ```
 1. User Uploads CV
-   ├─→ POST /api/v1/cv/upload
+   ├─→ POST /api/cv/upload
    │   ├─ file: CV document (PDF/DOC)
    │   └─ candidate_id: UUID
 
@@ -26409,7 +26409,7 @@ def get_container() -> Container:
    └─ Status 201 Created
 
 5. Start Interview Flow (separate request)
-   ├─→ POST /api/v1/interviews
+   ├─→ POST /api/interviews
    │   ├─ candidate_id: UUID
    │   └─ cv_analysis_id: UUID
    │
@@ -26428,7 +26428,7 @@ def get_container() -> Container:
 
 ```
 1. Candidate Submits Answer
-   ├─→ POST /api/v1/interviews/{id}/answers
+   ├─→ POST /api/interviews/{id}/answers
    │   ├─ question_id: UUID
    │   └─ answer_text: string
 
@@ -26734,7 +26734,7 @@ create_async_engine(
 
 ### REST API Design
 
-**Base URL**: `/api/v1`
+**Base URL**: `/api`
 
 **Endpoints**:
 
@@ -26743,35 +26743,35 @@ create_async_engine(
 GET  /health                           # Health check
 
 # Candidates
-POST   /api/v1/candidates              # Create candidate
-GET    /api/v1/candidates/{id}         # Get candidate
-PUT    /api/v1/candidates/{id}         # Update candidate
-DELETE /api/v1/candidates/{id}         # Delete candidate
+POST   /api/candidates              # Create candidate
+GET    /api/candidates/{id}         # Get candidate
+PUT    /api/candidates/{id}         # Update candidate
+DELETE /api/candidates/{id}         # Delete candidate
 
 # CV Analysis
-POST /api/v1/cv/upload                 # Upload and analyze CV
-GET  /api/v1/cv/{id}                   # Get CV analysis
+POST /api/cv/upload                 # Upload and analyze CV
+GET  /api/cv/{id}                   # Get CV analysis
 
 # Interviews
-POST   /api/v1/interviews              # Create interview
-GET    /api/v1/interviews/{id}         # Get interview
-PUT    /api/v1/interviews/{id}/start   # Start interview
-PUT    /api/v1/interviews/{id}/complete # Complete interview
-GET    /api/v1/interviews/{id}/questions/{index} # Get question
+POST   /api/interviews              # Create interview
+GET    /api/interviews/{id}         # Get interview
+PUT    /api/interviews/{id}/start   # Start interview
+PUT    /api/interviews/{id}/complete # Complete interview
+GET    /api/interviews/{id}/questions/{index} # Get question
 
 # Answers
-POST /api/v1/interviews/{id}/answers   # Submit answer
-GET  /api/v1/interviews/{id}/answers   # Get all answers
+POST /api/interviews/{id}/answers   # Submit answer
+GET  /api/interviews/{id}/answers   # Get all answers
 
 # Questions (Admin)
-POST   /api/v1/questions               # Create question
-GET    /api/v1/questions               # List questions
-GET    /api/v1/questions/{id}          # Get question
-PUT    /api/v1/questions/{id}          # Update question
-DELETE /api/v1/questions/{id}          # Delete question
+POST   /api/questions               # Create question
+GET    /api/questions               # List questions
+GET    /api/questions/{id}          # Get question
+PUT    /api/questions/{id}          # Update question
+DELETE /api/questions/{id}          # Delete question
 
 # Feedback
-GET /api/v1/interviews/{id}/feedback   # Get comprehensive feedback
+GET /api/interviews/{id}/feedback   # Get comprehensive feedback
 ```
 
 ### WebSocket API (Planned)
@@ -26813,7 +26813,7 @@ GET /api/v1/interviews/{id}/feedback   # Get comprehensive feedback
   "type": "complete",
   "interview_id": "uuid",
   "overall_score": 78.5,
-  "feedback_url": "/api/v1/interviews/{id}/feedback"
+  "feedback_url": "/api/interviews/{id}/feedback"
 }
 ```
 
@@ -32367,7 +32367,7 @@ import httpx
 
 async with httpx.AsyncClient() as client:
     response = await client.post(
-        "http://localhost:8000/api/v1/candidates",
+        "http://localhost:8000/api/candidates",
         json={
             "name": "John Doe",
             "email": "john.doe@example.com"
@@ -32383,7 +32383,7 @@ async with httpx.AsyncClient() as client:
 async with httpx.AsyncClient() as client:
     with open("resume.pdf", "rb") as cv_file:
         response = await client.post(
-            "http://localhost:8000/api/v1/cv/upload",
+            "http://localhost:8000/api/cv/upload",
             files={"file": cv_file},
             data={"candidate_id": candidate['id']}
         )
@@ -32396,7 +32396,7 @@ async with httpx.AsyncClient() as client:
 ```python
 async with httpx.AsyncClient() as client:
     response = await client.post(
-        "http://localhost:8000/api/v1/interviews",
+        "http://localhost:8000/api/interviews",
         json={
             "candidate_id": candidate['id'],
             "cv_analysis_id": cv_analysis['id']
@@ -32411,7 +32411,7 @@ async with httpx.AsyncClient() as client:
 ```python
 async with httpx.AsyncClient() as client:
     response = await client.post(
-        f"http://localhost:8000/api/v1/interviews/{interview['id']}/answers",
+        f"http://localhost:8000/api/interviews/{interview['id']}/answers",
         json={
             "question_id": interview['question_ids'][0],
             "answer_text": "My answer here..."
@@ -33677,7 +33677,7 @@ class Settings(BaseSettings):
     # API Configuration
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    api_prefix: str = "/api/v1"
+    api_prefix: str = "/api"
 
     # LLM Provider Selection
     llm_provider: str = "openai"  # openai, claude, llama

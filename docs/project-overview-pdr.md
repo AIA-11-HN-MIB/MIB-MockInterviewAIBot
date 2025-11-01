@@ -624,10 +624,10 @@ Empower candidates to confidently prepare for real interviews by:
 
 ### Appendix B: API Endpoint Summary
 - `/health` - Health check
-- `/api/v1/cv/upload` - Upload and analyze CV
-- `/api/v1/interviews` - Interview CRUD
-- `/api/v1/questions` - Question management
-- `/api/v1/ws/interviews/{id}` - WebSocket chat
+- `/api/cv/upload` - Upload and analyze CV
+- `/api/interviews` - Interview CRUD
+- `/api/questions` - Question management
+- `/api/ws/interviews/{id}` - WebSocket chat
 
 ### Appendix C: Development Setup Summary
 1. Install Python 3.11+
