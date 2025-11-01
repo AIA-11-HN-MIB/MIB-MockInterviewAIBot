@@ -686,7 +686,7 @@ Testing, linting, formatting, type checking, development tools
 - [Project Overview & PDR](./project-overview-pdr.md) - Product requirements and roadmap
 - [System Architecture](./system-architecture.md) - Detailed architecture documentation
 - [Code Standards](./code-standards.md) - Coding conventions and best practices
-- [API Documentation](./api.md) - REST API reference
+- [API Documentation](./system-architecture.md#api-architecture) - REST API reference
 - [Database Setup](../DATABASE_SETUP.md) - Database configuration guide
 
 ## External Resources

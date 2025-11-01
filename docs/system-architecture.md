@@ -49,36 +49,36 @@ Elios AI Interview Service implements **Clean Architecture** (also known as Hexa
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│                         Users / Clients                         │
-│                  (Web, Mobile, API Consumers)                   │
+│                         Users / Clients                        │
+│                  (Web, Mobile, API Consumers)                  │
 └────────────────────────┬───────────────────────────────────────┘
                          │
                          ↓
 ┌────────────────────────────────────────────────────────────────┐
-│                      API Layer (FastAPI)                        │
-│              REST Endpoints + WebSocket Handlers                │
-│                    (src/adapters/api/)                          │
+│                      API Layer (FastAPI)                       │
+│              REST Endpoints + WebSocket Handlers               │
+│                    (src/adapters/api/)                         │
 └────────────────────────┬───────────────────────────────────────┘
                          │
                          ↓
 ┌────────────────────────────────────────────────────────────────┐
-│                    Application Layer                            │
+│                    Application Layer                           │
 │           Use Cases (Business Flow Orchestration)              │
-│                 (src/application/use_cases/)                    │
+│                 (src/application/use_cases/)                   │
 └────────────────────────┬───────────────────────────────────────┘
                          │
                          ↓
 ┌────────────────────────────────────────────────────────────────┐
-│                     Domain Layer                                │
+│                     Domain Layer                               │
 │          Pure Business Logic (Models + Services + Ports)       │
-│                    (src/domain/)                                │
+│                    (src/domain/)                               │
 └────────────────────────┬───────────────────────────────────────┘
                          │
                          ↓
 ┌────────────────────────────────────────────────────────────────┐
-│                    Adapters Layer                               │
+│                    Adapters Layer                              │
 │         External Service Implementations (Ports → Adapters)    │
-│                   (src/adapters/)                               │
+│                   (src/adapters/)                              │
 │  ┌──────────────┬──────────────┬──────────────┬──────────────┐ │
 │  │   LLM        │  Vector DB   │  Database    │  Speech      │ │
 │  │  (OpenAI)    │  (Pinecone)  │ (PostgreSQL) │  (Azure)     │ │
@@ -87,9 +87,9 @@ Elios AI Interview Service implements **Clean Architecture** (also known as Hexa
                          │
                          ↓
 ┌────────────────────────────────────────────────────────────────┐
-│                  Infrastructure Layer                           │
+│                  Infrastructure Layer                          │
 │       Config, Database Setup, DI Container, Logging            │
-│                 (src/infrastructure/)                           │
+│                 (src/infrastructure/)                          │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -101,23 +101,23 @@ Elios AI Interview Service implements **Clean Architecture** (also known as Hexa
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  Infrastructure                          │
+│                     Infrastructure                      │
 │  ┌───────────────────────────────────────────────────┐  │
-│  │                Adapters                            │  │
+│  │                     Adapters                      │  │
 │  │  ┌─────────────────────────────────────────────┐  │  │
-│  │  │          Application                         │  │  │
+│  │  │                 Application                 │  │  │
 │  │  │  ┌───────────────────────────────────────┐  │  │  │
-│  │  │  │         Domain                        │  │  │  │
-│  │  │  │  • Models (Entities)                 │  │  │  │
-│  │  │  │  • Business Rules                    │  │  │  │
-│  │  │  │  • Ports (Interfaces)                │  │  │  │
-│  │  │  │  • NO external dependencies          │  │  │  │
+│  │  │  │                Domain                 │  │  │  │
+│  │  │  │  • Models (Entities)                  │  │  │  │
+│  │  │  │  • Business Rules                     │  │  │  │
+│  │  │  │  • Ports (Interfaces)                 │  │  │  │
+│  │  │  │  • NO external dependencies           │  │  │  │
 │  │  │  └───────────────────────────────────────┘  │  │  │
-│  │  │       Use Cases (Orchestration)              │  │  │
+│  │  │          Use Cases (Orchestration)          │  │  │
 │  │  └─────────────────────────────────────────────┘  │  │
-│  │     Implementations (LLM, DB, API, Vector)        │  │
+│  │      Implementations (LLM, DB, API, Vector)       │  │
 │  └───────────────────────────────────────────────────┘  │
-│        Config, DI Container, Database Setup             │
+│          Config, DI Container, Database Setup           │
 └─────────────────────────────────────────────────────────┘
 ```
 

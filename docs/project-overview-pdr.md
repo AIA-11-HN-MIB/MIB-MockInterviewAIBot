@@ -603,7 +603,7 @@ Empower candidates to confidently prepare for real interviews by:
 - [System Architecture](./system-architecture.md)
 - [Codebase Summary](./codebase-summary.md)
 - [Code Standards](./code-standards.md)
-- [API Documentation](./api.md)
+- [API Documentation](./system-architecture.md#api-architecture)
 - [Database Setup Guide](../DATABASE_SETUP.md)
 
 ### External Resources

@@ -31,47 +31,128 @@ Elios AI Interview Service leverages **Large Language Models (LLMs)** and **vect
 - **Testing**: pytest, pytest-asyncio
 - **Code Quality**: ruff, black, mypy
 
+### Main flows
+
+#### 1. Preparation Phase (Scan CV & Generate Topics)
+
+```mermaid
+sequenceDiagram
+    actor Candidate
+    participant ChatUI as Chat UI / Frontend
+    participant CVAnalyzer as 📄 CV Analyzer Component
+    participant VectorDB as 🧠 Vector Database
+    participant AIEngine as 🤖 AI Interviewer Engine
+
+    Candidate->>ChatUI: Upload CV file
+    ChatUI->>CVAnalyzer: Send CV for analysis
+    CVAnalyzer->>VectorDB: Generate & store CV embeddings
+    VectorDB-->>CVAnalyzer: Confirm embeddings stored
+    CVAnalyzer-->>ChatUI: Return extracted skills & suggested topics
+    ChatUI-->>Candidate: Display preparation summary
+    ChatUI->>AIEngine: Notify readiness (skills, topics)
+    AIEngine-->>ChatUI: Acknowledged
+```
+
+#### 2. Interview Phase (Real-time Q&A)
+
+```mermaid
+sequenceDiagram
+    actor Candidate
+    participant ChatUI as Chat UI / Frontend
+    participant AIEngine as 🤖 AI Interviewer Engine
+    participant VectorDB as 🧠 Vector Database
+    participant QBank as 📚 Question Bank Service
+    participant STT as 🎤 Speech-to-Text
+    participant TTS as 🗣️ Text-to-Speech
+    participant Analytics as 📊 Analytics & Feedback Service
+
+    %% --- Start Interview ---
+    Candidate->>ChatUI: Start interview
+    ChatUI->>AIEngine: Request first question
+    AIEngine->>VectorDB: Query similar question embeddings (based on CV topics)
+    VectorDB-->>AIEngine: Return question candidates
+    AIEngine->>QBank: Fetch selected question
+    QBank-->>AIEngine: Return question details
+    AIEngine-->>ChatUI: Send question text
+    ChatUI-->>TTS: Convert question text to speech
+    TTS-->>Candidate: Play AI voice question
+
+    %% --- Candidate answers ---
+    Candidate->>STT: Speak answer
+    STT-->>AIEngine: Send transcript text
+    AIEngine->>VectorDB: Compare answer embeddings & evaluate quality
+    VectorDB-->>AIEngine: Return similarity & semantic score
+    AIEngine->>Analytics: Send answer evaluation (score, sentiment, reasoning)
+    Analytics-->>AIEngine: Acknowledged
+
+    alt More questions remain
+        AIEngine->>VectorDB: Retrieve next suitable question
+        VectorDB-->>AIEngine: Return next question candidate
+        AIEngine-->>ChatUI: Send next question
+        ChatUI-->>TTS: Convert to speech & play
+        TTS-->>Candidate: Play next question
+    else Interview finished
+        AIEngine-->>ChatUI: Notify interview end
+    end
+
+```
+
+#### 3. Final Stage (Evaluation & Reporting)
+
+```mermaid
+sequenceDiagram
+    actor Candidate
+    participant ChatUI as Chat UI / Frontend
+    participant AIEngine as 🤖 AI Interviewer Engine
+    participant Analytics as 📊 Analytics & Feedback Service
+
+    AIEngine->>Analytics: Send final interview summary (scores, metrics, transcript)
+    Analytics->>Analytics: Aggregate results & generate report
+    Analytics-->>AIEngine: Acknowledged
+
+    AIEngine-->>ChatUI: Notify interview completion
+    ChatUI->>Analytics: Request final feedback report
+    Analytics-->>ChatUI: Return detailed feedback & improvement suggestions
+    ChatUI-->>Candidate: Display performance summary & insights
+
+```
+
 ---
 
 ## 🏗️ Architecture
 
-This project follows **Clean Architecture** principles for maximum flexibility, testability, and maintainability:
+This project follows **Clean Architecture** (Hexagonal/Ports & Adapters): Domain Layer (pure business logic) → Application Layer (use cases) → Adapters Layer (external services) → Infrastructure Layer (config, DI).
 
-```
-┌─────────────────────────────────────┐
-│      Domain Layer (Core)            │  ← Pure business logic
-│  Models, Services, Ports            │     Zero external dependencies
-└──────────────┬──────────────────────┘
-               ↓
-┌─────────────────────────────────────┐
-│    Application Layer                │  ← Use case orchestration
-│  Use Cases, DTOs                    │
-└──────────────┬──────────────────────┘
-               ↓
-┌─────────────────────────────────────┐
-│    Adapters Layer                   │  ← External integrations
-│  LLM, VectorDB, API, Database       │
-└──────────────┬──────────────────────┘
-               ↓
-┌─────────────────────────────────────┐
-│    Infrastructure Layer             │  ← Config, DI, Database setup
-│  Settings, Container, Migrations    │
-└─────────────────────────────────────┘
-```
-
-**Benefits**:
-- ✅ Swap LLM providers without touching business logic
-- ✅ Test domain logic in complete isolation
-- ✅ Easy to understand and maintain
-- ✅ Technology-independent core
-
-📚 **[Read Full Architecture Documentation →](docs/system-architecture.md)**
+📚 **[Full Architecture Details →](docs/system-architecture.md)**
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### ⚡ 5-Minute Setup
+
+**Just want to run it?** Copy and paste these commands:
+
+```bash
+# Setup environment and install dependencies
+python -m venv venv && venv\Scripts\activate && pip install -e ".[dev]"
+
+# Configure and run migrations
+cp .env.example .env.local && alembic upgrade head
+
+# Start the server
+python -m src.main
+```
+
+Then visit: **http://localhost:8000/docs**
+
+⚠️ **Note**: Edit `.env.local` with your API keys before full functionality works.
+
+---
+
+### 📋 Detailed Setup Instructions
+
+#### Prerequisites
 
 - Python 3.11 or higher
 - pip (Python package manager)
@@ -79,7 +160,7 @@ This project follows **Clean Architecture** principles for maximum flexibility, 
 - OpenAI API key
 - Pinecone API key
 
-### Installation
+#### Installation
 
 1. **Clone the repository**
    ```bash
@@ -136,7 +217,7 @@ This project follows **Clean Architecture** principles for maximum flexibility, 
 
 7. **Start the server**
    ```bash
-   python src/main.py
+   python -m src.main
    ```
 
    Server runs at: http://localhost:8000
@@ -287,25 +368,15 @@ async with httpx.AsyncClient() as client:
 EliosAIService/
 ├── src/
 │   ├── domain/              # Core business logic (5 models, 11 ports)
-│   │   ├── models/          # Candidate, Interview, Question, Answer, CVAnalysis
-│   │   └── ports/           # Abstract interfaces for external dependencies
-│   ├── application/         # Use cases and orchestration
-│   │   └── use_cases/       # AnalyzeCV, StartInterview, etc.
+│   ├── application/         # Use cases
 │   ├── adapters/            # External service implementations
-│   │   ├── llm/             # OpenAI, Claude (planned), Llama (planned)
-│   │   ├── vector_db/       # Pinecone, Weaviate (planned)
-│   │   ├── persistence/     # PostgreSQL repositories (5 total)
-│   │   └── api/             # REST endpoints, WebSocket (planned)
-│   └── infrastructure/      # Config, DI, database setup
-│       ├── config/          # Pydantic Settings
-│       ├── database/        # Async SQLAlchemy session management
-│       └── dependency_injection/ # DI container
+│   └── infrastructure/      # Config, DI, database
 ├── alembic/                 # Database migrations
-├── scripts/                 # Utility scripts (setup, verify, test)
-├── tests/                   # Test suites (unit, integration, e2e)
-├── docs/                    # Project documentation
-└── pyproject.toml          # Dependencies and tool configuration
+├── docs/                    # Documentation
+└── tests/                   # Test suites
 ```
+
+📚 **[Complete Structure →](docs/codebase-summary.md)**
 
 ---
 
