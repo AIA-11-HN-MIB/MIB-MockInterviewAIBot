@@ -6,35 +6,37 @@ It's the only place that knows about concrete implementations.
 
 from functools import lru_cache
 
-from ...infrastructure.config.settings import Settings, get_settings
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from ...domain.ports import (
-    LLMPort,
-    VectorSearchPort,
-    QuestionRepositoryPort,
-    CandidateRepositoryPort,
-    InterviewRepositoryPort,
-    AnswerRepositoryPort,
-    CVAnalysisRepositoryPort,
-    CVAnalyzerPort,
-    SpeechToTextPort,
-    TextToSpeechPort,
-    AnalyticsPort,
-)
 
 # Import adapters
 from ...adapters.llm.openai_adapter import OpenAIAdapter
-from ...adapters.vector_db.pinecone_adapter import PineconeAdapter
+
+# Import mock adapters
+from ...adapters.mock import MockLLMAdapter, MockSTTAdapter, MockTTSAdapter, MockVectorSearchAdapter
 
 # Import persistence adapters
 from ...adapters.persistence import (
-    PostgreSQLCandidateRepository,
-    PostgreSQLQuestionRepository,
-    PostgreSQLInterviewRepository,
     PostgreSQLAnswerRepository,
+    PostgreSQLCandidateRepository,
     PostgreSQLCVAnalysisRepository,
+    PostgreSQLInterviewRepository,
+    PostgreSQLQuestionRepository,
 )
+from ...adapters.vector_db.pinecone_adapter import PineconeAdapter
+from ...domain.ports import (
+    AnalyticsPort,
+    AnswerRepositoryPort,
+    CandidateRepositoryPort,
+    CVAnalysisRepositoryPort,
+    CVAnalyzerPort,
+    InterviewRepositoryPort,
+    LLMPort,
+    QuestionRepositoryPort,
+    SpeechToTextPort,
+    TextToSpeechPort,
+    VectorSearchPort,
+)
+from ...infrastructure.config.settings import Settings, get_settings
 
 
 class Container:
@@ -54,7 +56,8 @@ class Container:
         self.settings = settings
         self._llm_port: LLMPort | None = None
         self._vector_search_port: VectorSearchPort | None = None
-        # Add other ports as needed
+        self._stt_port: SpeechToTextPort | None = None
+        self._tts_port: TextToSpeechPort | None = None
 
     def llm_port(self) -> LLMPort:
         """Get LLM port implementation.
@@ -66,7 +69,10 @@ class Container:
             ValueError: If LLM provider is not supported or not configured
         """
         if self._llm_port is None:
-            if self.settings.llm_provider == "openai":
+            # Use mock adapter if configured
+            if self.settings.use_mock_adapters:
+                self._llm_port = MockLLMAdapter()
+            elif self.settings.llm_provider == "openai":
                 if not self.settings.openai_api_key:
                     raise ValueError("OpenAI API key not configured")
 
@@ -101,7 +107,10 @@ class Container:
             ValueError: If vector DB provider is not supported or not configured
         """
         if self._vector_search_port is None:
-            if self.settings.vector_db_provider == "pinecone":
+            # Use mock adapter if configured
+            if self.settings.use_mock_adapters:
+                self._vector_search_port = MockVectorSearchAdapter()
+            elif self.settings.vector_db_provider == "pinecone":
                 if not self.settings.pinecone_api_key:
                     raise ValueError("Pinecone API key not configured")
                 if not self.settings.openai_api_key:
@@ -210,13 +219,20 @@ class Container:
         Raises:
             NotImplementedError: Implementation pending
         """
-        # TODO: Implement Azure STT adapter
-        # from ...adapters.speech.azure_stt_adapter import AzureSTTAdapter
-        # return AzureSTTAdapter(
-        #     api_key=self.settings.azure_speech_key,
-        #     region=self.settings.azure_speech_region,
-        # )
-        raise NotImplementedError("Speech-to-text adapter not yet implemented")
+        if self._stt_port is None:
+            # Use mock adapter if configured
+            if self.settings.use_mock_adapters:
+                self._stt_port = MockSTTAdapter()
+            else:
+                # TODO: Implement Azure STT adapter
+                # from ...adapters.speech.azure_stt_adapter import AzureSTTAdapter
+                # self._stt_port = AzureSTTAdapter(
+                #     api_key=self.settings.azure_speech_key,
+                #     region=self.settings.azure_speech_region,
+                # )
+                raise NotImplementedError("Speech-to-text adapter not yet implemented")
+
+        return self._stt_port
 
     def text_to_speech_port(self) -> TextToSpeechPort:
         """Get text-to-speech port implementation.
@@ -227,10 +243,17 @@ class Container:
         Raises:
             NotImplementedError: Implementation pending
         """
-        # TODO: Implement Edge TTS adapter
-        # from ...adapters.speech.edge_tts_adapter import EdgeTTSAdapter
-        # return EdgeTTSAdapter()
-        raise NotImplementedError("Text-to-speech adapter not yet implemented")
+        if self._tts_port is None:
+            # Use mock adapter if configured
+            if self.settings.use_mock_adapters:
+                self._tts_port = MockTTSAdapter()
+            else:
+                # TODO: Implement Edge TTS adapter
+                # from ...adapters.speech.edge_tts_adapter import EdgeTTSAdapter
+                # self._tts_port = EdgeTTSAdapter()
+                raise NotImplementedError("Text-to-speech adapter not yet implemented")
+
+        return self._tts_port
 
     def analytics_port(self) -> AnalyticsPort:
         """Get analytics port implementation.

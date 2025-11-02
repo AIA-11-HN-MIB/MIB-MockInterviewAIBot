@@ -1,8 +1,9 @@
 """Answer domain model."""
 
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any
 from uuid import UUID, uuid4
+
 from pydantic import BaseModel, Field
 
 
@@ -16,8 +17,8 @@ class AnswerEvaluation(BaseModel):
     semantic_similarity: float = Field(ge=0.0, le=1.0)  # Similarity to reference
     completeness: float = Field(ge=0.0, le=1.0)  # How complete the answer is
     relevance: float = Field(ge=0.0, le=1.0)  # How relevant to the question
-    sentiment: Optional[str] = None  # e.g., "confident", "uncertain"
-    reasoning: Optional[str] = None  # AI explanation of the evaluation
+    sentiment: str | None = None  # e.g., "confident", "uncertain"
+    reasoning: str | None = None  # AI explanation of the evaluation
     strengths: list[str] = Field(default_factory=list)
     weaknesses: list[str] = Field(default_factory=list)
     improvement_suggestions: list[str] = Field(default_factory=list)
@@ -46,13 +47,13 @@ class Answer(BaseModel):
     candidate_id: UUID
     text: str  # The actual answer text
     is_voice: bool = False  # Whether answer was given via voice
-    audio_file_path: Optional[str] = None  # If voice answer
-    duration_seconds: Optional[float] = None  # Time taken to answer
-    evaluation: Optional[AnswerEvaluation] = None
-    embedding: Optional[list[float]] = None  # Vector embedding of answer
-    metadata: Dict[str, Any] = Field(default_factory=dict)  # Additional context
+    audio_file_path: str | None = None  # If voice answer
+    duration_seconds: float | None = None  # Time taken to answer
+    evaluation: AnswerEvaluation | None = None
+    embedding: list[float] | None = None  # Vector embedding of answer
+    metadata: dict[str, Any] = Field(default_factory=dict)  # Additional context
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    evaluated_at: Optional[datetime] = None
+    evaluated_at: datetime | None = None
 
     class Config:
         """Pydantic configuration."""
@@ -75,7 +76,7 @@ class Answer(BaseModel):
         """
         return self.evaluation is not None
 
-    def get_score(self) -> Optional[float]:
+    def get_score(self) -> float | None:
         """Get the evaluation score.
 
         Returns:

@@ -2,8 +2,8 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional, List
 from uuid import UUID, uuid4
+
 from pydantic import BaseModel, Field
 
 
@@ -32,12 +32,12 @@ class Question(BaseModel):
     text: str
     question_type: QuestionType
     difficulty: DifficultyLevel
-    skills: List[str] = Field(default_factory=list)  # e.g., ["Python", "OOP"]
-    tags: List[str] = Field(default_factory=list)  # e.g., ["algorithms", "data-structures"]
-    reference_answer: Optional[str] = None
-    evaluation_criteria: Optional[str] = None
+    skills: list[str] = Field(default_factory=list)  # e.g., ["Python", "OOP"]
+    tags: list[str] = Field(default_factory=list)  # e.g., ["algorithms", "data-structures"]
+    reference_answer: str | None = None
+    evaluation_criteria: str | None = None
     version: int = 1
-    embedding: Optional[List[float]] = None  # Vector embedding for semantic search
+    embedding: list[float] | None = None  # Vector embedding for semantic search
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

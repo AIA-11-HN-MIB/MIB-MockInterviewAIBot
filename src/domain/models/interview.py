@@ -2,8 +2,8 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional, List
 from uuid import UUID, uuid4
+
 from pydantic import BaseModel, Field
 
 
@@ -26,12 +26,12 @@ class Interview(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     candidate_id: UUID
     status: InterviewStatus = InterviewStatus.PREPARING
-    cv_analysis_id: Optional[UUID] = None
-    question_ids: List[UUID] = Field(default_factory=list)
-    answer_ids: List[UUID] = Field(default_factory=list)
+    cv_analysis_id: UUID | None = None
+    question_ids: list[UUID] = Field(default_factory=list)
+    answer_ids: list[UUID] = Field(default_factory=list)
     current_question_index: int = 0
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -108,7 +108,7 @@ class Interview(BaseModel):
         """
         return self.current_question_index < len(self.question_ids)
 
-    def get_current_question_id(self) -> Optional[UUID]:
+    def get_current_question_id(self) -> UUID | None:
         """Get the current question ID.
 
         Returns:

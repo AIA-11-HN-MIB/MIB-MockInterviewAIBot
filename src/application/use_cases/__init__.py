@@ -1,7 +1,7 @@
 """Use cases package."""
 
-from .start_interview import StartInterviewUseCase
 from .analyze_cv import AnalyzeCVUseCase
+from .start_interview import StartInterviewUseCase
 
 __all__ = [
     "StartInterviewUseCase",

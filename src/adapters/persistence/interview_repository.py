@@ -1,14 +1,14 @@
 """PostgreSQL implementation of InterviewRepositoryPort."""
 
-from typing import List, Optional
 from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...domain.models.interview import Interview, InterviewStatus
 from ...domain.ports.interview_repository_port import InterviewRepositoryPort
-from .models import InterviewModel
 from .mappers import InterviewMapper
+from .models import InterviewModel
 
 
 class PostgreSQLInterviewRepository(InterviewRepositoryPort):
@@ -34,7 +34,7 @@ class PostgreSQLInterviewRepository(InterviewRepositoryPort):
         await self.session.refresh(db_model)
         return InterviewMapper.to_domain(db_model)
 
-    async def get_by_id(self, interview_id: UUID) -> Optional[Interview]:
+    async def get_by_id(self, interview_id: UUID) -> Interview | None:
         """Retrieve an interview by ID."""
         result = await self.session.execute(
             select(InterviewModel).where(InterviewModel.id == interview_id)
@@ -45,8 +45,8 @@ class PostgreSQLInterviewRepository(InterviewRepositoryPort):
     async def get_by_candidate_id(
         self,
         candidate_id: UUID,
-        status: Optional[InterviewStatus] = None,
-    ) -> List[Interview]:
+        status: InterviewStatus | None = None,
+    ) -> list[Interview]:
         """Retrieve interviews for a candidate with optional status filter."""
         query = select(InterviewModel).where(InterviewModel.candidate_id == candidate_id)
 
@@ -63,7 +63,7 @@ class PostgreSQLInterviewRepository(InterviewRepositoryPort):
         self,
         status: InterviewStatus,
         limit: int = 100,
-    ) -> List[Interview]:
+    ) -> list[Interview]:
         """Retrieve interviews by status."""
         result = await self.session.execute(
             select(InterviewModel)
@@ -103,7 +103,7 @@ class PostgreSQLInterviewRepository(InterviewRepositoryPort):
         await self.session.commit()
         return True
 
-    async def list_all(self, skip: int = 0, limit: int = 100) -> List[Interview]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[Interview]:
         """List all interviews with pagination."""
         result = await self.session.execute(
             select(InterviewModel)

@@ -1,6 +1,7 @@
 """CV Analyzer port interface."""
 
 from abc import ABC, abstractmethod
+
 from ..models.cv_analysis import CVAnalysis
 
 

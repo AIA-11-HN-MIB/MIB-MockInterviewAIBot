@@ -2,10 +2,10 @@
 
 from uuid import UUID
 
-from ...domain.models.interview import Interview
 from ...domain.models.cv_analysis import CVAnalysis
-from ...domain.ports.vector_search_port import VectorSearchPort
+from ...domain.models.interview import Interview
 from ...domain.ports.question_repository_port import QuestionRepositoryPort
+from ...domain.ports.vector_search_port import VectorSearchPort
 
 
 class StartInterviewUseCase:

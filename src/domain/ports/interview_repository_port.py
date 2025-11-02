@@ -1,7 +1,6 @@
 """Interview repository port interface."""
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
 from uuid import UUID
 
 from ..models.interview import Interview, InterviewStatus
@@ -27,7 +26,7 @@ class InterviewRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def get_by_id(self, interview_id: UUID) -> Optional[Interview]:
+    async def get_by_id(self, interview_id: UUID) -> Interview | None:
         """Retrieve an interview by ID.
 
         Args:
@@ -42,8 +41,8 @@ class InterviewRepositoryPort(ABC):
     async def get_by_candidate_id(
         self,
         candidate_id: UUID,
-        status: Optional[InterviewStatus] = None,
-    ) -> List[Interview]:
+        status: InterviewStatus | None = None,
+    ) -> list[Interview]:
         """Retrieve interviews for a candidate.
 
         Args:
@@ -60,7 +59,7 @@ class InterviewRepositoryPort(ABC):
         self,
         status: InterviewStatus,
         limit: int = 100,
-    ) -> List[Interview]:
+    ) -> list[Interview]:
         """Retrieve interviews by status.
 
         Args:
@@ -101,7 +100,7 @@ class InterviewRepositoryPort(ABC):
         self,
         skip: int = 0,
         limit: int = 100,
-    ) -> List[Interview]:
+    ) -> list[Interview]:
         """List all interviews with pagination.
 
         Args:

@@ -1,14 +1,14 @@
 """OpenAI LLM adapter implementation."""
 
 import json
-from typing import Dict, Any, List
+from typing import Any
 from uuid import UUID
 
 from openai import AsyncOpenAI
 
-from ...domain.ports.llm_port import LLMPort
-from ...domain.models.question import Question
 from ...domain.models.answer import AnswerEvaluation
+from ...domain.models.question import Question
+from ...domain.ports.llm_port import LLMPort
 
 
 class OpenAIAdapter(LLMPort):
@@ -37,7 +37,7 @@ class OpenAIAdapter(LLMPort):
 
     async def generate_question(
         self,
-        context: Dict[str, Any],
+        context: dict[str, Any],
         skill: str,
         difficulty: str,
     ) -> str:
@@ -80,7 +80,7 @@ class OpenAIAdapter(LLMPort):
         self,
         question: Question,
         answer_text: str,
-        context: Dict[str, Any],
+        context: dict[str, Any],
     ) -> AnswerEvaluation:
         """Evaluate an answer using OpenAI.
 
@@ -145,8 +145,8 @@ class OpenAIAdapter(LLMPort):
     async def generate_feedback_report(
         self,
         interview_id: UUID,
-        questions: List[Question],
-        answers: List[Dict[str, Any]],
+        questions: list[Question],
+        answers: list[dict[str, Any]],
     ) -> str:
         """Generate comprehensive feedback report.
 
@@ -230,7 +230,7 @@ class OpenAIAdapter(LLMPort):
 
         return response.choices[0].message.content.strip()
 
-    async def extract_skills_from_text(self, text: str) -> List[Dict[str, str]]:
+    async def extract_skills_from_text(self, text: str) -> list[dict[str, str]]:
         """Extract skills from CV text using OpenAI.
 
         Args:

@@ -1,11 +1,11 @@
 """Health check routes."""
 
 from datetime import datetime
+
 from fastapi import APIRouter
 from pydantic import BaseModel
 
 from ....infrastructure.config import get_settings
-
 
 router = APIRouter()
 

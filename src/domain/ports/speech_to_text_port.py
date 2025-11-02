@@ -1,7 +1,6 @@
 """Speech-to-Text port interface."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 
 class SpeechToTextPort(ABC):
@@ -49,7 +48,7 @@ class SpeechToTextPort(ABC):
     async def detect_language(
         self,
         audio_file_path: str,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Detect language from audio file.
 
         Args:

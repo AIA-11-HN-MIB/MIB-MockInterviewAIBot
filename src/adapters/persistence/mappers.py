@@ -4,20 +4,18 @@ These mappers handle the translation between the domain layer
 (Pydantic models) and the persistence layer (SQLAlchemy models).
 """
 
-from typing import List
-from uuid import UUID
 
-from ...domain.models.candidate import Candidate
-from ...domain.models.question import Question, QuestionType, DifficultyLevel
-from ...domain.models.interview import Interview, InterviewStatus
 from ...domain.models.answer import Answer, AnswerEvaluation
+from ...domain.models.candidate import Candidate
 from ...domain.models.cv_analysis import CVAnalysis, ExtractedSkill
+from ...domain.models.interview import Interview, InterviewStatus
+from ...domain.models.question import DifficultyLevel, Question, QuestionType
 from .models import (
-    CandidateModel,
-    QuestionModel,
-    InterviewModel,
     AnswerModel,
+    CandidateModel,
     CVAnalysisModel,
+    InterviewModel,
+    QuestionModel,
 )
 
 
