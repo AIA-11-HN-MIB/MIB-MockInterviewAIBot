@@ -51,13 +51,19 @@ class StartInterviewUseCase:
         Raises:
             ValueError: If CV analysis is invalid or insufficient questions found
         """
-        # Step 1: Validate CV analysis
-        if not cv_analysis.embedding:
-            raise ValueError("CV analysis must have embedding")
+        # Step 1: Ensure CV analysis has embedding
+        # If no embedding exists, generate one using the vector search service
+        # This is especially useful when using mock adapters
+        embedding = cv_analysis.embedding
+        if not embedding:
+            # Generate embedding from CV text for semantic search
+            embedding = await self.vector_search.get_embedding(
+                cv_analysis.extracted_text or cv_analysis.summary or "general skills"
+            )
 
         # Step 2: Find suitable questions using semantic search
         similar_questions = await self.vector_search.find_similar_questions(
-            query_embedding=cv_analysis.embedding,
+            query_embedding=embedding,
             top_k=num_questions * 2,  # Get more candidates for filtering
             filters={
                 "difficulty": cv_analysis.suggested_difficulty,
