@@ -43,7 +43,7 @@ class Question(BaseModel):
 
     class Config:
         """Pydantic configuration."""
-        use_enum_values = True
+        pass
 
     def has_skill(self, skill: str) -> bool:
         """Check if question tests a specific skill.

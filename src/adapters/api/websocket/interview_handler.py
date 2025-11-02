@@ -74,8 +74,8 @@ async def handle_interview_websocket(
                         "type": "question",
                         "question_id": str(question.id),
                         "text": question.text,
-                        "question_type": question.question_type.value,
-                        "difficulty": question.difficulty.value,
+                        "question_type": question.question_type,
+                        "difficulty": question.difficulty,
                         "index": interview.current_question_index,
                         "total": len(interview.question_ids),
                         "audio_data": audio_data,
@@ -193,8 +193,8 @@ async def handle_text_answer(interview_id: UUID, data: dict, container):
                         "type": "question",
                         "question_id": str(question.id),
                         "text": question.text,
-                        "question_type": question.question_type.value,
-                        "difficulty": question.difficulty.value,
+                        "question_type": question.question_type,
+                        "difficulty": question.difficulty,
                         "index": interview.current_question_index,
                         "total": len(interview.question_ids),
                         "audio_data": audio_data,
@@ -209,7 +209,7 @@ async def handle_text_answer(interview_id: UUID, data: dict, container):
 
             # Calculate overall score (average of all answer scores)
             answer_repo = container.answer_repository_port(session)
-            answers = await answer_repo.find_by_interview_id(interview_id)
+            answers = await answer_repo.get_by_interview_id(interview_id)
             overall_score = (
                 sum(a.evaluation.score for a in answers if a.evaluation)
                 / len(answers)

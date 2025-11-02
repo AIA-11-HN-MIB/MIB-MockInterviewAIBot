@@ -168,7 +168,7 @@ class InterviewMapper:
     @staticmethod
     def update_db_model(db_model: InterviewModel, domain_model: Interview) -> None:
         """Update database model from domain model."""
-        db_model.status = domain_model.status.value
+        db_model.status = domain_model.status
         db_model.cv_analysis_id = domain_model.cv_analysis_id
         db_model.question_ids = domain_model.question_ids
         db_model.answer_ids = domain_model.answer_ids

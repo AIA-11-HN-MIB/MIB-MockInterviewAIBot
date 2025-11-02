@@ -212,8 +212,8 @@ async def get_current_question(
         return QuestionResponse(
             id=question.id,
             text=question.text,
-            question_type=question.question_type,
-            difficulty=question.difficulty,
+            question_type=question.question_type.value,
+            difficulty=question.difficulty.value,
             index=interview.current_question_index,
             total=len(interview.question_ids),
         )
