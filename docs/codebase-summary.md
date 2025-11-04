@@ -4,6 +4,31 @@
 **Version**: 0.1.0
 **Repository**: https://github.com/elios/elios-ai-service
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Project Structure](#project-structure)
+- [Core Technologies](#core-technologies)
+- [Key Components](#key-components)
+  - [1. Domain Layer (Core Business Logic)](#1-domain-layer-core-business-logic)
+  - [2. Application Layer (Use Cases)](#2-application-layer-use-cases)
+  - [3. Adapters Layer (External Integrations)](#3-adapters-layer-external-integrations)
+  - [4. Infrastructure Layer (Cross-Cutting Concerns)](#4-infrastructure-layer-cross-cutting-concerns)
+  - [5. Database Migrations](#5-database-migrations)
+  - [6. Utility Scripts](#6-utility-scripts)
+- [Entry Points](#entry-points)
+- [Development Workflow](#development-workflow)
+- [Development Principles](#development-principles)
+- [Implementation Status](#implementation-status)
+- [File Statistics](#file-statistics)
+- [Dependencies Overview](#dependencies-overview)
+- [Performance Considerations](#performance-considerations)
+- [Security Measures](#security-measures)
+- [Deployment](#deployment)
+- [Related Documentation](#related-documentation)
+- [External Resources](#external-resources)
+- [Unresolved Questions](#unresolved-questions)
+
 ## Overview
 
 Elios AI Interview Service is a Python-based AI-powered mock interview platform built with Clean Architecture principles (Hexagonal/Ports & Adapters pattern). The codebase emphasizes separation of concerns, testability, and flexibility through abstract interfaces and dependency injection. The platform integrates with OpenAI GPT-4 for natural language processing, Pinecone for vector-based semantic search, and PostgreSQL for persistent storage.
