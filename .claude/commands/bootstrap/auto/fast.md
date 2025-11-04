@@ -39,21 +39,29 @@ Follow strictly these following steps:
 
 **First thing first:** check if Git has been initialized, if not, use `git-manager` subagent to quickly initialize it.
 
+**IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.
+
 ### Research & Planning: Tech Stack, Wireframe & Design
 
 1. **Research (do these following tasks in parallel):**
 * Use 2 `researcher` subagents in parallel (only read up to max 10 sources) to explore the user's request, idea validation, challenges, and find the best possible solutions.
 * Use 2 `researcher` subagents in parallel (only read up to max 10 sources) to find a best fit tech stack for this project.
-* Use 2 `researcher` subagents in parallel (only read up to max 10 sources) to create a design plan with TODO tasks in `./plans` directory.
+* Use 2 `researcher` subagents in parallel (only read up to max 10 sources) to create a design plan that follows the progressive disclosure structure:
+  - Create a directory `plans/YYYYMMDD-HHmm-plan-name` (example: `plans/20251101-1505-authentication-and-profile-implementation`).
+  - Save the overview access point at `plan.md`, keep it generic, under 80 lines, and list each phase with status/progress and links.
+  - For each phase, add `phase-XX-phase-name.md` files containing sections (Context links, Overview with date/priority/statuses, Key Insights, Requirements, Architecture, Related code files, Implementation Steps, Todo list, Success Criteria, Risk Assessment, Security Considerations, Next steps).
+* Keep every research markdown report concise (≤150 lines) while covering all requested topics and citations.
    - **Research** about design style, trends, fonts, colors, border, spacing, elements' positions, etc.
    - Describe details of the assets in the design so they can be generated with `gemini-image-gen` skill later on.
    - **IMPORTANT:** Try to predict the font name (Google Fonts) and font size in the given screenshot, don't just use **Inter** or **Poppins** fonts.
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
 2. **Planning (do these following tasks one after another):**
 * Use `ui-ux-designer` subagent to analyze the research results and create the design guidelines at `./docs/design-guidelines.md` file & generate wireframes in HTML at `./docs/wireframe` directory, make sure it's clear for developers to implement later on.
 * If there are no logo provided, use `gemini-image-gen` skill to generate a logo.
 * Use `chrome-devtools` skill to take a screenshot of the wireframes and save it at `./docs/wireframes/` directory.
-* Use `planner` subagent to analyze all reports and create the detailed step by step implementation plan at `./plans` directory.
+* Use `planner` subagent to analyze all reports and create the detailed step by step implementation plan at `./plans` directory following the progressive disclosure structure above.
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
 ### Implementation
 
@@ -78,19 +86,22 @@ Follow strictly these following steps:
 
 * After finishing, delegate to `code-reviewer` subagent to review code. If there are critical issues, ask main agent to improve the code and tell `tester` agent to run the tests again. Repeat the process until all tests pass.
 * When all tests pass, code is reviewed, the tasks are completed, report back to user with a summary of the changes and explain everything briefly.
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
 ### Documentation
 
 * Use `docs-manager` subagent to update the docs if needed.
-  * Create/update `./docs/README.md` file.
+  * Create/update `./docs/README.md` file (keep it concise and under 500 lines).
   * Create/update `./docs/project-overview.-pdr.md` (Product Development Requirements) file.
   * Create/update `./docs/code-standards.md` file.
   * Create/update `./docs/system-architecture.md` file.
+  * **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 * Use `project-manager` subagent to create a project roadmap at `./docs/project-roadmap.md` file.
 
 ### Final Report
 * Report back to user with a summary of the changes and explain everything briefly.
 * Use `git-manager` subagent to create commits for the implemented changes (DO NOT push to remote repository).
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing reports.
 
 ### Onboarding
 

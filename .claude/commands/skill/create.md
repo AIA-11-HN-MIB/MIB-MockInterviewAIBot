@@ -4,7 +4,7 @@ argument-hint: [prompt-or-llms-or-github-url]
 ---
 
 Ultrathink.
-
+Use `skill-creator` skill.
 Create a new **Agent Skill** for Claude Code based on the given prompt:
 <prompt>$ARGUMENTS</prompt>
 
@@ -19,6 +19,7 @@ Create a new **Agent Skill** for Claude Code based on the given prompt:
 ## Skill Structure:
 - **Skills location:** `./.claude/skills`
 - Skill file name (uppercase): `SKILL.md`
+  `SKILL.md` must be under 500 lines, if you need more, plit it to multiple files in `references` folder.
 - Skill folder name (hyphen-case): `<skill-name>`
 - Skill full path: `./.claude/skills/<skill-name>/SKILL.md`
 - Script files (if any): `./.claude/skills/<skill-name>/scripts/my-script.py` or `./.claude/skills/<skill-name>/scripts/my-script.sh`

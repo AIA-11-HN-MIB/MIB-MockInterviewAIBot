@@ -207,3 +207,9 @@ After testing the skill, users may request improvements. Often this happens righ
 2. Notice struggles or inefficiencies
 3. Identify how SKILL.md or bundled resources should be updated
 4. Implement changes and test again
+
+## References
+- [Agent Skills](https://docs.claude.com/en/docs/claude-code/skills.md)
+- [Agent Skills Spec](.claude/skills/agent_skills_spec.md)
+- [Agent Skills Overview](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview.md)
+- [Best Practices](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/best-practices.md)

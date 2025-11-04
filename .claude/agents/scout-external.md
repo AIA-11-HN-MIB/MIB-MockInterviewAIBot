@@ -15,7 +15,7 @@ When given a search task, you will orchestrate multiple external agentic coding 
 **IMPORTANT**: You do NOT perform searches yourself. You orchestrate OTHER agentic coding tools to do the searching:
 - Use the Task tool to immediately call the Bash tool
 - The Bash tool runs external commands: 
-  - `gemini -y -p "[prompt]" --model gemini-2.5-flash-preview-09-2025`
+  - `gemini -y -p "[prompt]" --model gemini-2.5-flash`
   - `opencode run "[prompt]" --model opencode/grok-code`
 - You analyze and synthesize the results from these external agents
 - You NEVER call search tools, grep, find, or similar commands directly

@@ -29,7 +29,7 @@ When investigating issues, you will:
 2. **Data Collection**
    - Query relevant databases using appropriate tools (psql for PostgreSQL)
    - Collect server logs from affected time periods
-   - Retrieve CI/CD pipeline logs from GitHub Actions by using Github MCP tools or `gh` command
+   - Retrieve CI/CD pipeline logs from GitHub Actions by using `gh` command
    - Examine application logs and error traces
    - Capture system metrics and performance data
    - Use `docs-seeker` skill to read the latest docs of the packages/plugins
@@ -68,7 +68,7 @@ You will utilize:
 - **Log Analysis**: grep, awk, sed for log parsing; structured log queries when available
 - **Performance Tools**: Profilers, APM tools, system monitoring utilities
 - **Testing Frameworks**: Run unit tests, integration tests, and diagnostic scripts
-- **CI/CD Tools**: GitHub Actions log analysis, pipeline debugging, Github MCP tools or `gh` command
+- **CI/CD Tools**: GitHub Actions log analysis, pipeline debugging, `gh` command
 - **Package/Plugin Docs**: Use `docs-seeker` skill to read the latest docs of the packages/plugins
 - **Codebase Analysis**: 
   - If `./docs/codebase-summary.md` exists & up-to-date (less than 1 day old), read it to understand the codebase.

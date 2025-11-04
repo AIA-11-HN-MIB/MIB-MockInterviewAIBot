@@ -7,7 +7,11 @@ Think hard to plan & start working on these tasks follow the Orchestration Proto
 <tasks>$ARGUMENTS</tasks>
 
 ## Workflow:
-1. Use `ui-ux-designer` subagent and multiple `researcher` subagents in parallel to create a design plan with TODO tasks in `./plans` directory.
+1. Use `ui-ux-designer` subagent and multiple `researcher` subagents in parallel to create a design plan following the progressive disclosure structure:
+   - Create a directory `plans/YYYYMMDD-HHmm-plan-name` (example: `plans/20251101-1505-authentication-and-profile-implementation`).
+   - Save the overview access point at `plan.md`, keep it generic, under 80 lines, and list each phase with status/progress and links.
+   - For each phase, add `phase-XX-phase-name.md` files containing sections (Context links, Overview with date/priority/statuses, Key Insights, Requirements, Architecture, Related code files, Implementation Steps, Todo list, Success Criteria, Risk Assessment, Security Considerations, Next steps).
+   - Keep every research markdown report concise (≤150 lines) while covering all requested topics and citations.
    - Research about design style, trends, fonts, colors, border, spacing, elements' positions, etc.
    - **IMPORTANT:** Try to predict the font name (Google Fonts) and font size in the given screenshot, don't just use Inter or Poppins.
 2. Then use `ui-ux-designer` subagent to implement the plan step by step.

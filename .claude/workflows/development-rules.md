@@ -1,5 +1,7 @@
 # Development Rules
 
+**IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.
+
 ## General
 - **File Size Management**: Keep individual code files under 500 lines for optimal context management
   - Split large files into smaller, focused components
@@ -10,10 +12,10 @@
 - Use `docs-seeker` skill for exploring latest docs of plugins/packages
 - Use `gh` bash command to interact with Github features.
 - Use `psql` bash command to query database for debugging.
-- Use `eyes` mcp tools for describing details of images, videos, documents, etc.
-- Use `gemini-image-gen` skills and `imagemagick` skills for generating and editing images, videos, documents, etc.
+- Use `gemini-vision` skill for describing details of images, videos, documents, etc.
+- Use `gemini-image-gen` skill and `imagemagick` skill for generating and editing images, videos, documents, etc.
 - Use `sequential-thinking` skill for sequential thinking, analyzing code, debugging, etc.
-- **[IMPORTANT]** Follow the codebase structure and code standards in `./docs` during implementation
+- **[IMPORTANT]** Follow the codebase structure and code standards in `./docs` during implementation.
 - **[IMPORTANT]** When you finish the implementation, send a full summary report to Discord channel with `./.claude/hooks/send-discord.sh 'Your message here'` script (remember to escape the string).
 - **[IMPORTANT]** Do not just simulate the implementation or mocking them, always implement the real code.
 

@@ -4,7 +4,7 @@ argument-hint: [prompt-or-path-to-skill]
 ---
 
 Ultrathink.
-
+Use `skill-creator` skill.
 Fix the agent skill based on the current `logs.txt` file (in the project root directory):
 <prompt>$ARGUMENTS</prompt>
 
