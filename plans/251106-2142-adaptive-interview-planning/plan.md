@@ -102,12 +102,12 @@ Phase 2: IN-INTERVIEW (status: IN_PROGRESS)
 
 ## Success Criteria
 
-- [ ] All 5 domain models updated with new fields
+- [ ] All 5 domain models updated (Question, Interview, Answer, FollowUpQuestion)
 - [ ] Database migration runs cleanly (forward + rollback)
-- [ ] PlanInterviewUseCase generates n questions with ideal answers in <90s
-- [ ] EvaluateAnswerAdaptiveUseCase triggers follow-ups correctly
-- [ ] Follow-up logic stops at 3 attempts or threshold
-- [ ] Speaking metrics stubbed (returns default values)
+- [ ] PlanInterviewUseCase generates 2-5 questions based on skill count in <40s
+- [ ] EvaluateAnswerAdaptiveUseCase triggers follow-ups based on similarity + gaps
+- [ ] Follow-up logic stops at 3 attempts or threshold (similarity ≥80% OR no gaps)
+- [ ] Hybrid gap detection (keywords → LLM validation) implemented
 - [ ] REST endpoints handle planning phase
 - [ ] WebSocket delivers follow-up questions seamlessly
 - [ ] Test coverage >80% for new code
@@ -131,10 +131,10 @@ Phase 2: IN-INTERVIEW (status: IN_PROGRESS)
 
 ## Performance Targets
 
-- Planning phase: <90s for 12 questions (avg 7.5s/question)
+- Planning phase: <40s for 5 questions (avg 8s/question)
 - Answer evaluation: <5s (includes similarity calc + gap detection)
 - Follow-up generation: <3s
-- Speaking metrics stub: <100ms
+- No speaking metrics (skipped for MVP)
 
 ## Security Considerations
 
@@ -151,17 +151,50 @@ Phase 2: IN-INTERVIEW (status: IN_PROGRESS)
 5. **Integrate Phase 05**: API updates (connect all pieces)
 6. **Validate Phase 06**: Testing (ensure quality)
 
-## Unresolved Questions
+## Resolved Decisions (2025-11-06)
 
-1. **n-calculation algorithm**: Use skill diversity + experience years or fixed mapping?
-2. **Gap detection method**: Keyword extraction, entity recognition, or both?
-3. **Speaking metrics API**: Azure Speech Prosody vs text-based heuristics for MVP?
-4. **Follow-up storage**: Separate table or extend Questions with `parent_question_id`?
-5. **Cost optimization**: Parallel LLM calls during planning or sequential?
-6. **Caching strategy**: Cache ideal answers or regenerate per interview?
+1. ✅ **n-calculation algorithm**: Based on skill diversity only (max n=5)
+   - 1-2 skills: n=2
+   - 3-4 skills: n=3
+   - 5-7 skills: n=4
+   - 8+ skills: n=5
+   - **Ignore experience years entirely**
+
+2. ✅ **Gap detection method**: Hybrid (Keywords + LLM confirmation)
+   - Fast keyword extraction to detect potential gaps
+   - LLM validates if gaps are real (reduces false positives)
+   - Balanced cost/accuracy trade-off
+
+3. ✅ **Speaking metrics**: **SKIP for MVP**
+   - Remove speaking_score from Answer model
+   - Follow-up logic based on similarity + gaps only
+   - Can add Azure Speech integration in future phase
+
+4. ✅ **Follow-up storage**: **Separate FollowUpQuestions table**
+   - Cleaner architecture than extending Questions
+   - Schema: id, parent_question_id, interview_id, text, generated_reason, order, timestamps
+   - Easier to query and manage follow-up history
+
+5. ⏳ **Cost optimization**: Sequential for MVP (parallel in future)
+6. ⏳ **Caching strategy**: No caching for MVP (evaluate based on usage)
+
+## Plan Adjustments
+
+**Phase 01 Changes**:
+- ❌ Remove speaking_score from Answer model
+- ✅ Add FollowUpQuestion domain entity (new)
+
+**Phase 02 Changes**:
+- ❌ Remove speaking_score column from answers table
+- ✅ Add follow_up_questions table with schema
+
+**Phase 04 Changes**:
+- ❌ Remove SpeakingAnalyzerPort and stub adapter
+- ✅ Implement hybrid gap detection (keywords → LLM)
+- ✅ Simplify follow-up logic (no speaking metrics)
 
 ---
 
-**Document Status**: Planning complete, ready for implementation
-**Next Action**: Review with team, prioritize Phase 01
+**Document Status**: Decisions resolved, ready for implementation
+**Next Action**: Update phase files, start Phase 01
 **Owner**: Implementation team
