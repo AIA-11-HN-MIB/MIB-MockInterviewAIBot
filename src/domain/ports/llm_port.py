@@ -95,3 +95,37 @@ class LLMPort(ABC):
             List of extracted skills with metadata
         """
         pass
+
+    @abstractmethod
+    async def generate_ideal_answer(
+        self,
+        question_text: str,
+        context: dict[str, Any],
+    ) -> str:
+        """Generate ideal answer for a question.
+
+        Args:
+            question_text: The interview question
+            context: CV summary, skills, etc.
+
+        Returns:
+            Ideal answer text (150-300 words)
+        """
+        pass
+
+    @abstractmethod
+    async def generate_rationale(
+        self,
+        question_text: str,
+        ideal_answer: str,
+    ) -> str:
+        """Generate rationale explaining why answer is ideal.
+
+        Args:
+            question_text: The question
+            ideal_answer: The ideal answer
+
+        Returns:
+            Rationale text (50-100 words)
+        """
+        pass

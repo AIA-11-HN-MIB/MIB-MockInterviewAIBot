@@ -13,20 +13,15 @@ from alembic import context
 import sys
 from pathlib import Path
 
-# Add src directory to path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+# Add project root to path
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
 
-from infrastructure.config.settings import get_settings
-from infrastructure.database.base import Base
+from src.infrastructure.config.settings import get_settings
+from src.infrastructure.database.base import Base
 
 # Import all models to ensure they're registered with Base.metadata
-# Import models module directly, bypassing __init__.py to avoid repository imports
-import importlib.util
-models_path = Path(__file__).resolve().parent.parent / "src" / "adapters" / "persistence" / "models.py"
-spec = importlib.util.spec_from_file_location("models", models_path)
-if spec and spec.loader:
-    models = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(models)
+from src.adapters.persistence import models  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
