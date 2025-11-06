@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -9,6 +10,7 @@ from pydantic import BaseModel, Field
 
 class InterviewStatus(str, Enum):
     """Interview status enumeration."""
+
     PREPARING = "preparing"  # CV analysis in progress
     READY = "ready"  # Ready to start
     IN_PROGRESS = "in_progress"  # Interview ongoing
@@ -30,6 +32,11 @@ class Interview(BaseModel):
     question_ids: list[UUID] = Field(default_factory=list)
     answer_ids: list[UUID] = Field(default_factory=list)
     current_question_index: int = 0
+
+    # NEW: Pre-planning metadata for adaptive interviews
+    plan_metadata: dict[str, Any] = Field(default_factory=dict)  # {n, generated_at, strategy}
+    adaptive_follow_ups: list[UUID] = Field(default_factory=list)  # Follow-up question IDs
+
     started_at: datetime | None = None
     completed_at: datetime | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -37,6 +44,7 @@ class Interview(BaseModel):
 
     class Config:
         """Pydantic configuration."""
+
         use_enum_values = True
         frozen = False
 
@@ -135,3 +143,33 @@ class Interview(BaseModel):
             True if interview is in progress, False otherwise
         """
         return self.status == InterviewStatus.IN_PROGRESS
+
+    def add_adaptive_followup(self, question_id: UUID) -> None:
+        """Add adaptive follow-up question to interview.
+
+        Args:
+            question_id: UUID of follow-up question
+
+        Raises:
+            ValueError: If follow-up limit exceeded (max 3 per main question)
+        """
+        self.adaptive_follow_ups.append(question_id)
+        self.updated_at = datetime.utcnow()
+
+    def is_planned(self) -> bool:
+        """Check if interview has planning metadata.
+
+        Returns:
+            True if plan_metadata contains required keys
+        """
+        return "n" in self.plan_metadata and "generated_at" in self.plan_metadata
+
+    @property
+    def planned_question_count(self) -> int:
+        """Get number of planned questions.
+
+        Returns:
+            Value of n from plan_metadata, or 0 if not planned
+        """
+        n = self.plan_metadata.get("n", 0)
+        return int(n) if n is not None else 0

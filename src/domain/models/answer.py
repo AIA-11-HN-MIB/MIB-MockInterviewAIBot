@@ -52,11 +52,19 @@ class Answer(BaseModel):
     evaluation: AnswerEvaluation | None = None
     embedding: list[float] | None = None  # Vector embedding of answer
     metadata: dict[str, Any] = Field(default_factory=dict)  # Additional context
+
+    # NEW: Adaptive evaluation fields
+    similarity_score: float | None = Field(
+        None, ge=0.0, le=1.0
+    )  # Cosine similarity vs ideal_answer
+    gaps: dict[str, Any] | None = None  # Detected concept gaps {keywords: [], entities: []}
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
     evaluated_at: datetime | None = None
 
     class Config:
         """Pydantic configuration."""
+
         frozen = False
 
     def evaluate(self, evaluation: AnswerEvaluation) -> None:
@@ -91,3 +99,43 @@ class Answer(BaseModel):
             True if answer has content and optional evaluation
         """
         return bool(self.text and len(self.text.strip()) > 0)
+
+    def has_similarity_score(self) -> bool:
+        """Check if similarity score is available.
+
+        Returns:
+            True if similarity_score is set
+        """
+        return self.similarity_score is not None
+
+    def has_gaps(self) -> bool:
+        """Check if concept gaps were detected.
+
+        Returns:
+            True if gaps dict is present and non-empty
+        """
+        return self.gaps is not None and len(self.gaps) > 0
+
+    def meets_threshold(self, similarity_threshold: float = 0.8) -> bool:
+        """Check if answer meets similarity threshold.
+
+        Args:
+            similarity_threshold: Minimum similarity (default 0.8)
+
+        Returns:
+            True if similarity_score >= threshold
+        """
+        if not self.has_similarity_score():
+            return False
+        return self.similarity_score >= similarity_threshold  # type: ignore
+
+    def is_adaptive_complete(self) -> bool:
+        """Check if answer meets adaptive criteria (no follow-up needed).
+
+        Returns:
+            True if similarity >=0.8 OR no gaps detected
+        """
+        similarity_ok = self.similarity_score and self.similarity_score >= 0.8
+        no_gaps = not self.has_gaps()
+
+        return similarity_ok or no_gaps
