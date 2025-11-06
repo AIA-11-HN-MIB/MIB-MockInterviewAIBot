@@ -10,6 +10,8 @@ Browser automation via executable Puppeteer scripts. All scripts output JSON for
 
 ## Quick Start
 
+**CRITICAL**: Always check `pwd` before running scripts.
+
 ### Installation
 
 #### Step 1: Install System Dependencies (Linux/WSL only)
@@ -17,6 +19,7 @@ Browser automation via executable Puppeteer scripts. All scripts output JSON for
 On Linux/WSL, Chrome requires system libraries. Install them first:
 
 ```bash
+pwd  # Should show current working directory
 cd .claude/skills/chrome-devtools/scripts
 ./install-deps.sh  # Auto-detects OS and installs required libs
 ```
@@ -62,6 +65,8 @@ node navigate.js --url https://example.com
 
 All scripts are in `.claude/skills/chrome-devtools/scripts/`
 
+**CRITICAL**: Always check `pwd` before running scripts.
+
 ### Script Usage
 - `./scripts/README.md`
 
@@ -82,6 +87,7 @@ All scripts are in `.claude/skills/chrome-devtools/scripts/`
 
 ### Single Command
 ```bash
+pwd  # Should show current working directory
 cd .claude/skills/chrome-devtools/scripts
 node screenshot.js --url https://example.com --output ./docs/screenshots/page.png
 ```
@@ -137,6 +143,73 @@ node performance.js --url https://example.com | jq '.vitals.LCP'
 # Save to file
 node network.js --url https://example.com --output /tmp/requests.json
 ```
+
+## Execution Protocol
+
+### Working Directory Verification
+
+BEFORE executing any script:
+1. Check current working directory with `pwd`
+2. Verify in `.claude/skills/chrome-devtools/scripts/` directory
+3. If wrong directory, `cd` to correct location
+4. Use absolute paths for all output files
+
+Example:
+```bash
+pwd  # Should show: .../chrome-devtools/scripts
+# If wrong:
+cd .claude/skills/chrome-devtools/scripts
+```
+
+### Output Validation
+
+AFTER screenshot/capture operations:
+1. Verify file created with `ls -lh <output-path>`
+2. Read screenshot using Read tool to confirm content
+3. Check JSON output for success:true
+4. Report file size and compression status
+
+Example:
+```bash
+node screenshot.js --url https://example.com --output ./docs/screenshots/page.png
+ls -lh ./docs/screenshots/page.png  # Verify file exists
+# Then use Read tool to visually inspect
+```
+
+5. Restart working directory to the project root.
+
+### Error Recovery
+
+If script fails:
+1. Check error message for selector issues
+2. Use snapshot.js to discover correct selectors
+3. Try XPath selector if CSS selector fails
+4. Verify element is visible and interactive
+
+Example:
+```bash
+# CSS selector fails
+node click.js --url https://example.com --selector ".btn-submit"
+# Error: waiting for selector ".btn-submit" failed
+
+# Discover correct selector
+node snapshot.js --url https://example.com | jq '.elements[] | select(.tagName=="BUTTON")'
+
+# Try XPath
+node click.js --url https://example.com --selector "//button[contains(text(),'Submit')]"
+```
+
+### Common Mistakes
+
+❌ Wrong working directory → output files go to wrong location
+❌ Skipping output validation → silent failures
+❌ Using complex CSS selectors without testing → selector errors
+❌ Not checking element visibility → timeout errors
+
+✅ Always verify `pwd` before running scripts
+✅ Always validate output after screenshots
+✅ Use snapshot.js to discover selectors
+✅ Test selectors with simple commands first
 
 ## Common Workflows
 

@@ -10,6 +10,9 @@ Ultrathink to plan & start fixing these issues follow the Orchestration Protocol
 
 If the user provides a screenshots or videos, use `gemini-vision` skill to describe as detailed as possible the issue, make sure developers can predict the root causes easily based on the description.
 
+Use `sequential-thinking` skill to break complex problems into sequential thought steps.
+Use `problem-solving` skills to tackle the issues.
+
 1. Use `planner` subagent and `researcher` subagent to create an implementation plan following the progressive disclosure structure:
    - Create a directory `plans/YYYYMMDD-HHmm-plan-name` (example: `plans/20251101-1505-authentication-and-profile-implementation`).
    - Save the overview access point at `plan.md`, keep it generic, under 80 lines, and list each phase with status/progress and links.

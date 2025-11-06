@@ -21,7 +21,7 @@
 
 ## Subagents
 Delegate detailed tasks to these subagents according to their roles & expertises:
-- Use file system (in markdown format) to hand over reports in `./plans/reports` directory from agent to agent with this file name format: `YYMMDD-from-agent-name-to-agent-name-task-name-report.md`.
+- Use file system (in markdown format) to hand over reports in `./plans/<plan-name>/reports` directory from agent to agent with this file name format: `YYMMDD-from-agent-name-to-agent-name-task-name-report.md`.
 - Use `planner` agent to plan for the implementation plan using templates in `./plans/templates/` (`planner` agent can spawn multiple `researcher` agents in parallel to explore different approaches with "Query Fan-Out" technique).
 - Use `database-admin` agent to run tests and analyze the summary report.
 - Use `tester` agent to run tests and analyze the summary report.

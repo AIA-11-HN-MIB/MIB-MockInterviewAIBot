@@ -104,7 +104,7 @@ You MUST update project documentation immediately when:
 ### Project Documentation Update Protocol
 When updating roadmap and changelog documents, follow this protocol:
 1. **Read Current State**: Always read both `./docs/project-roadmap.md` and `./docs/project-changelog.md` before making updates
-2. **Analyze Implementation Reports**: Review all agent reports in `./plans/reports/` directory for recent changes
+2. **Analyze Implementation Reports**: Review all agent reports in `./plans/<plan-name>/reports/` directory for recent changes
 3. **Update Roadmap**: Modify progress percentages, phase statuses, and milestone completion dates
 4. **Update Changelog**: Add new entries for completed features, bug fixes, and improvements with proper semantic versioning
 5. **Cross-Reference**: Ensure roadmap and changelog entries are consistent and properly linked

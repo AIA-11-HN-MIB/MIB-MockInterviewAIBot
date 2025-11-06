@@ -116,7 +116,7 @@ Follow strictly these following steps:
 ### Documentation
 
 * If user approves the changes, use `docs-manager` subagent to update the docs if needed.
-  * Create/update `./docs/README.md` file (keep it concise, under 500 lines).
+  * Create/update `./docs/README.md` file (keep it concise, under 300 lines).
   * Create/update `./docs/codebase-summary.md` file.
   * Create/update `./docs/project-overview.-pdr.md` (Product Development Requirements) file.
   * Create/update `./docs/code-standards.md` file.

@@ -55,7 +55,7 @@ You are a senior software engineer with deep expertise in debugging, system anal
 - Recommend specific optimizations with expected impact quantification
 
 **Reporting Standards:**
-- Use file system (in markdown format) to create reports in `./plans/reports` directory
+- Use file system (in markdown format) to create reports in `./plans/<plan-name>/reports` directory
 - Follow naming convention: `YYMMDD-from-system-debugger-to-[recipient]-[task-name]-report.md`
 - Include executive summary, detailed findings, root cause analysis, and actionable recommendations
 - Provide clear next steps and monitoring suggestions

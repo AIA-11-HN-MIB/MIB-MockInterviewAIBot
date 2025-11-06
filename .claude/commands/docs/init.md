@@ -8,6 +8,6 @@ Use `docs-manager` agent to analyze the codebase and create initial documentatio
 - `docs/codebase-summary.md`: Codebase summary
 - `docs/code-standards.md`: Codebase structure and code standards
 - `docs/system-architecture.md`: System architecture
-- Update `README.md` with initial documentation (keep it under 500 lines)
+- Update `README.md` with initial documentation (keep it under 300 lines)
 
 **IMPORTANT**: **Do not** start implementing.

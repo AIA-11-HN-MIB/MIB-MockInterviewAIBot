@@ -62,6 +62,12 @@ Replace TYPE(SCOPE): DESCRIPTION with your generated message.
 
 **Only push if user explicitly requested** (keywords: "push", "and push", "commit and push").
 
+## Pull Request Checklist
+
+- Pull the latest `main` before opening a PR (`git fetch origin main && git merge origin/main` into the current branch).
+- Resolve conflicts locally and rerun required checks.
+- Open the PR with a concise, meaningful summary following the conventional commit format.
+
 ## Commit Message Standards
 
 **Format:** `type(scope): description`
