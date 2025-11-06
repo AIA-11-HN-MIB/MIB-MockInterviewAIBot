@@ -7,10 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....application.dto.interview_dto import (
     CreateInterviewRequest,
+    FollowUpQuestionResponse,
     InterviewResponse,
+    PlanInterviewRequest,
+    PlanningStatusResponse,
     QuestionResponse,
 )
 from ....application.use_cases.get_next_question import GetNextQuestionUseCase
+from ....application.use_cases.plan_interview import PlanInterviewUseCase
 from ....application.use_cases.start_interview import StartInterviewUseCase
 from ....infrastructure.config.settings import get_settings
 from ....infrastructure.database.session import get_async_session
@@ -221,3 +225,122 @@ async def get_current_question(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
         ) from e
+
+
+# NEW: Adaptive Planning Endpoints
+@router.post(
+    "/plan",
+    response_model=PlanningStatusResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Plan interview with adaptive questions",
+)
+async def plan_interview(
+    request: PlanInterviewRequest,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Plan interview by generating n questions with ideal answers.
+
+    This endpoint triggers the pre-planning phase:
+    1. Calculates n based on skill diversity (max 5)
+    2. Generates n questions with ideal_answer + rationale
+    3. Returns interview with status=PREPARING (async process)
+
+    Args:
+        request: Planning request with cv_analysis_id and candidate_id
+        session: Database session
+
+    Returns:
+        Planning status with interview_id
+
+    Raises:
+        HTTPException: If CV analysis not found
+    """
+    try:
+        container = get_container()
+
+        # Validate CV analysis exists
+        cv_analysis_repo = container.cv_analysis_repository_port(session)
+        cv_analysis = await cv_analysis_repo.get_by_id(request.cv_analysis_id)
+        if not cv_analysis:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"CV analysis {request.cv_analysis_id} not found",
+            )
+
+        # Execute planning use case
+        use_case = PlanInterviewUseCase(
+            llm=container.llm_port(),
+            cv_analysis_repo=cv_analysis_repo,
+            interview_repo=container.interview_repository_port(session),
+            question_repo=container.question_repository_port(session),
+        )
+
+        interview = await use_case.execute(
+            cv_analysis_id=request.cv_analysis_id,
+            candidate_id=request.candidate_id,
+        )
+
+        return PlanningStatusResponse(
+            interview_id=interview.id,
+            status=interview.status.value,
+            planned_question_count=interview.planned_question_count,
+            plan_metadata=interview.plan_metadata,
+            message=f"Interview planned with {interview.planned_question_count} questions",
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        ) from e
+
+
+@router.get(
+    "/{interview_id}/plan",
+    response_model=PlanningStatusResponse,
+    summary="Get interview planning status",
+)
+async def get_planning_status(
+    interview_id: UUID,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Get interview planning status.
+
+    Args:
+        interview_id: Interview UUID
+        session: Database session
+
+    Returns:
+        Planning status details
+
+    Raises:
+        HTTPException: If interview not found
+    """
+    container = get_container()
+    interview_repo = container.interview_repository_port(session)
+    interview = await interview_repo.get_by_id(interview_id)
+
+    if not interview:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Interview {interview_id} not found",
+        )
+
+    # Determine message based on status
+    if interview.status.value == "PREPARING":
+        message = "Interview planning in progress..."
+    elif interview.status.value == "READY":
+        message = f"Interview ready with {interview.planned_question_count} questions"
+    elif interview.status.value == "IN_PROGRESS":
+        message = "Interview started"
+    elif interview.status.value == "COMPLETED":
+        message = "Interview completed"
+    else:
+        message = f"Interview status: {interview.status.value}"
+
+    return PlanningStatusResponse(
+        interview_id=interview.id,
+        status=interview.status.value,
+        planned_question_count=interview.planned_question_count,
+        plan_metadata=interview.plan_metadata,
+        message=message,
+    )

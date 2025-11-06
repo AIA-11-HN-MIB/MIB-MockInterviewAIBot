@@ -127,3 +127,24 @@ Recommendations:
             {"name": "FastAPI", "category": "framework", "proficiency": "advanced"},
             {"name": "PostgreSQL", "category": "database", "proficiency": "intermediate"},
         ]
+
+    async def generate_ideal_answer(
+        self,
+        question_text: str,
+        context: dict[str, Any],
+    ) -> str:
+        """Generate mock ideal answer."""
+        return f"""Mock ideal answer for '{question_text[:50]}...':
+This demonstrates comprehensive understanding of the concept with clear explanation,
+relevant examples, and practical application. The answer covers all key aspects
+including fundamental principles, real-world use cases, and potential edge cases."""
+
+    async def generate_rationale(
+        self,
+        question_text: str,
+        ideal_answer: str,
+    ) -> str:
+        """Generate mock rationale."""
+        return """This answer demonstrates mastery by covering fundamental concepts,
+providing practical examples, and explaining the reasoning behind technical choices.
+A weaker answer would miss these comprehensive details."""

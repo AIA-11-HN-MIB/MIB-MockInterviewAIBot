@@ -1,6 +1,7 @@
 """Interview DTOs for REST API request/response."""
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -34,9 +35,8 @@ class InterviewResponse(BaseModel):
     started_at: datetime | None
 
     @staticmethod
-    def from_domain(interview, base_url: str) -> "InterviewResponse":
+    def from_domain(interview: Any, base_url: str) -> "InterviewResponse":
         """Convert domain Interview to response DTO."""
-
         return InterviewResponse(
             id=interview.id,
             candidate_id=interview.candidate_id,
@@ -59,3 +59,30 @@ class QuestionResponse(BaseModel):
     difficulty: str
     index: int
     total: int
+    is_follow_up: bool = False
+    parent_question_id: UUID | None = None
+
+
+# NEW: Planning DTOs
+class PlanInterviewRequest(BaseModel):
+    """Request to plan interview with adaptive questions."""
+    cv_analysis_id: UUID
+    candidate_id: UUID
+
+
+class PlanningStatusResponse(BaseModel):
+    """Response with planning status."""
+    interview_id: UUID
+    status: str  # PREPARING, READY, IN_PROGRESS
+    planned_question_count: int | None
+    plan_metadata: dict | None
+    message: str
+
+
+class FollowUpQuestionResponse(BaseModel):
+    """Response with follow-up question details."""
+    id: UUID
+    parent_question_id: UUID
+    text: str
+    generated_reason: str
+    order_in_sequence: int
