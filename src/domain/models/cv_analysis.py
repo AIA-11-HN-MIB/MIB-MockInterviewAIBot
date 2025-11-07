@@ -1,6 +1,5 @@
 """CV Analysis domain model."""
-
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from uuid import UUID, uuid4
 from pydantic import BaseModel, Field
@@ -45,7 +44,7 @@ class CVAnalysis(BaseModel):
     embedding: Optional[List[float]] = None  # Vector embedding of CV
     summary: Optional[str] = None  # AI-generated summary
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     class Config:
         """Pydantic configuration."""
