@@ -12,7 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ...adapters.llm.openai_adapter import OpenAIAdapter
 
 # Import mock adapters
-from ...adapters.mock import MockLLMAdapter, MockSTTAdapter, MockTTSAdapter, MockVectorSearchAdapter
+from ...adapters.mock import (
+    MockAnalyticsAdapter,
+    MockCVAnalyzerAdapter,
+    MockLLMAdapter,
+    MockSTTAdapter,
+    MockTTSAdapter,
+    MockVectorSearchAdapter,
+)
 
 # Import persistence adapters
 from ...adapters.persistence import (
@@ -203,12 +210,15 @@ class Container:
             Configured CV analyzer
 
         Raises:
-            NotImplementedError: Implementation pending
+            NotImplementedError: Real implementation pending
         """
-        # TODO: Implement CV analyzer
-        # from ...adapters.cv_processing.spacy_cv_analyzer import SpacyCVAnalyzer
-        # return SpacyCVAnalyzer(llm_port=self.llm_port())
-        raise NotImplementedError("CV analyzer not yet implemented")
+        if self.settings.use_mock_adapters:
+            return MockCVAnalyzerAdapter()
+        else:
+            # TODO: Implement real CV analyzer
+            # from ...adapters.cv_processing.spacy_cv_analyzer import SpacyCVAnalyzer
+            # return SpacyCVAnalyzer(llm_port=self.llm_port())
+            raise NotImplementedError("Real CV analyzer not yet implemented")
 
     def speech_to_text_port(self) -> SpeechToTextPort:
         """Get speech-to-text port implementation.
@@ -262,12 +272,15 @@ class Container:
             Configured analytics service
 
         Raises:
-            NotImplementedError: Implementation pending
+            NotImplementedError: Real implementation pending
         """
-        # TODO: Implement analytics service
-        # from ...adapters.analytics.analytics_adapter import AnalyticsAdapter
-        # return AnalyticsAdapter(database_url=self.settings.database_url)
-        raise NotImplementedError("Analytics adapter not yet implemented")
+        if self.settings.use_mock_adapters:
+            return MockAnalyticsAdapter()
+        else:
+            # TODO: Implement real analytics service
+            # from ...adapters.analytics.analytics_adapter import AnalyticsAdapter
+            # return AnalyticsAdapter(database_url=self.settings.database_url)
+            raise NotImplementedError("Real analytics adapter not yet implemented")
 
 
 @lru_cache
