@@ -243,10 +243,37 @@ Then visit: **http://localhost:8000/docs**
 
 ## 🧪 Development
 
+### Mock Adapters for Testing
+
+**Mock adapters** simulate external services without API costs or network latency. Enabled by default in development.
+
+**Available Mocks** (6 total):
+- `MockLLMAdapter` - Simulates OpenAI/LLM responses
+- `MockVectorSearchAdapter` - In-memory vector search
+- `MockSTTAdapter` - Simulates speech-to-text
+- `MockTTSAdapter` - Simulates text-to-speech
+- `MockCVAnalyzerAdapter` - Filename-based CV parsing
+- `MockAnalyticsAdapter` - In-memory performance tracking
+
+**Configuration**:
+```env
+# .env.local
+USE_MOCK_ADAPTERS=true   # Use mocks (default, fast tests)
+USE_MOCK_ADAPTERS=false  # Use real services (requires API keys)
+```
+
+**Benefits**:
+- Tests run 10x faster (~5s vs ~30s)
+- No API costs during development
+- No network dependency
+- Deterministic test results
+
+**Note**: Repositories (PostgreSQL) intentionally NOT mocked - use real database for data integrity tests.
+
 ### Running Tests
 
 ```bash
-# Run all tests
+# Run all tests (with mocks enabled by default)
 pytest
 
 # Run with coverage
@@ -256,6 +283,9 @@ pytest --cov=src --cov-report=html
 pytest tests/unit/         # Unit tests only
 pytest tests/integration/  # Integration tests only
 pytest tests/e2e/          # End-to-end tests only
+
+# Test with real adapters (requires API keys)
+USE_MOCK_ADAPTERS=false pytest
 ```
 
 ### Code Quality

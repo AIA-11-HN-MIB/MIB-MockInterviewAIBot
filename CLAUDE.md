@@ -133,6 +133,30 @@ When integrating a new external service (e.g., new LLM provider, vector database
 - **Integration Tests**: Test adapters with real external services (use test environments)
 - **E2E Tests**: Test complete interview flows through API layer
 
+### Mock Adapters
+
+**Available Mocks** (6 total):
+- `MockLLMAdapter` - Simulates LLM responses (no OpenAI API calls)
+- `MockVectorSearchAdapter` - In-memory vector search (no Pinecone)
+- `MockSTTAdapter` - Simulates speech-to-text
+- `MockTTSAdapter` - Simulates text-to-speech
+- `MockCVAnalyzerAdapter` - Filename-based CV parsing (e.g., "python-developer.pdf" → ["Python", "FastAPI"])
+- `MockAnalyticsAdapter` - In-memory performance tracking
+
+**When to Use Mocks**:
+- ✅ Development without API keys
+- ✅ Fast unit tests (10x faster)
+- ✅ CI/CD pipelines (no external dependencies)
+- ✅ Deterministic test results
+- ❌ Integration tests (use real adapters)
+- ❌ Production deployment
+
+**Configuration**: Set `USE_MOCK_ADAPTERS=true` in `.env.local` (default).
+
+**DI Container**: Automatically swaps implementations based on `settings.use_mock_adapters` flag.
+
+**Note**: Repositories (PostgreSQL) NOT mocked - use real database for data integrity.
+
 ## Technology Stack
 
 ### Core Technologies

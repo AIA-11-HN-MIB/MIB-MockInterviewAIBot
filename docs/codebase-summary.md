@@ -1,6 +1,6 @@
 # Codebase Summary
 
-**Last Updated**: 2025-11-02
+**Last Updated**: 2025-11-08
 **Version**: 0.1.0
 **Repository**: https://github.com/elios/elios-ai-service
 
@@ -80,10 +80,14 @@ EliosAIService/
 │   │   ├── vector_db/           # Vector database adapters
 │   │   │   ├── __init__.py
 │   │   │   └── pinecone_adapter.py # Pinecone implementation ✅
-│   │   ├── mock/                # Mock adapters for development
-│   │   │   ├── mock_llm_adapter.py  # Mock LLM for testing ✅
-│   │   │   ├── mock_stt_adapter.py  # Mock speech-to-text ✅
-│   │   │   └── mock_tts_adapter.py  # Mock text-to-speech ✅
+│   │   ├── mock/                # Mock adapters for development (6 total) ✅
+│   │   │   ├── __init__.py
+│   │   │   ├── mock_llm_adapter.py          # Mock LLM ✅
+│   │   │   ├── mock_vector_search_adapter.py # Mock vector DB ✅
+│   │   │   ├── mock_stt_adapter.py          # Mock speech-to-text ✅
+│   │   │   ├── mock_tts_adapter.py          # Mock text-to-speech ✅
+│   │   │   ├── mock_cv_analyzer.py          # Mock CV analyzer ✅
+│   │   │   └── mock_analytics.py            # Mock analytics ✅
 │   │   ├── persistence/         # Database adapters (7 files)
 │   │   │   ├── __init__.py
 │   │   │   ├── models.py        # SQLAlchemy ORM models
@@ -406,10 +410,17 @@ Each repository:
 
 #### Mock Adapters (`adapters/mock/`) ✅
 
+**6 Mock Adapters for Development**:
+
 **MockLLMAdapter** (`mock_llm_adapter.py`):
 - Implements LLMPort interface
 - Returns placeholder responses for testing
 - Used for development without OpenAI API costs
+
+**MockVectorSearchAdapter** (`mock_vector_search_adapter.py`):
+- Implements VectorSearchPort interface
+- In-memory vector storage with cosine similarity
+- No Pinecone dependency for tests
 
 **MockSTTAdapter** (`mock_stt_adapter.py`):
 - Implements SpeechToTextPort interface
@@ -418,6 +429,18 @@ Each repository:
 **MockTTSAdapter** (`mock_tts_adapter.py`):
 - Implements TextToSpeechPort interface
 - Returns empty audio bytes
+
+**MockCVAnalyzerAdapter** (`mock_cv_analyzer.py`):
+- Implements CVAnalyzerPort interface
+- Filename-based skill extraction (e.g., "python-developer.pdf" → ["Python", "FastAPI"])
+- No document parsing library needed
+
+**MockAnalyticsAdapter** (`mock_analytics.py`):
+- Implements AnalyticsPort interface
+- In-memory performance metrics
+- Simple answer quality assessment
+
+**Configuration**: Controlled via `USE_MOCK_ADAPTERS` environment variable (default: `true`)
 
 #### API Adapters (`src/adapters/api/`)
 
@@ -662,15 +685,16 @@ ruff check src/ && black --check src/ && mypy src/
 - PostgreSQL persistence (5 repositories + models + mappers)
 - OpenAI LLM adapter (full implementation)
 - Pinecone vector adapter (full implementation)
-- Mock adapters (LLM, STT, TTS for development)
+- Mock adapters (6 total: LLM, Vector, STT, TTS, CV, Analytics) ✅
 - Database migrations (Alembic + async support)
-- Configuration management (Pydantic Settings)
-- Dependency injection container
+- Configuration management (Pydantic Settings + USE_MOCK_ADAPTERS flag)
+- Dependency injection container (mock adapter integration)
 - Use cases (AnalyzeCV, StartInterview, GetNextQuestion, ProcessAnswer, CompleteInterview)
 - DTOs (3 files: interview, answer, websocket)
 - Database setup scripts
 - REST API (health check + interview endpoints)
 - WebSocket handler (real-time interview sessions)
+- All 29 unit tests passing with mocks
 
 ### 🔄 In Progress
 - CV processing adapters (spaCy, document parsing)
@@ -691,12 +715,12 @@ ruff check src/ && black --check src/ && mypy src/
 
 ## File Statistics
 
-**Total Python Files**: ~52 files
+**Total Python Files**: ~55 files
 **Domain Layer**: 16 files (models + ports)
 **Application Layer**: 11 files (5 use cases + 3 DTOs + __init__)
-**Adapters Layer**: 22 files (LLM, vector DB, mock, persistence, API)
+**Adapters Layer**: 25 files (LLM, vector DB, 6 mocks, persistence, API)
 **Infrastructure Layer**: 9 files (config, database, DI)
-**Tests**: 0 files (pending)
+**Tests**: ~29 tests (unit tests with mock adapters)
 
 **Lines of Code** (estimated):
 - Domain: ~600 lines
