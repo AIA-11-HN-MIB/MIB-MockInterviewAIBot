@@ -16,6 +16,7 @@ from ....application.dto.interview_dto import (
 from ....application.use_cases.get_next_question import GetNextQuestionUseCase
 from ....application.use_cases.plan_interview import PlanInterviewUseCase
 from ....application.use_cases.start_interview import StartInterviewUseCase
+from ....domain.models.interview import InterviewStatus
 from ....infrastructure.config.settings import get_settings
 from ....infrastructure.database.session import get_async_session
 from ....infrastructure.dependency_injection.container import get_container
@@ -326,13 +327,13 @@ async def get_planning_status(
         )
 
     # Determine message based on status
-    if interview.status.value == "PREPARING":
+    if interview.status == InterviewStatus.PREPARING:
         message = "Interview planning in progress..."
-    elif interview.status.value == "READY":
+    elif interview.status == InterviewStatus.READY:
         message = f"Interview ready with {interview.planned_question_count} questions"
-    elif interview.status.value == "IN_PROGRESS":
+    elif interview.status == InterviewStatus.IN_PROGRESS:
         message = "Interview started"
-    elif interview.status.value == "COMPLETED":
+    elif interview.status == InterviewStatus.COMPLETED:
         message = "Interview completed"
     else:
         message = f"Interview status: {interview.status.value}"
