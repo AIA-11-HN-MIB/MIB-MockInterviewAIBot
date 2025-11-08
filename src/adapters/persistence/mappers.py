@@ -145,6 +145,8 @@ class InterviewMapper:
             question_ids=list(db_model.question_ids) if db_model.question_ids else [],
             answer_ids=list(db_model.answer_ids) if db_model.answer_ids else [],
             current_question_index=db_model.current_question_index,
+            plan_metadata=dict(db_model.plan_metadata) if db_model.plan_metadata else {},
+            adaptive_follow_ups=list(db_model.adaptive_follow_ups) if db_model.adaptive_follow_ups else [],
             started_at=db_model.started_at,
             completed_at=db_model.completed_at,
             created_at=db_model.created_at,
@@ -162,6 +164,8 @@ class InterviewMapper:
             question_ids=domain_model.question_ids,
             answer_ids=domain_model.answer_ids,
             current_question_index=domain_model.current_question_index,
+            plan_metadata=domain_model.plan_metadata,
+            adaptive_follow_ups=domain_model.adaptive_follow_ups,
             started_at=domain_model.started_at,
             completed_at=domain_model.completed_at,
             created_at=domain_model.created_at,
@@ -176,6 +180,8 @@ class InterviewMapper:
         db_model.question_ids = domain_model.question_ids
         db_model.answer_ids = domain_model.answer_ids
         db_model.current_question_index = domain_model.current_question_index
+        db_model.plan_metadata = domain_model.plan_metadata
+        db_model.adaptive_follow_ups = domain_model.adaptive_follow_ups
         db_model.started_at = domain_model.started_at
         db_model.completed_at = domain_model.completed_at
         db_model.updated_at = domain_model.updated_at
