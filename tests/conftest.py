@@ -78,6 +78,8 @@ def sample_interview_adaptive(sample_cv_analysis: CVAnalysis) -> Interview:
         "cv_summary": sample_cv_analysis.summary,
     }
     interview.question_ids = [uuid4(), uuid4(), uuid4()]
+    # Start interview to set status to IN_PROGRESS
+    interview.start()
     return interview
 
 
@@ -286,6 +288,46 @@ class MockLLM:
     ) -> str:
         """Return mock rationale."""
         return "Mock rationale explaining why this is an ideal answer"
+
+    async def detect_concept_gaps(
+        self,
+        answer_text: str,
+        ideal_answer: str,
+        question_text: str,
+        keyword_gaps: list[str],
+    ) -> dict[str, Any]:
+        """Mock gap detection based on answer length."""
+        # Simple heuristic: short answers have gaps
+        word_count = len(answer_text.split())
+
+        if word_count < 30:
+            # Simulate gaps for short answers
+            return {
+                "concepts": keyword_gaps[:2] if keyword_gaps else ["depth", "examples"],
+                "keywords": keyword_gaps[:5],
+                "confirmed": True,
+                "severity": "moderate",
+            }
+        else:
+            # Good answer, no gaps
+            return {
+                "concepts": [],
+                "keywords": [],
+                "confirmed": False,
+                "severity": "minor",
+            }
+
+    async def generate_followup_question(
+        self,
+        parent_question: str,
+        answer_text: str,
+        missing_concepts: list[str],
+        severity: str,
+        order: int,
+    ) -> str:
+        """Mock follow-up question generation."""
+        concepts_str = ', '.join(missing_concepts[:2]) if missing_concepts else "that concept"
+        return f"Can you elaborate more on {concepts_str}? Please provide specific examples."
 
 
 @pytest.fixture
