@@ -8,6 +8,8 @@ Think harder to plan & start implementing payment integration with [https://docs
 
 ## Workflow:
 
+**IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.
+
 ### Fullfill the request
 
 * If you don't have any questions, skip this step and go to `Planning` step.
@@ -17,7 +19,11 @@ Think harder to plan & start implementing payment integration with [https://docs
 
 ### Planning
 
-1. Use `planner` subagent to read the Polar.sh docs and create a implementation plan with TODO tasks in `./plans` directory.
+1. Use `planner` subagent to read the Polar.sh docs and create an implementation plan following the progressive disclosure structure:
+   - Create a directory `plans/YYYYMMDD-HHmm-plan-name` (example: `plans/20251101-1505-authentication-and-profile-implementation`).
+   - Save the overview access point at `plan.md`, keep it generic, under 80 lines, and list each phase with status/progress and links.
+   - For each phase, add `phase-XX-phase-name.md` files containing sections (Context links, Overview with date/priority/statuses, Key Insights, Requirements, Architecture, Related code files, Implementation Steps, Todo list, Success Criteria, Risk Assessment, Security Considerations, Next steps).
+   - Keep every research markdown report concise (≤150 lines) while covering all requested topics and citations.
 2. Ask user to review and approve the plan, if the user requests to change the plan, repeat the previous step until the user approves the plan.
 
 ### Implementation

@@ -9,7 +9,11 @@ Think hard to plan & start designing follow exactly this screenshot:
 ## Workflow:
 1. Use `eyes` analyze tool to describe super details of the screenshot (design style, trends, fonts, colors, border, spacing, elements' positions, size, shape, texture, material, light, shadow, reflection, refraction, blur, glow, image, background transparency, transition, etc.)
    - **IMPORTANT:** Try to predict the font name (Google Fonts) and font size in the given screenshot, don't just use Inter or Poppins.
-2. Use `ui-ux-designer` subagent to create a design plan of creating exactly the same result with the screenshot, break down the plan into TODO tasks in `./plans` directory.
+2. Use `ui-ux-designer` subagent to create a design plan following the progressive disclosure structure so the final result matches the screenshot:
+   - Create a directory `plans/YYYYMMDD-HHmm-plan-name` (example: `plans/20251101-1505-authentication-and-profile-implementation`).
+   - Save the overview access point at `plan.md`, keep it generic, under 80 lines, and list each phase with status/progress and links.
+   - For each phase, add `phase-XX-phase-name.md` files containing sections (Context links, Overview with date/priority/statuses, Key Insights, Requirements, Architecture, Related code files, Implementation Steps, Todo list, Success Criteria, Risk Assessment, Security Considerations, Next steps).
+   - Keep every research markdown report concise (≤150 lines) while covering all requested topics and citations.
 3. Then implement the plan step by step.
 4. If user doesn't specify, create the design in pure HTML/CSS/JS.
 5. Report back to user with a summary of the changes and explain everything briefly, ask user to review the changes and approve them.

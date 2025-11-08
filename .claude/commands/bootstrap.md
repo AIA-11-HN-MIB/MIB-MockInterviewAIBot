@@ -47,20 +47,26 @@ Follow strictly these following steps:
 * Ask 1 question at a time, wait for the user to answer before moving to the next question.
 * If you don't have any questions, start the next step.
 
+**IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.
+
 ### Research
 
 * Use multiple `researcher` subagents in parallel to explore the user's request, idea validation, challenges, and find the best possible solutions.
+* Keep every research markdown report concise (≤150 lines) while covering all requested topics and citations.
 
 ### Tech Stack
 
 1. Ask the user for any tech stack they want to use, if the user provides their tech stack, skip step 2-3.
-2. Use `planner` subagent and multiple `researcher` subagents in parallel to find a best fit tech stack for this project
+2. Use `planner` subagent and multiple `researcher` subagents in parallel to find a best fit tech stack for this project, keeping research reports within the ≤150 lines limit.
 3. Ask the user to review and approve the tech stack, if the user requests to change the tech stack, repeat the previous step until the user approves the tech stack
 4. Write the tech stack down in `./docs` directory
 
 ### Planning
 
-* Use `planner` subagent to create a detailed implementation plan with step by step TODO tasks in `./plans` directory based on the user's requirements, research, and tech stack.
+* Use `planner` subagent to create a detailed implementation plan following the progressive disclosure structure:
+  - Create a directory `plans/YYYYMMDD-HHmm-plan-name` (example: `plans/20251101-1505-authentication-and-profile-implementation`).
+  - Save the overview access point at `plan.md`, keep it generic, under 80 lines, and list each phase with status/progress and links.
+  - For each phase, add `phase-XX-phase-name.md` files containing sections (Context links, Overview with date/priority/statuses, Key Insights, Requirements, Architecture, Related code files, Implementation Steps, Todo list, Success Criteria, Risk Assessment, Security Considerations, Next steps).
 * Clearly explain the pros and cons of the plan.
 
 **IMPORTANT**: **Do not** start implementing immediately!
@@ -69,7 +75,7 @@ Follow strictly these following steps:
 ### Wireframe & Design
 
 * Ask the user if they want to create wireframes and design guidelines, if yes, continue to the next step, if no, skip to **"Implementation"** phase.
-* Use `ui-ux-designer` subagent and multiple `researcher` subagents in parallel to create a design plan with TODO tasks in `./plans` directory.
+* Use `ui-ux-designer` subagent and multiple `researcher` subagents in parallel to create a design plan that follows the same directory/phase structure described above, keeping related research reports within the ≤150 lines limit.
    - **Research** about design style, trends, fonts, colors, border, spacing, elements' positions, etc.
    - Describe details of the assets in the design so they can be generated with `gemini-image-gen` skill later on.
    - **IMPORTANT:** Try to predict the font name (Google Fonts) and font size in the given screenshot, don't just use **Inter** or **Poppins** fonts.
@@ -77,6 +83,11 @@ Follow strictly these following steps:
 * If there are no logo provided, use `gemini-image-gen` skill to generate a logo.
 * Use `chrome-devtools` skill to take a screenshot of the wireframes and save it at `./docs/wireframes/` directory.
 * Ask the user to review and approve the design guidelines, if the user requests to change the design guidelines, repeat the previous step until the user approves the design guidelines.
+
+**REMEMBER**:
+- You can always generate images with `gemini-image-gen` skill on the fly for visual assets.
+- You always read and analyze the generated assets with `gemini-vision` skill to verify they meet requirements.
+- For image editing (removing background, adjusting, cropping), use `ImageMagick` skill or similar tools as needed.
 
 ### Implementation
 
@@ -100,16 +111,18 @@ Follow strictly these following steps:
 
 * After finishing, delegate to `code-reviewer` subagent to review code. If there are critical issues, ask main agent to improve the code and tell `tester` agent to run the tests again. Repeat the process until all tests pass.
 * When all tests pass, code is reviewed, the tasks are completed, report back to user with a summary of the changes and explain everything briefly, ask user to review the changes and approve them.
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
 ### Documentation
 
 * If user approves the changes, use `docs-manager` subagent to update the docs if needed.
-  * Create/update `./docs/README.md` file.
+  * Create/update `./docs/README.md` file (keep it concise, under 300 lines).
   * Create/update `./docs/codebase-summary.md` file.
   * Create/update `./docs/project-overview.-pdr.md` (Product Development Requirements) file.
   * Create/update `./docs/code-standards.md` file.
   * Create/update `./docs/system-architecture.md` file.
-* Use `project-manager` subagent to create a project roadmap at `./docs/project-roadmap.md` file.
+* Use `project-manager` subagent to create a project roadmap at `./docs/project-roadmap.md` file & project progress and task status in the given plan file.
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
 ### Onboarding
 

@@ -6,6 +6,9 @@ argument-hint: [issues]
 You are an expert in conversion optimization. Analyze the content based on the given issues:
 <issues>$ARGUMENTS</issues>
 
+**IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.
+**IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
+
 ## Conversion Optimization Framework
 
 1. Headline 4-U Formula: Useful, Unique, Urgent, Ultra-specific (80% won't read past this)
@@ -40,7 +43,11 @@ You are an expert in conversion optimization. Analyze the content based on the g
 - If the user provides a URL, use `web_fetch` tool to fetch the content of the URL and analyze the current issues.
 - You can use screenshot capture tools along with `gemini-vision` skill to capture screenshots of the exact parent container and analyze the current issues with the appropriate Gemini analysis skills (`gemini-vision`, `gemini-video-understanding`, or `gemini-document-processing`).
 - Use multiple `scouter` agents to scout the current codebase or given codebase (if any) to understand the context, then report back to `copywriter` agent.
-- Use `planner` agent to create a comprehensive CRO plan, then report back to main agent.
+- Use `planner` agent to create a comprehensive CRO plan following the progressive disclosure structure:
+  - Create a directory `plans/YYYYMMDD-HHmm-plan-name` (example: `plans/20251101-1505-authentication-and-profile-implementation`).
+  - Save the overview access point at `plan.md`, keep it generic, under 80 lines, and list each phase with status/progress and links.
+  - For each phase, add `phase-XX-phase-name.md` files containing sections (Context links, Overview with date/priority/statuses, Key Insights, Requirements, Architecture, Related code files, Implementation Steps, Todo list, Success Criteria, Risk Assessment, Security Considerations, Next steps).
+  - Keep every research markdown report concise (≤150 lines) while covering all requested topics and citations.
 - Do not start implementing the CRO plan yet, wait for the user to approve the plan first.
 
 **IMPORTANT:** Sacrifice grammar for the sake of concision when writing reports.

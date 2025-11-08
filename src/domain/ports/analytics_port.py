@@ -1,7 +1,7 @@
 """Analytics port interface."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List
+from typing import Any
 from uuid import UUID
 
 from ..models.answer import Answer
@@ -32,7 +32,7 @@ class AnalyticsPort(ABC):
     async def get_interview_statistics(
         self,
         interview_id: UUID,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get statistics for an interview.
 
         Args:
@@ -47,7 +47,7 @@ class AnalyticsPort(ABC):
     async def get_candidate_performance_history(
         self,
         candidate_id: UUID,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get candidate's performance across all interviews.
 
         Args:
@@ -62,9 +62,9 @@ class AnalyticsPort(ABC):
     async def generate_improvement_recommendations(
         self,
         interview_id: UUID,
-        questions: List[Question],
-        answers: List[Answer],
-    ) -> List[str]:
+        questions: list[Question],
+        answers: list[Answer],
+    ) -> list[str]:
         """Generate improvement recommendations based on performance.
 
         Args:
@@ -80,9 +80,9 @@ class AnalyticsPort(ABC):
     @abstractmethod
     async def calculate_skill_scores(
         self,
-        answers: List[Answer],
-        questions: List[Question],
-    ) -> Dict[str, float]:
+        answers: list[Answer],
+        questions: list[Question],
+    ) -> dict[str, float]:
         """Calculate scores per skill based on answers.
 
         Args:

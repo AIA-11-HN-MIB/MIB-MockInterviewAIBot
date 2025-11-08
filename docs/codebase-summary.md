@@ -1,8 +1,33 @@
 # Codebase Summary
 
-**Last Updated**: 2025-10-31
+**Last Updated**: 2025-11-08
 **Version**: 0.1.0
 **Repository**: https://github.com/elios/elios-ai-service
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Project Structure](#project-structure)
+- [Core Technologies](#core-technologies)
+- [Key Components](#key-components)
+  - [1. Domain Layer (Core Business Logic)](#1-domain-layer-core-business-logic)
+  - [2. Application Layer (Use Cases)](#2-application-layer-use-cases)
+  - [3. Adapters Layer (External Integrations)](#3-adapters-layer-external-integrations)
+  - [4. Infrastructure Layer (Cross-Cutting Concerns)](#4-infrastructure-layer-cross-cutting-concerns)
+  - [5. Database Migrations](#5-database-migrations)
+  - [6. Utility Scripts](#6-utility-scripts)
+- [Entry Points](#entry-points)
+- [Development Workflow](#development-workflow)
+- [Development Principles](#development-principles)
+- [Implementation Status](#implementation-status)
+- [File Statistics](#file-statistics)
+- [Dependencies Overview](#dependencies-overview)
+- [Performance Considerations](#performance-considerations)
+- [Security Measures](#security-measures)
+- [Deployment](#deployment)
+- [Related Documentation](#related-documentation)
+- [External Resources](#external-resources)
+- [Unresolved Questions](#unresolved-questions)
 
 ## Overview
 
@@ -36,10 +61,17 @@ EliosAIService/
 │   │       └── cv_analysis_repository_port.py   # CV analysis persistence
 │   ├── application/             # Use cases and orchestration
 │   │   ├── __init__.py
-│   │   └── use_cases/           # Application business flows (2 files)
+│   │   ├── dto/                 # Data Transfer Objects (3 files)
+│   │   │   ├── interview_dto.py # Interview request/response DTOs ✅
+│   │   │   ├── answer_dto.py    # Answer request/response DTOs ✅
+│   │   │   └── websocket_dto.py # WebSocket message DTOs ✅
+│   │   └── use_cases/           # Application business flows (5 files)
 │   │       ├── __init__.py
-│   │       ├── analyze_cv.py    # CV analysis workflow
-│   │       └── start_interview.py # Interview initialization workflow
+│   │       ├── analyze_cv.py    # CV analysis workflow ✅
+│   │       ├── start_interview.py # Interview initialization workflow ✅
+│   │       ├── get_next_question.py # Retrieve next question ✅
+│   │       ├── process_answer.py # Handle answer submission & evaluation ✅
+│   │       └── complete_interview.py # Finalize interview session ✅
 │   ├── adapters/                # External service implementations
 │   │   ├── __init__.py
 │   │   ├── llm/                 # LLM provider adapters
@@ -48,6 +80,14 @@ EliosAIService/
 │   │   ├── vector_db/           # Vector database adapters
 │   │   │   ├── __init__.py
 │   │   │   └── pinecone_adapter.py # Pinecone implementation ✅
+│   │   ├── mock/                # Mock adapters for development (6 total) ✅
+│   │   │   ├── __init__.py
+│   │   │   ├── mock_llm_adapter.py          # Mock LLM ✅
+│   │   │   ├── mock_vector_search_adapter.py # Mock vector DB ✅
+│   │   │   ├── mock_stt_adapter.py          # Mock speech-to-text ✅
+│   │   │   ├── mock_tts_adapter.py          # Mock text-to-speech ✅
+│   │   │   ├── mock_cv_analyzer.py          # Mock CV analyzer ✅
+│   │   │   └── mock_analytics.py            # Mock analytics ✅
 │   │   ├── persistence/         # Database adapters (7 files)
 │   │   │   ├── __init__.py
 │   │   │   ├── models.py        # SQLAlchemy ORM models
@@ -59,9 +99,14 @@ EliosAIService/
 │   │   │   └── cv_analysis_repository.py    ✅
 │   │   └── api/                 # API layer
 │   │       ├── __init__.py
-│   │       └── rest/            # REST endpoints
+│   │       ├── rest/            # REST endpoints (2 files)
+│   │       │   ├── __init__.py
+│   │       │   ├── health_routes.py     # Health check endpoint ✅
+│   │       │   └── interview_routes.py  # Interview CRUD endpoints ✅
+│   │       └── websocket/       # WebSocket handlers (2 files)
 │   │           ├── __init__.py
-│   │           └── health_routes.py # Health check endpoint ✅
+│   │           ├── connection_manager.py # WebSocket connection pool ✅
+│   │           └── interview_handler.py  # Real-time interview handler ✅
 │   └── infrastructure/          # Cross-cutting concerns
 │       ├── __init__.py
 │       ├── config/              # Configuration management
@@ -256,11 +301,37 @@ Workflow:
 → Returns: Interview entity
 ```
 
+**GetNextQuestionUseCase** (`get_next_question.py` - 34 lines) ✅:
+```python
+Workflow:
+1. Retrieve interview from repository
+2. Get current question ID based on index
+3. Fetch question details
+→ Returns: Question entity or None
+```
+
+**ProcessAnswerUseCase** (`process_answer.py` - 66 lines) ✅:
+```python
+Workflow:
+1. Retrieve interview and question
+2. Evaluate answer using LLM
+3. Create Answer entity with evaluation
+4. Store answer in repository
+5. Update interview progress
+→ Returns: Answer entity + has_more flag
+```
+
+**CompleteInterviewUseCase** (`complete_interview.py` - 25 lines) ✅:
+```python
+Workflow:
+1. Retrieve interview
+2. Mark as COMPLETED
+3. Update in repository
+→ Returns: Interview entity
+```
+
 **Planned Use Cases**:
-- `GetNextQuestionUseCase`: Retrieve next question
-- `ProcessAnswerUseCase`: Handle answer and evaluation
-- `CompleteInterviewUseCase`: Finalize and generate report
-- `GenerateFeedbackUseCase`: Create comprehensive feedback
+- `GenerateFeedbackUseCase`: Create comprehensive feedback report
 
 ### 3. Adapters Layer (External Integrations)
 
@@ -337,16 +408,57 @@ Each repository:
 - Handles mapping between layers
 - Provides CRUD operations + domain-specific queries
 
+#### Mock Adapters (`adapters/mock/`) ✅
+
+**6 Mock Adapters for Development**:
+
+**MockLLMAdapter** (`mock_llm_adapter.py`):
+- Implements LLMPort interface
+- Returns placeholder responses for testing
+- Used for development without OpenAI API costs
+
+**MockVectorSearchAdapter** (`mock_vector_search_adapter.py`):
+- Implements VectorSearchPort interface
+- In-memory vector storage with cosine similarity
+- No Pinecone dependency for tests
+
+**MockSTTAdapter** (`mock_stt_adapter.py`):
+- Implements SpeechToTextPort interface
+- Returns placeholder transcriptions
+
+**MockTTSAdapter** (`mock_tts_adapter.py`):
+- Implements TextToSpeechPort interface
+- Returns empty audio bytes
+
+**MockCVAnalyzerAdapter** (`mock_cv_analyzer.py`):
+- Implements CVAnalyzerPort interface
+- Filename-based skill extraction (e.g., "python-developer.pdf" → ["Python", "FastAPI"])
+- No document parsing library needed
+
+**MockAnalyticsAdapter** (`mock_analytics.py`):
+- Implements AnalyticsPort interface
+- In-memory performance metrics
+- Simple answer quality assessment
+
+**Configuration**: Controlled via `USE_MOCK_ADAPTERS` environment variable (default: `true`)
+
 #### API Adapters (`src/adapters/api/`)
 
-**REST API** (`api/rest/`) 🔄:
-- `health_routes.py`: Health check endpoint ✅
-- Planned: CV upload, interview management, question CRUD, feedback endpoints
+**REST API** (`api/rest/`) ✅:
+- `health_routes.py`: Health check endpoint
+- `interview_routes.py`: Interview management (4 endpoints)
+  - POST /api/interviews - Create interview session
+  - GET /api/interviews/{id} - Get interview details
+  - PUT /api/interviews/{id}/start - Start interview
+  - GET /api/interviews/{id}/questions/current - Get current question
 
-**WebSocket** (planned) ⏳:
-- Real-time interview chat handler
-- Bi-directional communication
-- Session management
+**WebSocket** (`api/websocket/`) ✅:
+- `connection_manager.py`: WebSocket connection pool management
+- `interview_handler.py`: Real-time interview handler
+  - Protocol: text_answer, audio_chunk, get_next_question
+  - Responses: question, evaluation, interview_complete, error
+  - Integrated TTS for audio question delivery
+  - Handles answer processing and interview completion
 
 ### 4. Infrastructure Layer (Cross-Cutting Concerns)
 
@@ -573,24 +685,27 @@ ruff check src/ && black --check src/ && mypy src/
 - PostgreSQL persistence (5 repositories + models + mappers)
 - OpenAI LLM adapter (full implementation)
 - Pinecone vector adapter (full implementation)
+- Mock adapters (6 total: LLM, Vector, STT, TTS, CV, Analytics) ✅
 - Database migrations (Alembic + async support)
-- Configuration management (Pydantic Settings)
-- Dependency injection container
-- Use cases (AnalyzeCV, StartInterview)
+- Configuration management (Pydantic Settings + USE_MOCK_ADAPTERS flag)
+- Dependency injection container (mock adapter integration)
+- Use cases (AnalyzeCV, StartInterview, GetNextQuestion, ProcessAnswer, CompleteInterview)
+- DTOs (3 files: interview, answer, websocket)
 - Database setup scripts
-- Health check API endpoint
+- REST API (health check + interview endpoints)
+- WebSocket handler (real-time interview sessions)
+- All 29 unit tests passing with mocks
 
 ### 🔄 In Progress
-- Complete REST API implementation
-- WebSocket chat handler
-- CV processing adapters
+- CV processing adapters (spaCy, document parsing)
 - Analytics service
+- Feedback generation use case
 
 ### ⏳ Planned (Future Phases)
 - Claude and Llama LLM adapters
 - Weaviate and ChromaDB vector adapters
-- Speech service adapters (Azure STT, Edge TTS)
-- Additional use cases (ProcessAnswer, CompleteInterview, GenerateFeedback)
+- Production speech service adapters (Azure STT, Edge TTS)
+- Feedback generation use case
 - Authentication & authorization
 - Rate limiting
 - Comprehensive test suites
@@ -600,19 +715,19 @@ ruff check src/ && black --check src/ && mypy src/
 
 ## File Statistics
 
-**Total Python Files**: ~40 files
+**Total Python Files**: ~55 files
 **Domain Layer**: 16 files (models + ports)
-**Application Layer**: 3 files (use cases)
-**Adapters Layer**: 15 files (implementations)
+**Application Layer**: 11 files (5 use cases + 3 DTOs + __init__)
+**Adapters Layer**: 25 files (LLM, vector DB, 6 mocks, persistence, API)
 **Infrastructure Layer**: 9 files (config, database, DI)
-**Tests**: 0 files (pending)
+**Tests**: ~29 tests (unit tests with mock adapters)
 
 **Lines of Code** (estimated):
 - Domain: ~600 lines
-- Application: ~150 lines
-- Adapters: ~1200 lines
+- Application: ~300 lines (use cases + DTOs)
+- Adapters: ~1800 lines (API + mock + existing)
 - Infrastructure: ~400 lines
-- Total: ~2350 lines (excluding tests)
+- Total: ~3100 lines (excluding tests)
 
 ## Dependencies Overview
 
@@ -686,7 +801,7 @@ Testing, linting, formatting, type checking, development tools
 - [Project Overview & PDR](./project-overview-pdr.md) - Product requirements and roadmap
 - [System Architecture](./system-architecture.md) - Detailed architecture documentation
 - [Code Standards](./code-standards.md) - Coding conventions and best practices
-- [API Documentation](./api.md) - REST API reference
+- [API Documentation](./system-architecture.md#api-architecture) - REST API reference
 - [Database Setup](../DATABASE_SETUP.md) - Database configuration guide
 
 ## External Resources

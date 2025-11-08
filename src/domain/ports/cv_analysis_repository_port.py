@@ -1,7 +1,6 @@
 """CV Analysis repository port interface."""
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
 from uuid import UUID
 
 from ..models.cv_analysis import CVAnalysis
@@ -27,7 +26,7 @@ class CVAnalysisRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def get_by_id(self, cv_analysis_id: UUID) -> Optional[CVAnalysis]:
+    async def get_by_id(self, cv_analysis_id: UUID) -> CVAnalysis | None:
         """Retrieve a CV analysis by ID.
 
         Args:
@@ -39,7 +38,7 @@ class CVAnalysisRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def get_by_candidate_id(self, candidate_id: UUID) -> List[CVAnalysis]:
+    async def get_by_candidate_id(self, candidate_id: UUID) -> list[CVAnalysis]:
         """Retrieve all CV analyses for a candidate.
 
         Args:
@@ -54,7 +53,7 @@ class CVAnalysisRepositoryPort(ABC):
     async def get_latest_by_candidate_id(
         self,
         candidate_id: UUID,
-    ) -> Optional[CVAnalysis]:
+    ) -> CVAnalysis | None:
         """Retrieve the most recent CV analysis for a candidate.
 
         Args:

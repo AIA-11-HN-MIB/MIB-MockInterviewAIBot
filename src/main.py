@@ -5,13 +5,16 @@ This module sets up the FastAPI application with all routes and middleware.
 
 import logging
 from contextlib import asynccontextmanager
+from uuid import UUID
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
-from .infrastructure.config import get_settings
-from .infrastructure.database import init_db, close_db
 from .adapters.api.rest import health_routes
+from .adapters.api.rest.interview_routes import router as interview_router
+from .adapters.api.websocket.interview_handler import handle_interview_websocket
+from .infrastructure.config import get_settings
+from .infrastructure.database import close_db, init_db
 
 # Configure logging
 logging.basicConfig(
@@ -76,10 +79,21 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(health_routes.router, tags=["Health"])
+    app.include_router(
+        interview_router, prefix=settings.api_prefix, tags=["Interviews"]
+    )
+
+    # WebSocket endpoint for real-time interview
+    @app.websocket("/ws/interviews/{interview_id}")
+    async def websocket_endpoint(
+        websocket: WebSocket,
+        interview_id: UUID,
+    ):
+        """WebSocket endpoint for real-time interview communication."""
+        await handle_interview_websocket(websocket, interview_id)
 
     # TODO: Add more routers as they are implemented
     # app.include_router(cv_routes.router, prefix=settings.api_prefix, tags=["CV"])
-    # app.include_router(interview_routes.router, prefix=settings.api_prefix, tags=["Interviews"])
     # app.include_router(question_routes.router, prefix=settings.api_prefix, tags=["Questions"])
 
     return app

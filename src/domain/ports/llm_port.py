@@ -1,11 +1,11 @@
 """LLM (Large Language Model) port interface."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List
+from typing import Any
 from uuid import UUID
 
-from ..models.question import Question
 from ..models.answer import AnswerEvaluation
+from ..models.question import Question
 
 
 class LLMPort(ABC):
@@ -18,7 +18,7 @@ class LLMPort(ABC):
     @abstractmethod
     async def generate_question(
         self,
-        context: Dict[str, Any],
+        context: dict[str, Any],
         skill: str,
         difficulty: str,
     ) -> str:
@@ -39,7 +39,7 @@ class LLMPort(ABC):
         self,
         question: Question,
         answer_text: str,
-        context: Dict[str, Any],
+        context: dict[str, Any],
     ) -> AnswerEvaluation:
         """Evaluate a candidate's answer.
 
@@ -57,8 +57,8 @@ class LLMPort(ABC):
     async def generate_feedback_report(
         self,
         interview_id: UUID,
-        questions: List[Question],
-        answers: List[Dict[str, Any]],
+        questions: list[Question],
+        answers: list[dict[str, Any]],
     ) -> str:
         """Generate comprehensive feedback report.
 
@@ -85,7 +85,7 @@ class LLMPort(ABC):
         pass
 
     @abstractmethod
-    async def extract_skills_from_text(self, text: str) -> List[Dict[str, str]]:
+    async def extract_skills_from_text(self, text: str) -> list[dict[str, str]]:
         """Extract skills from CV text using NLP.
 
         Args:
@@ -93,5 +93,39 @@ class LLMPort(ABC):
 
         Returns:
             List of extracted skills with metadata
+        """
+        pass
+
+    @abstractmethod
+    async def generate_ideal_answer(
+        self,
+        question_text: str,
+        context: dict[str, Any],
+    ) -> str:
+        """Generate ideal answer for a question.
+
+        Args:
+            question_text: The interview question
+            context: CV summary, skills, etc.
+
+        Returns:
+            Ideal answer text (150-300 words)
+        """
+        pass
+
+    @abstractmethod
+    async def generate_rationale(
+        self,
+        question_text: str,
+        ideal_answer: str,
+    ) -> str:
+        """Generate rationale explaining why answer is ideal.
+
+        Args:
+            question_text: The question
+            ideal_answer: The ideal answer
+
+        Returns:
+            Rationale text (50-100 words)
         """
         pass

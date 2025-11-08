@@ -8,14 +8,48 @@ Claude Code hooks automate notifications and actions at specific points in your 
 
 | Hook | File | Type | Description |
 |------|------|------|-------------|
+| **Scout Block** | `scout-block.js` | Automated | Cross-platform hook blocking heavy directories (node_modules, .git, etc.) |
 | **Discord (Auto)** | `discord_notify.sh` | Automated | Auto-sends rich embeds on session/subagent completion |
 | **Discord (Manual)** | `send-discord.sh` | Manual | Sends custom messages to Discord channel |
 | **Telegram** | `telegram_notify.sh` | Automated | Auto-sends detailed notifications on session/subagent completion |
+
+### Cross-Platform Support
+
+**Scout Block Hook** now supports both Windows and Unix systems:
+- **Windows**: Uses PowerShell (`scout-block.ps1`)
+- **Linux/macOS/WSL**: Uses Bash (`scout-block.sh`)
+- **Automatic detection**: `scout-block.js` dispatcher selects the correct implementation
+
+No manual configuration needed - the Node.js dispatcher handles platform detection automatically.
 
 ## Quick Start
 
 ### Current Setup
 Check **[SETUP-SUMMARY.md](./SETUP-SUMMARY.md)** for current configuration and quick reference.
+
+### Scout Block Hook (Cross-Platform)
+Automatically blocks Claude Code from accessing heavy directories to improve performance.
+
+**Configuration:** Already enabled in `.claude/settings.json`
+
+**Blocked Patterns:**
+- `node_modules/` - NPM dependencies
+- `__pycache__/` - Python cache
+- `.git/` - Git internal files
+- `dist/` - Distribution builds
+- `build/` - Build artifacts
+
+**Testing:**
+```bash
+# Linux/macOS/WSL
+bash tests/test-scout-block.sh
+
+# Windows PowerShell
+pwsh tests/test-scout-block.ps1
+```
+
+**Requirements:**
+- Node.js >=18.0.0 (already required by project)
 
 ### Discord Hook (Automated)
 Automatic notifications on Claude Code session events with rich embeds.
@@ -201,14 +235,34 @@ See individual setup guides for detailed security recommendations.
 
 ## Troubleshooting
 
-### Common Issues
+### Scout Block Hook
+
+**"Node.js not found"**
+- Install Node.js >=18.0.0 from [nodejs.org](https://nodejs.org)
+- Verify installation: `node --version`
+
+**Hook not blocking directories**
+- Verify `.claude/settings.json` uses `node .claude/hooks/scout-block.js`
+- Test manually: `echo '{"tool_input":{"command":"ls node_modules"}}' | node .claude/hooks/scout-block.js`
+- Should exit with code 2 and error message
+
+**Windows PowerShell execution policy errors**
+- Run: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
+- Or use bypass flag (already included in dispatcher)
+
+**Testing the hook**
+- Linux/macOS/WSL: `bash tests/test-scout-block.sh`
+- Windows: `pwsh tests/test-scout-block.ps1`
+
+### Notification Hooks
 
 **"Environment variable not set"**
 - Verify `.env` file exists and is properly formatted
 - Reload shell after updating profile files (`source ~/.bashrc`)
 
-**"jq: command not found"** (Telegram only)
-- Install jq: `brew install jq` (macOS) or `apt-get install jq` (Linux)
+**"jq: command not found"** (Legacy - no longer needed)
+- All hooks now use Node.js for JSON parsing
+- No jq dependency required
 
 **No messages received**
 - Verify tokens/webhooks are valid
@@ -230,4 +284,4 @@ See individual setup guides for detailed security recommendations.
 
 ---
 
-**Last Updated:** 2025-10-22
+**Last Updated:** 2025-11-04

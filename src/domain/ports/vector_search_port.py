@@ -1,7 +1,7 @@
 """Vector search port interface."""
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import Any
 from uuid import UUID
 
 
@@ -16,8 +16,8 @@ class VectorSearchPort(ABC):
     async def store_question_embedding(
         self,
         question_id: UUID,
-        embedding: List[float],
-        metadata: Dict[str, Any],
+        embedding: list[float],
+        metadata: dict[str, Any],
     ) -> None:
         """Store a question's vector embedding.
 
@@ -32,8 +32,8 @@ class VectorSearchPort(ABC):
     async def store_cv_embedding(
         self,
         cv_analysis_id: UUID,
-        embedding: List[float],
-        metadata: Dict[str, Any],
+        embedding: list[float],
+        metadata: dict[str, Any],
     ) -> None:
         """Store a CV analysis vector embedding.
 
@@ -63,10 +63,10 @@ class VectorSearchPort(ABC):
     @abstractmethod
     async def find_similar_questions(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         """Find similar questions using semantic search.
 
         Args:
@@ -82,8 +82,8 @@ class VectorSearchPort(ABC):
     @abstractmethod
     async def find_similar_answers(
         self,
-        answer_embedding: List[float],
-        reference_embeddings: List[List[float]],
+        answer_embedding: list[float],
+        reference_embeddings: list[list[float]],
     ) -> float:
         """Calculate similarity between answer and reference answers.
 
@@ -100,7 +100,7 @@ class VectorSearchPort(ABC):
     async def get_embedding(
         self,
         text: str,
-    ) -> List[float]:
+    ) -> list[float]:
         """Generate embedding for text.
 
         Args:
@@ -114,7 +114,7 @@ class VectorSearchPort(ABC):
     @abstractmethod
     async def delete_embeddings(
         self,
-        ids: List[UUID],
+        ids: list[UUID],
     ) -> None:
         """Delete embeddings by IDs.
 

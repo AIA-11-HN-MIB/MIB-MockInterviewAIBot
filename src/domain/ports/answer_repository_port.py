@@ -1,7 +1,6 @@
 """Answer repository port interface."""
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
 from uuid import UUID
 
 from ..models.answer import Answer
@@ -27,7 +26,7 @@ class AnswerRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def get_by_id(self, answer_id: UUID) -> Optional[Answer]:
+    async def get_by_id(self, answer_id: UUID) -> Answer | None:
         """Retrieve an answer by ID.
 
         Args:
@@ -39,7 +38,7 @@ class AnswerRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def get_by_ids(self, answer_ids: List[UUID]) -> List[Answer]:
+    async def get_by_ids(self, answer_ids: list[UUID]) -> list[Answer]:
         """Retrieve multiple answers by IDs.
 
         Args:
@@ -51,7 +50,7 @@ class AnswerRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def get_by_interview_id(self, interview_id: UUID) -> List[Answer]:
+    async def get_by_interview_id(self, interview_id: UUID) -> list[Answer]:
         """Retrieve all answers for an interview.
 
         Args:
@@ -63,7 +62,7 @@ class AnswerRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def get_by_question_id(self, question_id: UUID) -> List[Answer]:
+    async def get_by_question_id(self, question_id: UUID) -> list[Answer]:
         """Retrieve all answers for a question.
 
         Args:
@@ -75,7 +74,7 @@ class AnswerRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def get_by_candidate_id(self, candidate_id: UUID) -> List[Answer]:
+    async def get_by_candidate_id(self, candidate_id: UUID) -> list[Answer]:
         """Retrieve all answers by a candidate.
 
         Args:

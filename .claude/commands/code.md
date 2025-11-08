@@ -36,6 +36,7 @@ Think harder to start working on the following plan follow the Orchestration Pro
 ### Analysis
 
 * Read every step of the plan, map dependencies, and list ambiguities.
+**IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.
 
 ### Implementation
 
@@ -43,12 +44,12 @@ Think harder to start working on the following plan follow the Orchestration Pro
 * Use `ui-ux-designer` subagent to implement the frontend part follow the design guidelines at `./docs/design-guidelines.md` file.
   * Use `gemini-image-gen` skill to generate image assets.
   * Use `gemini-vision` skill to analyze and verify generated assets.
-  * Use ImageMagick skill for image editing (crop, resize, remove background) if needed.
-* Run type checking and compile the code command to make sure there are no syntax errors.
+  * Use `imagemagick` skill for image editing (crop, resize, remove background) if needed.
+* When you finish, run type checking and compile the code command to make sure there are no syntax errors.
 
 ### Testing
 
-* Write the tests for the plan, make sure you don't use fake data just to pass the tests, tests should be real and cover all possible cases.
+* Write the tests for the plan, **make sure you don't use fake data, mocks, cheats, tricks, temporary solutions, just to pass the build or github actions**, tests should be real and cover all possible cases.
 * Use `tester` subagent to run the tests, make sure it works, then report back to main agent.
 * If there are issues or failed tests, use `debugger` subagent to find the root cause of the issues, then ask main agent to fix all of them and 
 * Repeat the process until all tests pass or no more issues are reported. Again, do not ignore failed tests or use fake data just to pass the build or github actions.
@@ -58,11 +59,19 @@ Think harder to start working on the following plan follow the Orchestration Pro
 * After finishing, delegate to `code-reviewer` subagent to review code. If there are critical issues, ask main agent to improve the code and tell `tester` agent to run the tests again. 
 * Repeat the "Testing" process until all tests pass.
 * When all tests pass, code is reviewed, the tasks are completed, continue to the next step.
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
-### Documentation
+### Project Management & Documentation
 
-* Use `docs-manager` subagent to update the docs in `./docs` directory if needed.
-* Use `project-manager` subagent to update the task status in the given plan and create/update a project roadmap at `./docs/project-roadmap.md` file.
+**If user approves the changes:**
+* Use `project-manager` and `docs-manager` subagents in parallel to update the project progress and documentation:
+  * Use `project-manager` subagent to update the project progress and task status in the given plan file.
+  * Use `docs-manager` subagent to update the docs in `./docs` directory if needed.
+  * Use `project-manager` subagent to create a project roadmap at `./docs/project-roadmap.md` file.
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
+
+**If user rejects the changes:**
+* Ask user to explain the issues and ask main agent to fix all of them and repeat the process.
 
 ### Onboarding
 

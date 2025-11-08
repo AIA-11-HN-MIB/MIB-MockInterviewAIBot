@@ -1,14 +1,14 @@
 """PostgreSQL implementation of CVAnalysisRepositoryPort."""
 
-from typing import List, Optional
 from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...domain.models.cv_analysis import CVAnalysis
 from ...domain.ports.cv_analysis_repository_port import CVAnalysisRepositoryPort
-from .models import CVAnalysisModel
 from .mappers import CVAnalysisMapper
+from .models import CVAnalysisModel
 
 
 class PostgreSQLCVAnalysisRepository(CVAnalysisRepositoryPort):
@@ -34,7 +34,7 @@ class PostgreSQLCVAnalysisRepository(CVAnalysisRepositoryPort):
         await self.session.refresh(db_model)
         return CVAnalysisMapper.to_domain(db_model)
 
-    async def get_by_id(self, cv_analysis_id: UUID) -> Optional[CVAnalysis]:
+    async def get_by_id(self, cv_analysis_id: UUID) -> CVAnalysis | None:
         """Retrieve a CV analysis by ID."""
         result = await self.session.execute(
             select(CVAnalysisModel).where(CVAnalysisModel.id == cv_analysis_id)
@@ -42,7 +42,7 @@ class PostgreSQLCVAnalysisRepository(CVAnalysisRepositoryPort):
         db_model = result.scalar_one_or_none()
         return CVAnalysisMapper.to_domain(db_model) if db_model else None
 
-    async def get_by_candidate_id(self, candidate_id: UUID) -> List[CVAnalysis]:
+    async def get_by_candidate_id(self, candidate_id: UUID) -> list[CVAnalysis]:
         """Retrieve all CV analyses for a candidate."""
         result = await self.session.execute(
             select(CVAnalysisModel)
@@ -55,7 +55,7 @@ class PostgreSQLCVAnalysisRepository(CVAnalysisRepositoryPort):
     async def get_latest_by_candidate_id(
         self,
         candidate_id: UUID,
-    ) -> Optional[CVAnalysis]:
+    ) -> CVAnalysis | None:
         """Retrieve the most recent CV analysis for a candidate."""
         result = await self.session.execute(
             select(CVAnalysisModel)

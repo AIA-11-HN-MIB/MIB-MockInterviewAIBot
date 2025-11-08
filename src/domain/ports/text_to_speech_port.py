@@ -1,7 +1,6 @@
 """Text-to-Speech port interface."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 
 class TextToSpeechPort(ABC):
@@ -16,7 +15,7 @@ class TextToSpeechPort(ABC):
         self,
         text: str,
         language: str = "en-US",
-        voice: Optional[str] = None,
+        voice: str | None = None,
     ) -> bytes:
         """Convert text to speech audio.
 
@@ -36,7 +35,7 @@ class TextToSpeechPort(ABC):
         text: str,
         output_path: str,
         language: str = "en-US",
-        voice: Optional[str] = None,
+        voice: str | None = None,
     ) -> str:
         """Convert text to speech and save to file.
 
@@ -54,7 +53,7 @@ class TextToSpeechPort(ABC):
     @abstractmethod
     async def list_available_voices(
         self,
-        language: Optional[str] = None,
+        language: str | None = None,
     ) -> list[dict]:
         """List available voices.
 

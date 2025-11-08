@@ -1,10 +1,9 @@
 """Question repository port interface."""
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
 from uuid import UUID
 
-from ..models.question import Question, QuestionType, DifficultyLevel
+from ..models.question import DifficultyLevel, Question, QuestionType
 
 
 class QuestionRepositoryPort(ABC):
@@ -27,7 +26,7 @@ class QuestionRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def get_by_id(self, question_id: UUID) -> Optional[Question]:
+    async def get_by_id(self, question_id: UUID) -> Question | None:
         """Retrieve a question by ID.
 
         Args:
@@ -39,7 +38,7 @@ class QuestionRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def get_by_ids(self, question_ids: List[UUID]) -> List[Question]:
+    async def get_by_ids(self, question_ids: list[UUID]) -> list[Question]:
         """Retrieve multiple questions by IDs.
 
         Args:
@@ -54,9 +53,9 @@ class QuestionRepositoryPort(ABC):
     async def find_by_skill(
         self,
         skill: str,
-        difficulty: Optional[DifficultyLevel] = None,
+        difficulty: DifficultyLevel | None = None,
         limit: int = 10,
-    ) -> List[Question]:
+    ) -> list[Question]:
         """Find questions by skill.
 
         Args:
@@ -73,9 +72,9 @@ class QuestionRepositoryPort(ABC):
     async def find_by_type(
         self,
         question_type: QuestionType,
-        difficulty: Optional[DifficultyLevel] = None,
+        difficulty: DifficultyLevel | None = None,
         limit: int = 10,
-    ) -> List[Question]:
+    ) -> list[Question]:
         """Find questions by type.
 
         Args:
@@ -91,10 +90,10 @@ class QuestionRepositoryPort(ABC):
     @abstractmethod
     async def find_by_tags(
         self,
-        tags: List[str],
+        tags: list[str],
         match_all: bool = False,
         limit: int = 10,
-    ) -> List[Question]:
+    ) -> list[Question]:
         """Find questions by tags.
 
         Args:
@@ -136,7 +135,7 @@ class QuestionRepositoryPort(ABC):
         self,
         skip: int = 0,
         limit: int = 100,
-    ) -> List[Question]:
+    ) -> list[Question]:
         """List all questions with pagination.
 
         Args:

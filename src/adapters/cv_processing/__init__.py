@@ -1,1 +1,2 @@
-"""Adapters package."""
+
+"""CV processing adapters package."""

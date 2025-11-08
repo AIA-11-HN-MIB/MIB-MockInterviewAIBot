@@ -1,6 +1,6 @@
 # System Architecture
 
-**Last Updated**: 2025-10-31
+**Last Updated**: 2025-11-02
 **Version**: 0.1.0
 **Project**: Elios AI Interview Service
 **Repository**: https://github.com/elios/elios-ai-service
@@ -49,36 +49,36 @@ Elios AI Interview Service implements **Clean Architecture** (also known as Hexa
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│                         Users / Clients                         │
-│                  (Web, Mobile, API Consumers)                   │
+│                         Users / Clients                        │
+│                  (Web, Mobile, API Consumers)                  │
 └────────────────────────┬───────────────────────────────────────┘
                          │
                          ↓
 ┌────────────────────────────────────────────────────────────────┐
-│                      API Layer (FastAPI)                        │
-│              REST Endpoints + WebSocket Handlers                │
-│                    (src/adapters/api/)                          │
+│                      API Layer (FastAPI)                       │
+│              REST Endpoints + WebSocket Handlers               │
+│                    (src/adapters/api/)                         │
 └────────────────────────┬───────────────────────────────────────┘
                          │
                          ↓
 ┌────────────────────────────────────────────────────────────────┐
-│                    Application Layer                            │
+│                    Application Layer                           │
 │           Use Cases (Business Flow Orchestration)              │
-│                 (src/application/use_cases/)                    │
+│                 (src/application/use_cases/)                   │
 └────────────────────────┬───────────────────────────────────────┘
                          │
                          ↓
 ┌────────────────────────────────────────────────────────────────┐
-│                     Domain Layer                                │
+│                     Domain Layer                               │
 │          Pure Business Logic (Models + Services + Ports)       │
-│                    (src/domain/)                                │
+│                    (src/domain/)                               │
 └────────────────────────┬───────────────────────────────────────┘
                          │
                          ↓
 ┌────────────────────────────────────────────────────────────────┐
-│                    Adapters Layer                               │
+│                    Adapters Layer                              │
 │         External Service Implementations (Ports → Adapters)    │
-│                   (src/adapters/)                               │
+│                   (src/adapters/)                              │
 │  ┌──────────────┬──────────────┬──────────────┬──────────────┐ │
 │  │   LLM        │  Vector DB   │  Database    │  Speech      │ │
 │  │  (OpenAI)    │  (Pinecone)  │ (PostgreSQL) │  (Azure)     │ │
@@ -87,9 +87,9 @@ Elios AI Interview Service implements **Clean Architecture** (also known as Hexa
                          │
                          ↓
 ┌────────────────────────────────────────────────────────────────┐
-│                  Infrastructure Layer                           │
+│                  Infrastructure Layer                          │
 │       Config, Database Setup, DI Container, Logging            │
-│                 (src/infrastructure/)                           │
+│                 (src/infrastructure/)                          │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -101,23 +101,23 @@ Elios AI Interview Service implements **Clean Architecture** (also known as Hexa
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  Infrastructure                          │
+│                     Infrastructure                      │
 │  ┌───────────────────────────────────────────────────┐  │
-│  │                Adapters                            │  │
+│  │                     Adapters                      │  │
 │  │  ┌─────────────────────────────────────────────┐  │  │
-│  │  │          Application                         │  │  │
+│  │  │                 Application                 │  │  │
 │  │  │  ┌───────────────────────────────────────┐  │  │  │
-│  │  │  │         Domain                        │  │  │  │
-│  │  │  │  • Models (Entities)                 │  │  │  │
-│  │  │  │  • Business Rules                    │  │  │  │
-│  │  │  │  • Ports (Interfaces)                │  │  │  │
-│  │  │  │  • NO external dependencies          │  │  │  │
+│  │  │  │                Domain                 │  │  │  │
+│  │  │  │  • Models (Entities)                  │  │  │  │
+│  │  │  │  • Business Rules                     │  │  │  │
+│  │  │  │  • Ports (Interfaces)                 │  │  │  │
+│  │  │  │  • NO external dependencies           │  │  │  │
 │  │  │  └───────────────────────────────────────┘  │  │  │
-│  │  │       Use Cases (Orchestration)              │  │  │
+│  │  │          Use Cases (Orchestration)          │  │  │
 │  │  └─────────────────────────────────────────────┘  │  │
-│  │     Implementations (LLM, DB, API, Vector)        │  │
+│  │      Implementations (LLM, DB, API, Vector)       │  │
 │  └───────────────────────────────────────────────────┘  │
-│        Config, DI Container, Database Setup             │
+│          Config, DI Container, Database Setup           │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -622,7 +622,7 @@ def get_container() -> Container:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Client Request                            │
-│                  POST /api/v1/cv/upload                          │
+│                  POST /api/cv/upload                          │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ↓
@@ -705,7 +705,7 @@ def get_container() -> Container:
 
 ```
 1. User Uploads CV
-   ├─→ POST /api/v1/cv/upload
+   ├─→ POST /api/cv/upload
    │   ├─ file: CV document (PDF/DOC)
    │   └─ candidate_id: UUID
 
@@ -733,7 +733,7 @@ def get_container() -> Container:
    └─ Status 201 Created
 
 5. Start Interview Flow (separate request)
-   ├─→ POST /api/v1/interviews
+   ├─→ POST /api/interviews
    │   ├─ candidate_id: UUID
    │   └─ cv_analysis_id: UUID
    │
@@ -752,7 +752,7 @@ def get_container() -> Container:
 
 ```
 1. Candidate Submits Answer
-   ├─→ POST /api/v1/interviews/{id}/answers
+   ├─→ POST /api/interviews/{id}/answers
    │   ├─ question_id: UUID
    │   └─ answer_text: string
 
@@ -1058,88 +1058,126 @@ create_async_engine(
 
 ### REST API Design
 
-**Base URL**: `/api/v1`
+**Base URL**: `/api`
 
 **Endpoints**:
 
 ```
 # Health
-GET  /health                           # Health check
+GET  /health                                      # Health check ✅
 
+# Interviews ✅
+POST   /api/interviews                            # Create interview session ✅
+GET    /api/interviews/{id}                       # Get interview details ✅
+PUT    /api/interviews/{id}/start                 # Start interview ✅
+GET    /api/interviews/{id}/questions/current     # Get current question ✅
+
+# Planned
 # Candidates
-POST   /api/v1/candidates              # Create candidate
-GET    /api/v1/candidates/{id}         # Get candidate
-PUT    /api/v1/candidates/{id}         # Update candidate
-DELETE /api/v1/candidates/{id}         # Delete candidate
+POST   /api/candidates                            # Create candidate ⏳
+GET    /api/candidates/{id}                       # Get candidate ⏳
+PUT    /api/candidates/{id}                       # Update candidate ⏳
+DELETE /api/candidates/{id}                       # Delete candidate ⏳
 
 # CV Analysis
-POST /api/v1/cv/upload                 # Upload and analyze CV
-GET  /api/v1/cv/{id}                   # Get CV analysis
-
-# Interviews
-POST   /api/v1/interviews              # Create interview
-GET    /api/v1/interviews/{id}         # Get interview
-PUT    /api/v1/interviews/{id}/start   # Start interview
-PUT    /api/v1/interviews/{id}/complete # Complete interview
-GET    /api/v1/interviews/{id}/questions/{index} # Get question
+POST /api/cv/upload                               # Upload and analyze CV ⏳
+GET  /api/cv/{id}                                 # Get CV analysis ⏳
 
 # Answers
-POST /api/v1/interviews/{id}/answers   # Submit answer
-GET  /api/v1/interviews/{id}/answers   # Get all answers
+POST /api/interviews/{id}/answers                 # Submit answer ⏳
+GET  /api/interviews/{id}/answers                 # Get all answers ⏳
 
 # Questions (Admin)
-POST   /api/v1/questions               # Create question
-GET    /api/v1/questions               # List questions
-GET    /api/v1/questions/{id}          # Get question
-PUT    /api/v1/questions/{id}          # Update question
-DELETE /api/v1/questions/{id}          # Delete question
+POST   /api/questions                             # Create question ⏳
+GET    /api/questions                             # List questions ⏳
+GET    /api/questions/{id}                        # Get question ⏳
+PUT    /api/questions/{id}                        # Update question ⏳
+DELETE /api/questions/{id}                        # Delete question ⏳
 
 # Feedback
-GET /api/v1/interviews/{id}/feedback   # Get comprehensive feedback
+GET /api/interviews/{id}/feedback                 # Get comprehensive feedback ⏳
 ```
 
-### WebSocket API (Planned)
+### WebSocket API ✅
 
 **Endpoint**: `/ws/interviews/{interview_id}`
 
 **Protocol**:
+
 ```json
-// Client → Server: Submit answer
+// Client → Server: Submit text answer
 {
-  "type": "answer",
+  "type": "text_answer",
   "question_id": "uuid",
   "answer_text": "string"
+}
+
+// Client → Server: Submit audio chunk
+{
+  "type": "audio_chunk",
+  "audio_data": "base64_encoded_audio",
+  "is_final": false
+}
+
+// Client → Server: Request next question
+{
+  "type": "get_next_question"
+}
+
+// Server → Client: Send question with audio
+{
+  "type": "question",
+  "question_id": "uuid",
+  "text": "What is...?",
+  "question_type": "technical",
+  "difficulty": "medium",
+  "index": 0,
+  "total": 5,
+  "audio_data": "base64_encoded_tts_audio"
 }
 
 // Server → Client: Answer evaluation
 {
   "type": "evaluation",
   "answer_id": "uuid",
-  "evaluation": {
-    "score": 85.5,
-    "feedback": "Good answer...",
-    "strengths": ["..."],
-    "weaknesses": ["..."]
-  }
-}
-
-// Server → Client: Next question
-{
-  "type": "question",
-  "question_id": "uuid",
-  "text": "What is...?",
-  "question_type": "technical",
-  "difficulty": "medium"
+  "score": 85.5,
+  "feedback": "Good answer...",
+  "strengths": ["Clear explanation", "Good examples"],
+  "weaknesses": ["Missing edge cases"]
 }
 
 // Server → Client: Interview complete
 {
-  "type": "complete",
+  "type": "interview_complete",
   "interview_id": "uuid",
   "overall_score": 78.5,
-  "feedback_url": "/api/v1/interviews/{id}/feedback"
+  "total_questions": 5,
+  "feedback_url": "/api/interviews/{id}/feedback"
+}
+
+// Server → Client: Error
+{
+  "type": "error",
+  "code": "INTERVIEW_NOT_FOUND",
+  "message": "Interview {id} not found"
+}
+
+// Server → Client: Audio transcription (STT)
+{
+  "type": "transcription",
+  "text": "Transcribed text...",
+  "is_final": true
 }
 ```
+
+**Features**:
+- Real-time bi-directional communication
+- Automatic question delivery with TTS audio
+- Answer evaluation and immediate feedback
+- Progress tracking (current/total questions)
+- Error handling with descriptive codes
+- Support for both text and voice answers
+- Connection management via ConnectionManager
 
 ## Security Architecture
 

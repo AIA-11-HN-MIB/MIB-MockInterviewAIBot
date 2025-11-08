@@ -1,14 +1,14 @@
 """OpenAI LLM adapter implementation."""
 
 import json
-from typing import Dict, Any, List
+from typing import Any
 from uuid import UUID
 
 from openai import AsyncOpenAI
 
-from ...domain.ports.llm_port import LLMPort
-from ...domain.models.question import Question
 from ...domain.models.answer import AnswerEvaluation
+from ...domain.models.question import Question
+from ...domain.ports.llm_port import LLMPort
 
 
 class OpenAIAdapter(LLMPort):
@@ -37,7 +37,7 @@ class OpenAIAdapter(LLMPort):
 
     async def generate_question(
         self,
-        context: Dict[str, Any],
+        context: dict[str, Any],
         skill: str,
         difficulty: str,
     ) -> str:
@@ -74,13 +74,14 @@ class OpenAIAdapter(LLMPort):
             temperature=self.temperature,
         )
 
-        return response.choices[0].message.content.strip()
+        content = response.choices[0].message.content
+        return content.strip() if content else ""
 
     async def evaluate_answer(
         self,
         question: Question,
         answer_text: str,
-        context: Dict[str, Any],
+        context: dict[str, Any],
     ) -> AnswerEvaluation:
         """Evaluate an answer using OpenAI.
 
@@ -128,7 +129,8 @@ class OpenAIAdapter(LLMPort):
             response_format={"type": "json_object"},
         )
 
-        result = json.loads(response.choices[0].message.content)
+        content = response.choices[0].message.content or "{}"
+        result = json.loads(content)
 
         return AnswerEvaluation(
             score=float(result.get("score", 0)),
@@ -145,8 +147,8 @@ class OpenAIAdapter(LLMPort):
     async def generate_feedback_report(
         self,
         interview_id: UUID,
-        questions: List[Question],
-        answers: List[Dict[str, Any]],
+        questions: list[Question],
+        answers: list[dict[str, Any]],
     ) -> str:
         """Generate comprehensive feedback report.
 
@@ -195,7 +197,8 @@ class OpenAIAdapter(LLMPort):
             temperature=0.7,
         )
 
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        return content or ""
 
     async def summarize_cv(self, cv_text: str) -> str:
         """Generate a summary of a CV.
@@ -228,9 +231,10 @@ class OpenAIAdapter(LLMPort):
             temperature=0.5,
         )
 
-        return response.choices[0].message.content.strip()
+        content = response.choices[0].message.content
+        return content.strip() if content else ""
 
-    async def extract_skills_from_text(self, text: str) -> List[Dict[str, str]]:
+    async def extract_skills_from_text(self, text: str) -> list[dict[str, str]]:
         """Extract skills from CV text using OpenAI.
 
         Args:
@@ -264,5 +268,103 @@ class OpenAIAdapter(LLMPort):
             response_format={"type": "json_object"},
         )
 
-        result = json.loads(response.choices[0].message.content)
-        return result.get("skills", [])
+        content = response.choices[0].message.content or "{}"
+        result = json.loads(content)
+        skills: list[dict[str, str]] = result.get("skills", [])
+        return skills
+
+    async def generate_ideal_answer(
+        self,
+        question_text: str,
+        context: dict[str, Any],
+    ) -> str:
+        """Generate ideal answer for a question.
+
+        Args:
+            question_text: The interview question
+            context: CV summary, skills, etc.
+
+        Returns:
+            Ideal answer text (150-300 words)
+
+        Raises:
+            Exception: If generation fails
+        """
+        system_prompt = """You are an expert technical interviewer creating reference answers.
+        Generate comprehensive, technically accurate ideal answers."""
+
+        user_prompt = f"""
+        Question: {question_text}
+
+        Candidate Background:
+        - Summary: {context.get('summary', 'Not provided')}
+        - Key Skills: {', '.join(context.get('skills', [])[:5])}
+        - Experience: {context.get('experience', 'Not specified')} years
+
+        Generate an ideal answer for this interview question. The answer should:
+        - Be 150-300 words
+        - Demonstrate expert-level understanding
+        - Cover key concepts comprehensively
+        - Include practical examples if relevant
+        - Be technically accurate
+
+        Output only the ideal answer text.
+        """
+
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.3,  # Low for consistency
+            max_tokens=500,
+        )
+
+        content = response.choices[0].message.content
+        return content.strip() if content else ""
+
+    async def generate_rationale(
+        self,
+        question_text: str,
+        ideal_answer: str,
+    ) -> str:
+        """Generate rationale explaining why answer is ideal.
+
+        Args:
+            question_text: The question
+            ideal_answer: The ideal answer
+
+        Returns:
+            Rationale text (50-100 words)
+
+        Raises:
+            Exception: If generation fails
+        """
+        system_prompt = """You are an expert technical interviewer explaining evaluation criteria.
+        Explain why an answer demonstrates mastery."""
+
+        user_prompt = f"""
+        Question: {question_text}
+        Ideal Answer: {ideal_answer}
+
+        Explain WHY this is an ideal answer in 50-100 words. Focus on:
+        - What key concepts are covered
+        - Why this demonstrates mastery
+        - What would be missing in a weaker answer
+
+        Output only the rationale text.
+        """
+
+        response = await self.client.chat.completions.create(
+            model="gpt-3.5-turbo",  # Cheaper model for rationale
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.3,
+            max_tokens=200,
+        )
+
+        content = response.choices[0].message.content
+        return content.strip() if content else ""
