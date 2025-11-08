@@ -2,15 +2,16 @@ import spacy
 import os
 import json
 import pdfplumber
-import langdetect
+from langchain_openai import OpenAIEmbeddings
 import re
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
-from typing import Dict, Any
+from typing import Dict, Any, List
 from datetime import datetime, timezone
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from ...domain.ports.cv_analyzer_port import CVProcessingPort
 from ...domain.models.cv_analysis import CVAnalysis
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from ...domain.ports.vector_search_port import VectorSearchPort
 
 _nlp_models = {}
 
@@ -20,6 +21,8 @@ load_dotenv()
 
 openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+embeddings_client = OpenAIEmbeddings(model="text-embedding-3-small", api_key=os.getenv("TEXT_EMBEDDING_API_KEY"))
+
 def get_nlp_model(lang: str):
     if lang not in _nlp_models:
         try:
@@ -27,8 +30,6 @@ def get_nlp_model(lang: str):
         except:
             _nlp_models[lang] = spacy.load("en_core_web_sm")
         return _nlp_models[lang]
-
-
 
 def load_skill_patterns() -> Dict:
     path = os.path.join(os.path.dirname(__file__), "skill_patterns.json")
@@ -56,6 +57,44 @@ def clean_json_string(s: str) -> str:
         return "{}"
     return s[start:end]
 
+class CVEmbeddingPreprocessor:
+    @staticmethod
+    def create_metadata_from_summary(self, summary: str, difficulty: str) -> Dict[str, Any]:
+        summarized_info = summary
+        candidate_name = json.loads(summary).get("candidate_name", "N/A")
+        skills = json.loads(summary).get("skills", [])
+        experience_years = json.loads(summary).get("experience", 0)
+        education_level = json.loads(summary).get("education_level", "N/A")
+        savetime = datetime.now().isoformat()
+
+        metadata = {
+            "candidate_name": candidate_name,
+            "summary": summarized_info,
+            "skills": skills,
+            "experience_years": experience_years,
+            "education_level": education_level,
+            "difficulty": difficulty,
+            "saved_at": savetime
+        }
+        return metadata
+
+    @staticmethod
+    def create_embedding_info_from_summary(self, summary: str, difficulty: str) -> List[float]:
+        text = f"""
+            Candidate Name: {json.loads(summary).get("candidate_name", "N/A")}
+            Candidate Summary: {summary}
+            Skills: {', '.join(json.loads(summary).get("skills", []))}
+            Experience: {json.loads(summary).get("experience", 0)} years
+            Education Level: {json.loads(summary).get("education_level", "N/A")}
+            Difficulty: {difficulty}
+        """.strip()
+        try:
+            embedding = embeddings_client.embed_query(text)
+        except Exception as e:
+            print(f"Error generating embedding: {e}")
+            embedding = []
+        return embedding
+
 class CVProcessingAdapter(CVProcessingPort):
     
     def __init__(
@@ -63,11 +102,14 @@ class CVProcessingAdapter(CVProcessingPort):
             api_key:str,
             openai_api_key:str,
             embedding_model:str="text-embedding-3-small",
-            model:str="gpt-4o-mini",):
+            model:str="gpt-4o-mini",
+            vector_db: VectorSearchPort = None):
         self.api_key = api_key
         self.openai_api_key = openai_api_key
-        self.embedding_model = embedding_model 
+        self.embedding_model = embedding_model
+        self.preprocessing = CVEmbeddingPreprocessor()
         self.model = model
+        self.vector_db = vector_db
 
     SKILL_PATTERNS = load_skill_patterns()
     
@@ -93,7 +135,7 @@ class CVProcessingAdapter(CVProcessingPort):
             - Education (if mentioned)
 
             Keep under 200 words. Be concise and professional. 
-            Response in JSON format with keys: "summary", "job level/rank", "experience (total worked year (form start to {date}))", "skills", "education_level".
+            Response in JSON format with keys: "candidate_name" "summary", "job_level", "experience (total worked year (form start to {date}))", "skills", "education_level".
             """
 
         try:
@@ -110,7 +152,7 @@ class CVProcessingAdapter(CVProcessingPort):
     def generate_interview_topics(self, skills: list[str], job_rank: str, experience_years: int) -> list[str]:
         topics = set()
         system_prompt = f"""
-            As a techincal interview bot, generate interview at least 6 topics based on candidate skills and experience.
+            As a techincal interviewer, generate at least 6 interview topics based on candidate skills and experience.
             Skills: {', '.join(skills)}
             Job Rank: {job_rank}
             Years of Experience: {experience_years}
@@ -159,16 +201,26 @@ class CVProcessingAdapter(CVProcessingPort):
             return "medium"
         else:
             return "beginner"
+        
+    
 
     async def analyze_cv(self, cv_file_path: str, candidate_id: str) -> CVAnalysis:
         cv_text = self.read_cv(cv_file_path)
-        extracted = self.generate_cv_info_from_text(cv_text)
-        job_rank = json.loads(extracted).get("job level/rank", "N/A")
-        skills = json.loads(extracted).get("skills", [])
-        experience_years = json.loads(extracted).get("experience")
-        education_level = json.loads(extracted).get("education_level", "N/A")
+        summary_info = self.generate_cv_info_from_text(cv_text)
+        job_rank = json.loads(summary_info).get("job_level", "N/A")
+        skills = json.loads(summary_info).get("skills", [])
+        experience_years = json.loads(summary_info).get("experience")
+        education_level = json.loads(summary_info).get("education_level", "N/A")
         suggested_topics = self.generate_interview_topics(skills, job_rank, experience_years)
         suggested_difficulty = self.generate_interview_difficulty(experience_years)
+        metadata = self.preprocessing.create_metadata_from_summary(summary=summary_info, difficulty=suggested_difficulty)
+        embedding = self.preprocessing.create_embedding_info_from_summary(summary=summary_info, difficulty=suggested_difficulty)
+
+        await self.vector_db.store_cv_embedding(
+            cv_analysis_id=candidate_id,
+            embedding=embedding,
+            metadatas=metadata
+        )
 
         return CVAnalysis(
             candidate_id=candidate_id,
@@ -179,9 +231,9 @@ class CVProcessingAdapter(CVProcessingPort):
             education_level=education_level,
             suggested_topics=suggested_topics,
             suggested_difficulty=suggested_difficulty,
-            embedding=None,
-            summary=extracted["summary"],
-            metadata="",
-            created_at=None   
+            embedding=embedding,
+            summary=summary_info["summary"],
+            metadata=metadata,
+            created_at=datetime.now().isoformat()   
         )
     
