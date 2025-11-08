@@ -40,7 +40,7 @@ class InterviewResponse(BaseModel):
         return InterviewResponse(
             id=interview.id,
             candidate_id=interview.candidate_id,
-            status=interview.status,
+            status=interview.status.value,
             cv_analysis_id=interview.cv_analysis_id,
             question_count=len(interview.question_ids),
             current_question_index=interview.current_question_index,

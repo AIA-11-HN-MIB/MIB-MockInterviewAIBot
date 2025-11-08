@@ -45,7 +45,6 @@ class Interview(BaseModel):
     class Config:
         """Pydantic configuration."""
 
-        use_enum_values = True
         frozen = False
 
     def start(self) -> None:

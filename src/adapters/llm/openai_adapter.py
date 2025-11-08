@@ -104,7 +104,7 @@ class OpenAIAdapter(LLMPort):
 
         Candidate's Answer: {answer_text}
 
-        {"Reference Answer: " + question.reference_answer if question.reference_answer else ""}
+        {"Ideal Answer: " + question.ideal_answer if question.ideal_answer else ""}
 
         Evaluate this answer and provide:
         1. Overall score (0-100)
@@ -368,3 +368,111 @@ class OpenAIAdapter(LLMPort):
 
         content = response.choices[0].message.content
         return content.strip() if content else ""
+
+    async def detect_concept_gaps(
+        self,
+        answer_text: str,
+        ideal_answer: str,
+        question_text: str,
+        keyword_gaps: list[str],
+    ) -> dict[str, Any]:
+        """Detect concept gaps using OpenAI with JSON mode.
+
+        Args:
+            answer_text: Candidate's answer
+            ideal_answer: Reference ideal answer
+            question_text: The question that was asked
+            keyword_gaps: Potential missing keywords from keyword analysis
+
+        Returns:
+            Dict with concept gap analysis
+        """
+        prompt = f"""
+Question: {question_text}
+Ideal Answer: {ideal_answer}
+Candidate Answer: {answer_text}
+Potential missing keywords: {', '.join(keyword_gaps[:10])}
+
+Analyze and identify:
+1. Key concepts in ideal answer missing from candidate answer
+2. Whether missing keywords represent real conceptual gaps
+
+Return as JSON:
+- "concepts": list of missing concepts
+- "confirmed": boolean
+- "severity": "minor" | "moderate" | "major"
+"""
+
+        system_prompt = """You are an expert technical interviewer analyzing completeness.
+Identify real conceptual gaps, not just missing synonyms."""
+
+        response = await self.client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            response_format={"type": "json_object"},
+        )
+
+        content = response.choices[0].message.content or "{}"
+        result = json.loads(content)
+
+        return {
+            "concepts": result.get("concepts", []),
+            "keywords": keyword_gaps[:5],
+            "confirmed": result.get("confirmed", False),
+            "severity": result.get("severity", "minor"),
+        }
+
+    async def generate_followup_question(
+        self,
+        parent_question: str,
+        answer_text: str,
+        missing_concepts: list[str],
+        severity: str,
+        order: int,
+    ) -> str:
+        """Generate follow-up question using OpenAI.
+
+        Args:
+            parent_question: Original question text
+            answer_text: Candidate's answer to parent question
+            missing_concepts: List of concepts missing from answer
+            severity: Gap severity
+            order: Follow-up order in sequence
+
+        Returns:
+            Follow-up question text
+        """
+        prompt = f"""
+Original Question: {parent_question}
+Candidate's Answer: {answer_text}
+Missing Concepts: {', '.join(missing_concepts)}
+Gap Severity: {severity}
+
+Generate focused follow-up question addressing missing concepts.
+The question should:
+- Be specific and concise
+- Help candidate demonstrate understanding of: {', '.join(missing_concepts[:2])}
+- Be appropriate for follow-up #{order}
+
+Return only the question text.
+"""
+
+        system_prompt = """You are an expert technical interviewer generating follow-ups.
+Ask questions that probe specific missing concepts."""
+
+        response = await self.client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.4,
+            max_tokens=150,
+        )
+
+        content = response.choices[0].message.content
+        return content.strip() if content else "Can you elaborate on that?"

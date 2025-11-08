@@ -271,18 +271,18 @@ class ProcessAnswerAdaptiveUseCase:
             "those",
         }
 
-        # Extract words from ideal answer
+        # Extract words from ideal answer (strip punctuation)
         ideal_words = {
-            word.lower()
+            word.lower().strip('.,!?;:"\'-')
             for word in ideal_answer.split()
-            if len(word) > 3 and word.lower() not in stop_words
+            if len(word.strip('.,!?;:"\'-')) > 3 and word.lower().strip('.,!?;:"\'-') not in stop_words
         }
 
-        # Extract words from candidate answer
+        # Extract words from candidate answer (strip punctuation)
         answer_words = {
-            word.lower()
+            word.lower().strip('.,!?;:"\'-')
             for word in answer_text.split()
-            if len(word) > 3 and word.lower() not in stop_words
+            if len(word.strip('.,!?;:"\'-')) > 3 and word.lower().strip('.,!?;:"\'-') not in stop_words
         }
 
         # Find missing keywords (in ideal but not in answer)
@@ -309,49 +309,13 @@ class ProcessAnswerAdaptiveUseCase:
         Returns:
             Refined gaps dict with concepts and confirmation
         """
-        prompt = f"""
-        Question: {question_text}
-
-        Ideal Answer: {ideal_answer}
-
-        Candidate Answer: {answer_text}
-
-        Potential missing keywords: {', '.join(keyword_gaps[:10])}
-
-        Analyze the candidate's answer and identify:
-        1. Key concepts present in the ideal answer but missing in the candidate's answer
-        2. Whether the missing keywords represent real conceptual gaps
-
-        Return as JSON with keys:
-        - "concepts": list of missing concepts (e.g., ["recursion", "base case"])
-        - "confirmed": boolean (true if real gaps exist)
-        - "severity": "minor" | "moderate" | "major"
-        """
-
-        system_prompt = """You are an expert technical interviewer analyzing answer completeness.
-        Identify real conceptual gaps, not just missing synonyms."""
-
-        response = await self.llm.client.chat.completions.create(  # type: ignore
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.3,
-            response_format={"type": "json_object"},
+        # Use port method instead of direct client access
+        return await self.llm.detect_concept_gaps(
+            answer_text=answer_text,
+            ideal_answer=ideal_answer,
+            question_text=question_text,
+            keyword_gaps=keyword_gaps,
         )
-
-        import json
-
-        content = response.choices[0].message.content or "{}"
-        result = json.loads(content)
-
-        return {
-            "concepts": result.get("concepts", []),
-            "keywords": keyword_gaps[:5],  # Keep top 5 keywords for reference
-            "confirmed": result.get("confirmed", False),
-            "severity": result.get("severity", "minor"),
-        }
 
     def _should_generate_followup(self, answer: Answer, follow_up_count: int) -> bool:
         """Decide if follow-up question should be generated.
@@ -409,38 +373,14 @@ class ProcessAnswerAdaptiveUseCase:
         missing_concepts = gaps.get("concepts", [])
         severity = gaps.get("severity", "moderate")
 
-        prompt = f"""
-        Original Question: {parent_question.text}
-
-        Candidate's Answer: {answer.text}
-
-        Missing Concepts: {', '.join(missing_concepts)}
-        Gap Severity: {severity}
-
-        Generate a focused follow-up question to address the missing concepts.
-        The question should:
-        - Be specific and concise
-        - Help the candidate demonstrate understanding of: {', '.join(missing_concepts[:2])}
-        - Be appropriate for follow-up #{order}
-
-        Return only the follow-up question text.
-        """
-
-        system_prompt = """You are an expert technical interviewer generating targeted follow-up questions.
-        Ask questions that probe specific missing concepts."""
-
-        response = await self.llm.client.chat.completions.create(  # type: ignore
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.4,
-            max_tokens=150,
+        # Use port method instead of direct client access
+        follow_up_text = await self.llm.generate_followup_question(
+            parent_question=parent_question.text,
+            answer_text=answer.text,
+            missing_concepts=missing_concepts,
+            severity=severity,
+            order=order,
         )
-
-        content = response.choices[0].message.content or "Can you elaborate on that?"
-        follow_up_text = content.strip()
 
         # Create FollowUpQuestion entity
         follow_up = FollowUpQuestion(

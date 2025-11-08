@@ -129,3 +129,51 @@ class LLMPort(ABC):
             Rationale text (50-100 words)
         """
         pass
+
+    @abstractmethod
+    async def detect_concept_gaps(
+        self,
+        answer_text: str,
+        ideal_answer: str,
+        question_text: str,
+        keyword_gaps: list[str],
+    ) -> dict[str, Any]:
+        """Detect missing concepts in answer using LLM.
+
+        Args:
+            answer_text: Candidate's answer
+            ideal_answer: Reference ideal answer
+            question_text: The question that was asked
+            keyword_gaps: Potential missing keywords from keyword analysis
+
+        Returns:
+            Dict with keys:
+                - concepts: list[str] - Missing key concepts
+                - keywords: list[str] - Subset of confirmed missing keywords
+                - confirmed: bool - Whether gaps are confirmed
+                - severity: str - "minor" | "moderate" | "major"
+        """
+        pass
+
+    @abstractmethod
+    async def generate_followup_question(
+        self,
+        parent_question: str,
+        answer_text: str,
+        missing_concepts: list[str],
+        severity: str,
+        order: int,
+    ) -> str:
+        """Generate targeted follow-up question.
+
+        Args:
+            parent_question: Original question text
+            answer_text: Candidate's answer to parent question
+            missing_concepts: List of concepts missing from answer
+            severity: Gap severity ("minor" | "moderate" | "major")
+            order: Follow-up order in sequence (1, 2, 3, ...)
+
+        Returns:
+            Follow-up question text
+        """
+        pass
