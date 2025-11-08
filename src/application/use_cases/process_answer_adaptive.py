@@ -271,18 +271,18 @@ class ProcessAnswerAdaptiveUseCase:
             "those",
         }
 
-        # Extract words from ideal answer
+        # Extract words from ideal answer (strip punctuation)
         ideal_words = {
-            word.lower()
+            word.lower().strip('.,!?;:"\'-')
             for word in ideal_answer.split()
-            if len(word) > 3 and word.lower() not in stop_words
+            if len(word.strip('.,!?;:"\'-')) > 3 and word.lower().strip('.,!?;:"\'-') not in stop_words
         }
 
-        # Extract words from candidate answer
+        # Extract words from candidate answer (strip punctuation)
         answer_words = {
-            word.lower()
+            word.lower().strip('.,!?;:"\'-')
             for word in answer_text.split()
-            if len(word) > 3 and word.lower() not in stop_words
+            if len(word.strip('.,!?;:"\'-')) > 3 and word.lower().strip('.,!?;:"\'-') not in stop_words
         }
 
         # Find missing keywords (in ideal but not in answer)

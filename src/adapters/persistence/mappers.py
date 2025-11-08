@@ -87,10 +87,11 @@ class QuestionMapper:
             difficulty=DifficultyLevel(db_model.difficulty),
             skills=list(db_model.skills) if db_model.skills else [],
             tags=list(db_model.tags) if db_model.tags else [],
-            reference_answer=db_model.reference_answer,
             evaluation_criteria=db_model.evaluation_criteria,
             version=db_model.version,
             embedding=list(db_model.embedding) if db_model.embedding else None,
+            ideal_answer=db_model.ideal_answer,
+            rationale=db_model.rationale,
             created_at=db_model.created_at,
             updated_at=db_model.updated_at,
         )
@@ -105,10 +106,11 @@ class QuestionMapper:
             difficulty=domain_model.difficulty.value,
             skills=domain_model.skills,
             tags=domain_model.tags,
-            reference_answer=domain_model.reference_answer,
             evaluation_criteria=domain_model.evaluation_criteria,
             version=domain_model.version,
             embedding=domain_model.embedding,
+            ideal_answer=domain_model.ideal_answer,
+            rationale=domain_model.rationale,
             created_at=domain_model.created_at,
             updated_at=domain_model.updated_at,
         )
@@ -121,10 +123,11 @@ class QuestionMapper:
         db_model.difficulty = domain_model.difficulty.value
         db_model.skills = domain_model.skills
         db_model.tags = domain_model.tags
-        db_model.reference_answer = domain_model.reference_answer
         db_model.evaluation_criteria = domain_model.evaluation_criteria
         db_model.version = domain_model.version
         db_model.embedding = domain_model.embedding
+        db_model.ideal_answer = domain_model.ideal_answer
+        db_model.rationale = domain_model.rationale
         db_model.updated_at = domain_model.updated_at
 
 
@@ -201,6 +204,8 @@ class AnswerMapper:
             evaluation=evaluation,
             embedding=list(db_model.embedding) if db_model.embedding else None,
             metadata=dict(db_model.answer_metadata) if db_model.answer_metadata else {},
+            similarity_score=db_model.similarity_score,
+            gaps=dict(db_model.gaps) if db_model.gaps else None,
             created_at=db_model.created_at,
             evaluated_at=db_model.evaluated_at,
         )
@@ -225,6 +230,8 @@ class AnswerMapper:
             evaluation=evaluation_dict,
             embedding=domain_model.embedding,
             answer_metadata=domain_model.metadata,
+            similarity_score=domain_model.similarity_score,
+            gaps=domain_model.gaps,
             created_at=domain_model.created_at,
             evaluated_at=domain_model.evaluated_at,
         )
@@ -245,6 +252,8 @@ class AnswerMapper:
 
         db_model.embedding = domain_model.embedding
         db_model.answer_metadata = domain_model.metadata
+        db_model.similarity_score = domain_model.similarity_score
+        db_model.gaps = domain_model.gaps
         db_model.evaluated_at = domain_model.evaluated_at
 
 

@@ -68,6 +68,8 @@ class ProcessAnswerUseCase:
             text=answer_text,
             is_voice=bool(audio_file_path),
             audio_file_path=audio_file_path,
+            similarity_score=None,  # Not used in legacy flow
+            gaps=None,  # Not used in legacy flow
             created_at=datetime.utcnow(),
         )
 

@@ -112,9 +112,13 @@ class Answer(BaseModel):
         """Check if concept gaps were detected.
 
         Returns:
-            True if gaps dict is present and non-empty
+            True if gaps dict contains concepts and confirmed is True
         """
-        return self.gaps is not None and len(self.gaps) > 0
+        if self.gaps is None:
+            return False
+        concepts = self.gaps.get("concepts", [])
+        confirmed = self.gaps.get("confirmed", False)
+        return len(concepts) > 0 and confirmed
 
     def meets_threshold(self, similarity_threshold: float = 0.8) -> bool:
         """Check if answer meets similarity threshold.

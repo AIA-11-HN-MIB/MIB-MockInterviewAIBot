@@ -36,13 +36,12 @@ class Question(BaseModel):
     difficulty: DifficultyLevel
     skills: list[str] = Field(default_factory=list)  # e.g., ["Python", "OOP"]
     tags: list[str] = Field(default_factory=list)  # e.g., ["algorithms", "data-structures"]
-    reference_answer: str | None = None
     evaluation_criteria: str | None = None
     version: int = 1
     embedding: list[float] | None = None  # Vector embedding for semantic search
 
-    # NEW: Pre-planning fields for adaptive interviews
-    ideal_answer: str | None = None  # Reference answer for similarity scoring
+    # Pre-planning fields for adaptive interviews
+    ideal_answer: str | None = None  # Reference answer for similarity scoring and evaluation
     rationale: str | None = None  # Explanation of why this answer is ideal
 
     created_at: datetime = Field(default_factory=datetime.utcnow)

@@ -19,12 +19,13 @@ def sample_cv_analysis() -> CVAnalysis:
     return CVAnalysis(
         candidate_id=uuid4(),
         cv_file_path="/path/to/cv.pdf",
+        extracted_text="Sample CV text with Python, FastAPI, PostgreSQL, and Docker experience",
         summary="Experienced Python developer with 5 years of experience",
         skills=[
-            ExtractedSkill(name="Python", category="technical", proficiency="expert"),
-            ExtractedSkill(name="FastAPI", category="technical", proficiency="intermediate"),
-            ExtractedSkill(name="PostgreSQL", category="technical", proficiency="intermediate"),
-            ExtractedSkill(name="Docker", category="technical", proficiency="beginner"),
+            ExtractedSkill(skill="Python", category="technical", proficiency="expert"),
+            ExtractedSkill(skill="FastAPI", category="technical", proficiency="intermediate"),
+            ExtractedSkill(skill="PostgreSQL", category="technical", proficiency="intermediate"),
+            ExtractedSkill(skill="Docker", category="technical", proficiency="beginner"),
         ],
         work_experience_years=5,
         education_level="Bachelor's Degree",

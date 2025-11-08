@@ -83,12 +83,11 @@ class QuestionModel(Base):
     )
     skills: Mapped[list[str]] = mapped_column(ARRAY(String(100)), nullable=False, default=[])
     tags: Mapped[list[str]] = mapped_column(ARRAY(String(100)), nullable=False, default=[])
-    reference_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
     evaluation_criteria: Mapped[str | None] = mapped_column(Text, nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     embedding: Mapped[list[float] | None] = mapped_column(ARRAY(Float), nullable=True)
 
-    # NEW: Pre-planning fields for adaptive interviews
+    # Pre-planning fields for adaptive interviews
     ideal_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
     rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
 

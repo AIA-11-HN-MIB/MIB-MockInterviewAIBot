@@ -25,10 +25,11 @@ class TestPlanInterviewUseCase:
         cv = CVAnalysis(
             candidate_id=uuid4(),
             cv_file_path="/path/to/cv.pdf",
+            extracted_text="Sample CV text",
             summary="Python developer",
             skills=[
-                ExtractedSkill(name="Python", category="technical", proficiency="expert"),
-                ExtractedSkill(name="FastAPI", category="technical", proficiency="intermediate"),
+                ExtractedSkill(skill="Python", category="technical", proficiency="expert"),
+                ExtractedSkill(skill="FastAPI", category="technical", proficiency="intermediate"),
             ],
         )
         await mock_cv_analysis_repo.save(cv)
@@ -64,12 +65,13 @@ class TestPlanInterviewUseCase:
         cv = CVAnalysis(
             candidate_id=uuid4(),
             cv_file_path="/path/to/cv.pdf",
+            extracted_text="Sample CV text",
             summary="Full-stack developer",
             skills=[
-                ExtractedSkill(name="Python", category="technical", proficiency="expert"),
-                ExtractedSkill(name="React", category="technical", proficiency="advanced"),
-                ExtractedSkill(name="PostgreSQL", category="technical", proficiency="intermediate"),
-                ExtractedSkill(name="Docker", category="technical", proficiency="beginner"),
+                ExtractedSkill(skill="Python", category="technical", proficiency="expert"),
+                ExtractedSkill(skill="React", category="technical", proficiency="advanced"),
+                ExtractedSkill(skill="PostgreSQL", category="technical", proficiency="intermediate"),
+                ExtractedSkill(skill="Docker", category="technical", proficiency="beginner"),
             ],
         )
         await mock_cv_analysis_repo.save(cv)
@@ -102,9 +104,10 @@ class TestPlanInterviewUseCase:
         cv = CVAnalysis(
             candidate_id=uuid4(),
             cv_file_path="/path/to/cv.pdf",
+            extracted_text="Sample CV text",
             summary="Senior engineer",
             skills=[
-                ExtractedSkill(name=f"Skill{i}", category="technical", proficiency="expert")
+                ExtractedSkill(skill=f"Skill{i}", category="technical", proficiency="expert")
                 for i in range(7)
             ],
         )
@@ -138,9 +141,10 @@ class TestPlanInterviewUseCase:
         cv = CVAnalysis(
             candidate_id=uuid4(),
             cv_file_path="/path/to/cv.pdf",
+            extracted_text="Sample CV text",
             summary="Tech lead",
             skills=[
-                ExtractedSkill(name=f"Skill{i}", category="technical", proficiency="expert")
+                ExtractedSkill(skill=f"Skill{i}", category="technical", proficiency="expert")
                 for i in range(10)
             ],
         )
@@ -310,9 +314,10 @@ class TestQuestionCountCalculation:
             cv = CVAnalysis(
                 candidate_id=uuid4(),
                 cv_file_path="/path",
+            extracted_text="Test CV",
                 summary="Test",
                 skills=[
-                    ExtractedSkill(name=f"Skill{i}", category="technical", proficiency="expert")
+                    ExtractedSkill(skill=f"Skill{i}", category="technical", proficiency="expert")
                     for i in range(skill_count)
                 ],
             )
@@ -335,10 +340,11 @@ class TestQuestionCountCalculation:
         cv_junior = CVAnalysis(
             candidate_id=uuid4(),
             cv_file_path="/path",
+            extracted_text="Test CV",
             summary="Junior",
             skills=[
-                ExtractedSkill(name="Python", category="technical", proficiency="beginner"),
-                ExtractedSkill(name="SQL", category="technical", proficiency="beginner"),
+                ExtractedSkill(skill="Python", category="technical", proficiency="beginner"),
+                ExtractedSkill(skill="SQL", category="technical", proficiency="beginner"),
             ],
             work_experience_years=1,
         )
@@ -346,10 +352,11 @@ class TestQuestionCountCalculation:
         cv_senior = CVAnalysis(
             candidate_id=uuid4(),
             cv_file_path="/path",
+            extracted_text="Test CV",
             summary="Senior",
             skills=[
-                ExtractedSkill(name="Python", category="technical", proficiency="expert"),
-                ExtractedSkill(name="SQL", category="technical", proficiency="expert"),
+                ExtractedSkill(skill="Python", category="technical", proficiency="expert"),
+                ExtractedSkill(skill="SQL", category="technical", proficiency="expert"),
             ],
             work_experience_years=15,
         )

@@ -104,7 +104,7 @@ class OpenAIAdapter(LLMPort):
 
         Candidate's Answer: {answer_text}
 
-        {"Reference Answer: " + question.reference_answer if question.reference_answer else ""}
+        {"Ideal Answer: " + question.ideal_answer if question.ideal_answer else ""}
 
         Evaluate this answer and provide:
         1. Overall score (0-100)
