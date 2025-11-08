@@ -1,7 +1,7 @@
 """add planning and adaptive evaluation fields
 
 Revision ID: 251106_2300
-Revises: a4047ce5a909
+Revises: 525593eca676
 Create Date: 2025-11-06 23:00:00
 
 Changes:
@@ -16,7 +16,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "251106_2300"
-down_revision = "a4047ce5a909"
+down_revision = "525593eca676"
 branch_labels = None
 depends_on = None
 
