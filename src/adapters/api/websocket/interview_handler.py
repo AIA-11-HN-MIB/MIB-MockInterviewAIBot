@@ -8,7 +8,6 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 from ....application.use_cases.complete_interview import CompleteInterviewUseCase
 from ....application.use_cases.get_next_question import GetNextQuestionUseCase
-from ....application.use_cases.process_answer import ProcessAnswerUseCase
 from ....application.use_cases.process_answer_adaptive import (
     ProcessAnswerAdaptiveUseCase,
 )
@@ -134,7 +133,6 @@ async def handle_text_answer(interview_id: UUID, data: dict, container):
         container: DI container
     """
     async for session in get_async_session():
-        # Check if interview uses adaptive planning
         interview_repo = container.interview_repository_port(session)
         interview = await interview_repo.get_by_id(interview_id)
 
@@ -149,114 +147,70 @@ async def handle_text_answer(interview_id: UUID, data: dict, container):
             )
             break
 
-        # Use adaptive processing if interview has plan_metadata
-        is_adaptive = bool(interview.plan_metadata)
+        # Process answer with adaptive evaluation
+        use_case = ProcessAnswerAdaptiveUseCase(
+            answer_repository=container.answer_repository_port(session),
+            interview_repository=interview_repo,
+            question_repository=container.question_repository_port(session),
+            llm=container.llm_port(),
+            vector_search=container.vector_search_port(),
+        )
 
-        if is_adaptive:
-            # Process answer with adaptive evaluation
-            use_case = ProcessAnswerAdaptiveUseCase(
-                answer_repository=container.answer_repository_port(session),
-                interview_repository=interview_repo,
-                question_repository=container.question_repository_port(session),
-                llm=container.llm_port(),
-                vector_search=container.vector_search_port(),
-            )
+        answer, follow_up_question, has_more = await use_case.execute(
+            interview_id=interview_id,
+            question_id=UUID(data["question_id"]),
+            answer_text=data["answer_text"],
+        )
 
-            answer, follow_up_question, has_more = await use_case.execute(
-                interview_id=interview_id,
-                question_id=UUID(data["question_id"]),
-                answer_text=data["answer_text"],
-            )
-
-            # Send evaluation with adaptive metrics
-            if answer.evaluation:
-                eval_message = {
-                    "type": "evaluation",
-                    "answer_id": str(answer.id),
-                    "score": answer.evaluation.score,
-                    "feedback": answer.evaluation.reasoning,
-                    "strengths": answer.evaluation.strengths,
-                    "weaknesses": answer.evaluation.weaknesses,
-                }
-            else:
-                eval_message = {
-                    "type": "evaluation",
-                    "answer_id": str(answer.id),
-                    "score": 0.0,
-                    "feedback": "No evaluation available",
-                    "strengths": [],
-                    "weaknesses": [],
-                }
-
-            # Add adaptive metrics if available
-            if answer.similarity_score is not None:
-                eval_message["similarity_score"] = answer.similarity_score
-            if answer.gaps:
-                eval_message["gaps"] = answer.gaps
-
-            await manager.send_message(interview_id, eval_message)
-
-            # If follow-up generated, send it immediately
-            if follow_up_question:
-                # Get TTS for follow-up
-                tts = container.text_to_speech_port()
-                audio_bytes = await tts.synthesize_speech(follow_up_question.text)
-                audio_data = base64.b64encode(audio_bytes).decode("utf-8")
-
-                await manager.send_message(
-                    interview_id,
-                    {
-                        "type": "follow_up_question",
-                        "question_id": str(follow_up_question.id),
-                        "parent_question_id": str(follow_up_question.parent_question_id),
-                        "text": follow_up_question.text,
-                        "generated_reason": follow_up_question.generated_reason,
-                        "order_in_sequence": follow_up_question.order_in_sequence,
-                        "audio_data": audio_data,
-                    },
-                )
-                # Don't proceed to next main question yet
-                break
+        # Send evaluation with adaptive metrics
+        if answer.evaluation:
+            eval_message = {
+                "type": "evaluation",
+                "answer_id": str(answer.id),
+                "score": answer.evaluation.score,
+                "feedback": answer.evaluation.reasoning,
+                "strengths": answer.evaluation.strengths,
+                "weaknesses": answer.evaluation.weaknesses,
+            }
         else:
-            # Legacy: Process answer without adaptive features
-            use_case = ProcessAnswerUseCase(
-                answer_repository=container.answer_repository_port(session),
-                interview_repository=interview_repo,
-                question_repository=container.question_repository_port(session),
-                llm=container.llm_port(),
-            )
+            eval_message = {
+                "type": "evaluation",
+                "answer_id": str(answer.id),
+                "score": 0.0,
+                "feedback": "No evaluation available",
+                "strengths": [],
+                "weaknesses": [],
+            }
 
-            answer, has_more = await use_case.execute(
-                interview_id=interview_id,
-                question_id=UUID(data["question_id"]),
-                answer_text=data["answer_text"],
-            )
+        # Add adaptive metrics if available
+        if answer.similarity_score is not None:
+            eval_message["similarity_score"] = answer.similarity_score
+        if answer.gaps:
+            eval_message["gaps"] = answer.gaps
 
-            # Send evaluation
-            if answer.evaluation:
-                await manager.send_message(
-                    interview_id,
-                    {
-                        "type": "evaluation",
-                        "answer_id": str(answer.id),
-                        "score": answer.evaluation.score,
-                        "feedback": answer.evaluation.reasoning,
-                        "strengths": answer.evaluation.strengths,
-                        "weaknesses": answer.evaluation.weaknesses,
-                    },
-                )
-            else:
-                await manager.send_message(
-                    interview_id,
-                    {
-                        "type": "evaluation",
-                        "answer_id": str(answer.id),
-                        "score": 0.0,
-                        "feedback": "No evaluation available",
-                        "strengths": [],
-                        "weaknesses": [],
-                    },
-                )
+        await manager.send_message(interview_id, eval_message)
+
+        # If follow-up generated, send it immediately
+        if follow_up_question:
+            # Get TTS for follow-up
+            tts = container.text_to_speech_port()
+            audio_bytes = await tts.synthesize_speech(follow_up_question.text)
+            audio_data = base64.b64encode(audio_bytes).decode("utf-8")
+
+            await manager.send_message(
+                interview_id,
+                {
+                    "type": "follow_up_question",
+                    "question_id": str(follow_up_question.id),
+                    "parent_question_id": str(follow_up_question.parent_question_id),
+                    "text": follow_up_question.text,
+                    "generated_reason": follow_up_question.generated_reason,
+                    "order_in_sequence": follow_up_question.order_in_sequence,
+                    "audio_data": audio_data,
+                },
+            )
+            # Don't proceed to next main question yet
+            break
 
         # Send next question or complete
         if has_more:

@@ -221,34 +221,22 @@ class TestEvaluationEnhancement:
         pass  # Template only
 
 
-class TestBackwardCompatibility:
-    """Test backward compatibility with legacy interviews."""
+class TestEndpointIntegration:
+    """Test API endpoint integration with adaptive interviews."""
 
     @pytest.mark.integration
-    def test_legacy_interview_still_works(self):
-        """Test non-adaptive interviews work unchanged."""
-        # Template: Verify legacy path
-
-        # Create interview without planning (old flow)
-        # -> Uses ProcessAnswerUseCase
-        # -> No similarity_score or gaps
-        # -> No follow-ups
-
-        pass  # Template only
-
-    @pytest.mark.integration
-    def test_existing_endpoints_unchanged(self):
-        """Test existing endpoints not affected."""
-        # Template: Verify no breaking changes
+    def test_existing_endpoints_work_with_adaptive(self):
+        """Test existing endpoints work with adaptive interviews."""
+        # Template: Verify endpoints work with adaptive flow
 
         endpoints_to_test = [
-            "POST /interviews",  # Create interview
+            "POST /interviews/plan",  # Plan interview
             "GET /interviews/{id}",  # Get interview
             "PUT /interviews/{id}/start",  # Start interview
             "GET /interviews/{id}/questions/current",  # Get question
         ]
 
-        # Verify all still work with same request/response structure
+        # Verify all work with adaptive request/response structure
 
         pass  # Template only
 
