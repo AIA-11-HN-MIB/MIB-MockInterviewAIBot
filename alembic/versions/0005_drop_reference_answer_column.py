@@ -1,7 +1,7 @@
 """drop reference_answer column from questions table
 
-Revision ID: 251108_1200
-Revises: 251106_2300
+Revision ID: 0005
+Revises: 0004
 Create Date: 2025-11-08 12:00:00
 
 Changes:
@@ -11,8 +11,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = "251108_1200"
-down_revision = "251106_2300"
+revision = "0005"
+down_revision = "0004"
 branch_labels = None
 depends_on = None
 
