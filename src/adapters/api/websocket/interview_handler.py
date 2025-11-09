@@ -168,30 +168,16 @@ async def handle_text_answer(interview_id: UUID, data: dict, container):
         )
 
         # Send evaluation with adaptive metrics
-        if answer.evaluation:
-            eval_message = {
-                "type": "evaluation",
-                "answer_id": str(answer.id),
-                "score": answer.evaluation.score,
-                "feedback": answer.evaluation.reasoning,
-                "strengths": answer.evaluation.strengths,
-                "weaknesses": answer.evaluation.weaknesses,
-            }
-        else:
-            eval_message = {
-                "type": "evaluation",
-                "answer_id": str(answer.id),
-                "score": 0.0,
-                "feedback": "No evaluation available",
-                "strengths": [],
-                "weaknesses": [],
-            }
-
-        # Add adaptive metrics if available
-        if answer.similarity_score is not None:
-            eval_message["similarity_score"] = answer.similarity_score
-        if answer.gaps:
-            eval_message["gaps"] = answer.gaps
+        eval_message = {
+            "type": "evaluation",
+            "answer_id": str(answer.id),
+            "score": answer.evaluation.score,
+            "feedback": answer.evaluation.reasoning,
+            "strengths": answer.evaluation.strengths,
+            "weaknesses": answer.evaluation.weaknesses,
+            "similarity_score": answer.similarity_score,
+            "gaps": answer.gaps
+        }
 
         await manager.send_message(interview_id, eval_message)
 
