@@ -42,17 +42,18 @@ async def handle_interview_websocket(
 
         # Send first question
         async for session in get_async_session():
+            interview_repo = container.interview_repository_port(session)
+            question_repo = container.question_repository_port(session)
+
             use_case = GetNextQuestionUseCase(
-                interview_repository=container.interview_repository_port(session),
-                question_repository=container.question_repository_port(session),
+                interview_repository=interview_repo,
+                question_repository=question_repo,
             )
 
             question = await use_case.execute(interview_id)
             if question:
                 # Get interview for context
-                interview = await container.interview_repository_port(
-                    session
-                ).get_by_id(interview_id)
+                interview = await interview_repo.get_by_id(interview_id)
 
                 if not interview:
                     await manager.send_message(
@@ -133,7 +134,11 @@ async def handle_text_answer(interview_id: UUID, data: dict, container):
         container: DI container
     """
     async for session in get_async_session():
+        # Fetch repositories once
         interview_repo = container.interview_repository_port(session)
+        question_repo = container.question_repository_port(session)
+        answer_repo = container.answer_repository_port(session)
+
         interview = await interview_repo.get_by_id(interview_id)
 
         if not interview:
@@ -149,9 +154,9 @@ async def handle_text_answer(interview_id: UUID, data: dict, container):
 
         # Process answer with adaptive evaluation
         use_case = ProcessAnswerAdaptiveUseCase(
-            answer_repository=container.answer_repository_port(session),
+            answer_repository=answer_repo,
             interview_repository=interview_repo,
-            question_repository=container.question_repository_port(session),
+            question_repository=question_repo,
             llm=container.llm_port(),
             vector_search=container.vector_search_port(),
         )
@@ -190,10 +195,11 @@ async def handle_text_answer(interview_id: UUID, data: dict, container):
 
         await manager.send_message(interview_id, eval_message)
 
+        # Get TTS once (will be used for either follow-up or next question)
+        tts = container.text_to_speech_port()
+
         # If follow-up generated, send it immediately
         if follow_up_question:
-            # Get TTS for follow-up
-            tts = container.text_to_speech_port()
             audio_bytes = await tts.synthesize_speech(follow_up_question.text)
             audio_data = base64.b64encode(audio_bytes).decode("utf-8")
 
@@ -215,29 +221,12 @@ async def handle_text_answer(interview_id: UUID, data: dict, container):
         # Send next question or complete
         if has_more:
             question_use_case = GetNextQuestionUseCase(
-                interview_repository=container.interview_repository_port(session),
-                question_repository=container.question_repository_port(session),
+                interview_repository=interview_repo,
+                question_repository=question_repo,
             )
             question = await question_use_case.execute(interview_id)
 
             if question:
-                interview = await container.interview_repository_port(
-                    session
-                ).get_by_id(interview_id)
-
-                if not interview:
-                    await manager.send_message(
-                        interview_id,
-                        {
-                            "type": "error",
-                            "code": "INTERVIEW_NOT_FOUND",
-                            "message": f"Interview {interview_id} not found",
-                        },
-                    )
-                    break
-
-                # Get TTS
-                tts = container.text_to_speech_port()
                 audio_bytes = await tts.synthesize_speech(question.text)
                 audio_data = base64.b64encode(audio_bytes).decode("utf-8")
 
@@ -257,12 +246,11 @@ async def handle_text_answer(interview_id: UUID, data: dict, container):
         else:
             # Complete interview
             complete_use_case = CompleteInterviewUseCase(
-                interview_repository=container.interview_repository_port(session),
+                interview_repository=interview_repo,
             )
             interview = await complete_use_case.execute(interview_id)
 
             # Calculate overall score (average of all answer scores)
-            answer_repo = container.answer_repository_port(session)
             answers = await answer_repo.get_by_interview_id(interview_id)
             overall_score = (
                 sum(a.evaluation.score for a in answers if a.evaluation)
@@ -311,9 +299,12 @@ async def handle_get_next_question(interview_id: UUID, container):
         container: DI container
     """
     async for session in get_async_session():
+        interview_repo = container.interview_repository_port(session)
+        question_repo = container.question_repository_port(session)
+
         use_case = GetNextQuestionUseCase(
-            interview_repository=container.interview_repository_port(session),
-            question_repository=container.question_repository_port(session),
+            interview_repository=interview_repo,
+            question_repository=question_repo,
         )
 
         question = await use_case.execute(interview_id)
@@ -328,9 +319,7 @@ async def handle_get_next_question(interview_id: UUID, container):
             )
             break
 
-        interview = await container.interview_repository_port(
-            session
-        ).get_by_id(interview_id)
+        interview = await interview_repo.get_by_id(interview_id)
 
         if not interview:
             await manager.send_message(
