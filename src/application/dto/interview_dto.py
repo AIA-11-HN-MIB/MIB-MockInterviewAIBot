@@ -4,20 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
-
-
-# Request DTOs
-class CreateInterviewRequest(BaseModel):
-    """Request to create a new interview session."""
-    candidate_id: UUID
-    cv_analysis_id: UUID
-    num_questions: int = Field(default=10, ge=1, le=20)
-
-
-class StartInterviewRequest(BaseModel):
-    """Request to start an interview (no body needed)."""
-    pass
+from pydantic import BaseModel
 
 
 # Response DTOs

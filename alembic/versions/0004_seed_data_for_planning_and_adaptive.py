@@ -1,7 +1,7 @@
 """seed data for planning and adaptive fields
 
-Revision ID: d0078872a49a
-Revises: 251106_2300
+Revision ID: 0004
+Revises: 0003
 Create Date: 2025-11-08 23:01:57.944002
 
 Seed sample data for new columns:
@@ -17,8 +17,8 @@ from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'd0078872a49a'
-down_revision: Union[str, Sequence[str], None] = '251106_2300'
+revision: str = '0004'
+down_revision: Union[str, Sequence[str], None] = '0003'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -6,8 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....application.dto.interview_dto import (
-    CreateInterviewRequest,
-    FollowUpQuestionResponse,
     InterviewResponse,
     PlanInterviewRequest,
     PlanningStatusResponse,
@@ -15,74 +13,12 @@ from ....application.dto.interview_dto import (
 )
 from ....application.use_cases.get_next_question import GetNextQuestionUseCase
 from ....application.use_cases.plan_interview import PlanInterviewUseCase
-from ....application.use_cases.start_interview import StartInterviewUseCase
 from ....domain.models.interview import InterviewStatus
 from ....infrastructure.config.settings import get_settings
 from ....infrastructure.database.session import get_async_session
 from ....infrastructure.dependency_injection.container import get_container
 
 router = APIRouter(prefix="/interviews", tags=["Interviews"])
-
-
-@router.post(
-    "",
-    response_model=InterviewResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create new interview session",
-)
-async def create_interview(
-    request: CreateInterviewRequest,
-    session: AsyncSession = Depends(get_async_session),
-):
-    """Create interview session and prepare questions.
-
-    Args:
-        request: Interview creation request with candidate and CV analysis IDs
-        session: Database session
-
-    Returns:
-        Interview details with WebSocket URL for real-time communication
-
-    Raises:
-        HTTPException: If CV analysis not found or validation fails
-    """
-    try:
-        container = get_container()
-        settings = get_settings()
-
-        # Get CV analysis
-        cv_analysis_repo = container.cv_analysis_repository_port(session)
-        cv_analysis = await cv_analysis_repo.get_by_id(request.cv_analysis_id)
-        if not cv_analysis:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"CV analysis {request.cv_analysis_id} not found",
-            )
-
-        # Start interview use case
-        use_case = StartInterviewUseCase(
-            vector_search=container.vector_search_port(),
-            question_repository=container.question_repository_port(session),
-        )
-
-        interview = await use_case.execute(
-            candidate_id=request.candidate_id,
-            cv_analysis=cv_analysis,
-            num_questions=request.num_questions,
-        )
-
-        # Save interview
-        interview_repo = container.interview_repository_port(session)
-        saved_interview = await interview_repo.save(interview)
-
-        # Return response with WebSocket URL
-        base_url = settings.ws_base_url
-        return InterviewResponse.from_domain(saved_interview, base_url)
-
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-        ) from e
 
 
 @router.get(

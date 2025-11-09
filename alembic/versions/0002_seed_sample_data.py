@@ -1,7 +1,7 @@
 """seed_sample_data
 
-Revision ID: 525593eca676
-Revises: a4047ce5a909
+Revision ID: 0002
+Revises: 0001
 Create Date: 2025-10-31 23:46:29.587545
 
 """
@@ -17,8 +17,8 @@ from sqlalchemy import String, Text, Integer, Float, Boolean, DateTime
 
 
 # revision identifiers, used by Alembic.
-revision: str = '525593eca676'
-down_revision: Union[str, Sequence[str], None] = 'a4047ce5a909'
+revision: str = '0002'
+down_revision: Union[str, Sequence[str], None] = '0001'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

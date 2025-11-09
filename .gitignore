@@ -204,3 +204,5 @@ uploads/
 .mypy_cache/
 
 .opencode/
+
+.cursor/

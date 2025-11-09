@@ -8,7 +8,6 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 from ....application.use_cases.complete_interview import CompleteInterviewUseCase
 from ....application.use_cases.get_next_question import GetNextQuestionUseCase
-from ....application.use_cases.process_answer import ProcessAnswerUseCase
 from ....application.use_cases.process_answer_adaptive import (
     ProcessAnswerAdaptiveUseCase,
 )
@@ -43,47 +42,13 @@ async def handle_interview_websocket(
 
         # Send first question
         async for session in get_async_session():
-            use_case = GetNextQuestionUseCase(
-                interview_repository=container.interview_repository_port(session),
-                question_repository=container.question_repository_port(session),
+            interview_repo = container.interview_repository_port(session)
+            question_repo = container.question_repository_port(session)
+            tts = container.text_to_speech_port()
+
+            await _send_initial_question(
+                interview_id, interview_repo, question_repo, tts
             )
-
-            question = await use_case.execute(interview_id)
-            if question:
-                # Get interview for context
-                interview = await container.interview_repository_port(
-                    session
-                ).get_by_id(interview_id)
-
-                if not interview:
-                    await manager.send_message(
-                        interview_id,
-                        {
-                            "type": "error",
-                            "code": "INTERVIEW_NOT_FOUND",
-                            "message": f"Interview {interview_id} not found",
-                        },
-                    )
-                    break
-
-                # Get TTS audio
-                tts = container.text_to_speech_port()
-                audio_bytes = await tts.synthesize_speech(question.text)
-                audio_data = base64.b64encode(audio_bytes).decode("utf-8")
-
-                await manager.send_message(
-                    interview_id,
-                    {
-                        "type": "question",
-                        "question_id": str(question.id),
-                        "text": question.text,
-                        "question_type": question.question_type,
-                        "difficulty": question.difficulty,
-                        "index": interview.current_question_index,
-                        "total": len(interview.question_ids),
-                        "audio_data": audio_data,
-                    },
-                )
             break
 
         # Listen for messages
@@ -125,6 +90,236 @@ async def handle_interview_websocket(
         manager.disconnect(interview_id)
 
 
+async def _validate_interview_exists(interview_id: UUID, interview_repo):
+    """Validate that interview exists and send error if not.
+
+    Args:
+        interview_id: Interview UUID
+        interview_repo: Interview repository
+
+    Returns:
+        Interview entity if exists, None otherwise
+    """
+    interview = await interview_repo.get_by_id(interview_id)
+
+    if not interview:
+        await manager.send_message(
+            interview_id,
+            {
+                "type": "error",
+                "code": "INTERVIEW_NOT_FOUND",
+                "message": f"Interview {interview_id} not found",
+            },
+        )
+        return None
+
+    return interview
+
+
+async def _send_initial_question(
+    interview_id: UUID, interview_repo, question_repo, tts
+):
+    """Get and send the first question to start the interview.
+
+    Args:
+        interview_id: Interview UUID
+        interview_repo: Interview repository
+        question_repo: Question repository
+        tts: Text-to-speech port
+
+    Returns:
+        True if question was sent, False otherwise
+    """
+    use_case = GetNextQuestionUseCase(
+        interview_repository=interview_repo,
+        question_repository=question_repo,
+    )
+
+    question = await use_case.execute(interview_id)
+    if not question:
+        return False
+
+    # Get interview for context
+    interview = await _validate_interview_exists(interview_id, interview_repo)
+    if not interview:
+        return False
+
+    # Generate TTS audio
+    audio_bytes = await tts.synthesize_speech(question.text)
+    audio_data = base64.b64encode(audio_bytes).decode("utf-8")
+
+    # Send question message
+    await manager.send_message(
+        interview_id,
+        {
+            "type": "question",
+            "question_id": str(question.id),
+            "text": question.text,
+            "question_type": question.question_type,
+            "difficulty": question.difficulty,
+            "index": interview.current_question_index,
+            "total": len(interview.question_ids),
+            "audio_data": audio_data,
+        },
+    )
+    return True
+
+
+async def _process_answer(
+    interview_id: UUID,
+    question_id: UUID,
+    answer_text: str,
+    answer_repo,
+    interview_repo,
+    question_repo,
+    container,
+):
+    """Process answer with adaptive evaluation.
+
+    Args:
+        interview_id: Interview UUID
+        question_id: Question UUID
+        answer_text: Candidate's answer text
+        answer_repo: Answer repository
+        interview_repo: Interview repository
+        question_repo: Question repository
+        container: DI container
+
+    Returns:
+        Tuple of (answer, follow_up_question, has_more)
+    """
+    use_case = ProcessAnswerAdaptiveUseCase(
+        answer_repository=answer_repo,
+        interview_repository=interview_repo,
+        question_repository=question_repo,
+        follow_up_question_repository=container.follow_up_question_repository(),
+        llm=container.llm_port(),
+        vector_search=container.vector_search_port(),
+    )
+
+    return await use_case.execute(
+        interview_id=interview_id,
+        question_id=question_id,
+        answer_text=answer_text,
+    )
+
+
+async def _send_evaluation(interview_id: UUID, answer):
+    """Send evaluation message with adaptive metrics.
+
+    Args:
+        interview_id: Interview UUID
+        answer: Answer entity with evaluation
+    """
+    eval_message = {
+        "type": "evaluation",
+        "answer_id": str(answer.id),
+        "score": answer.evaluation.score,
+        "feedback": answer.evaluation.reasoning,
+        "strengths": answer.evaluation.strengths,
+        "weaknesses": answer.evaluation.weaknesses,
+        "similarity_score": answer.similarity_score,
+        "gaps": answer.gaps,
+    }
+
+    await manager.send_message(interview_id, eval_message)
+
+
+async def _send_follow_up_question(interview_id: UUID, follow_up_question, tts):
+    """Send follow-up question with audio.
+
+    Args:
+        interview_id: Interview UUID
+        follow_up_question: Follow-up question entity
+        tts: Text-to-speech port
+    """
+    audio_bytes = await tts.synthesize_speech(follow_up_question.text)
+    audio_data = base64.b64encode(audio_bytes).decode("utf-8")
+
+    await manager.send_message(
+        interview_id,
+        {
+            "type": "follow_up_question",
+            "question_id": str(follow_up_question.id),
+            "parent_question_id": str(follow_up_question.parent_question_id),
+            "text": follow_up_question.text,
+            "generated_reason": follow_up_question.generated_reason,
+            "order_in_sequence": follow_up_question.order_in_sequence,
+            "audio_data": audio_data,
+        },
+    )
+
+
+async def _send_next_question(
+    interview_id: UUID, interview, interview_repo, question_repo, tts
+):
+    """Send next main question with audio.
+
+    Args:
+        interview_id: Interview UUID
+        interview: Interview entity
+        interview_repo: Interview repository
+        question_repo: Question repository
+        tts: Text-to-speech port
+    """
+    question_use_case = GetNextQuestionUseCase(
+        interview_repository=interview_repo,
+        question_repository=question_repo,
+    )
+    question = await question_use_case.execute(interview_id)
+
+    if question:
+        audio_bytes = await tts.synthesize_speech(question.text)
+        audio_data = base64.b64encode(audio_bytes).decode("utf-8")
+
+        await manager.send_message(
+            interview_id,
+            {
+                "type": "question",
+                "question_id": str(question.id),
+                "text": question.text,
+                "question_type": question.question_type,
+                "difficulty": question.difficulty,
+                "index": interview.current_question_index,
+                "total": len(interview.question_ids),
+                "audio_data": audio_data,
+            },
+        )
+
+
+async def _complete_interview(interview_id: UUID, interview_repo, answer_repo):
+    """Complete interview and send final results.
+
+    Args:
+        interview_id: Interview UUID
+        interview_repo: Interview repository
+        answer_repo: Answer repository
+    """
+    complete_use_case = CompleteInterviewUseCase(
+        interview_repository=interview_repo,
+    )
+    interview = await complete_use_case.execute(interview_id)
+
+    # Calculate overall score (average of all answer scores)
+    answers = await answer_repo.get_by_interview_id(interview_id)
+    overall_score = (
+        sum(a.evaluation.score for a in answers if a.evaluation) / len(answers)
+        if answers
+        else 0.0
+    )
+
+    await manager.send_message(
+        interview_id,
+        {
+            "type": "interview_complete",
+            "interview_id": str(interview.id),
+            "overall_score": overall_score,
+            "total_questions": len(interview.question_ids),
+            "feedback_url": f"/api/interviews/{interview_id}/feedback",
+        },
+    )
+
+
 async def handle_text_answer(interview_id: UUID, data: dict, container):
     """Handle text answer from client with adaptive evaluation.
 
@@ -134,199 +329,47 @@ async def handle_text_answer(interview_id: UUID, data: dict, container):
         container: DI container
     """
     async for session in get_async_session():
-        # Check if interview uses adaptive planning
+        # Fetch repositories once
         interview_repo = container.interview_repository_port(session)
-        interview = await interview_repo.get_by_id(interview_id)
+        question_repo = container.question_repository_port(session)
+        answer_repo = container.answer_repository_port(session)
 
+        # Validate interview exists
+        interview = await _validate_interview_exists(interview_id, interview_repo)
         if not interview:
-            await manager.send_message(
-                interview_id,
-                {
-                    "type": "error",
-                    "code": "INTERVIEW_NOT_FOUND",
-                    "message": f"Interview {interview_id} not found",
-                },
-            )
             break
 
-        # Use adaptive processing if interview has plan_metadata
-        is_adaptive = bool(interview.plan_metadata)
+        # Process answer with adaptive evaluation
+        answer, follow_up_question, has_more = await _process_answer(
+            interview_id=interview_id,
+            question_id=UUID(data["question_id"]),
+            answer_text=data["answer_text"],
+            answer_repo=answer_repo,
+            interview_repo=interview_repo,
+            question_repo=question_repo,
+            container=container,
+        )
 
-        if is_adaptive:
-            # Process answer with adaptive evaluation
-            use_case = ProcessAnswerAdaptiveUseCase(
-                answer_repository=container.answer_repository_port(session),
-                interview_repository=interview_repo,
-                question_repository=container.question_repository_port(session),
-                llm=container.llm_port(),
-                vector_search=container.vector_search_port(),
-            )
+        # Send evaluation
+        await _send_evaluation(interview_id, answer)
 
-            answer, follow_up_question, has_more = await use_case.execute(
-                interview_id=interview_id,
-                question_id=UUID(data["question_id"]),
-                answer_text=data["answer_text"],
-            )
+        # Get TTS once (will be used for either follow-up or next question)
+        tts = container.text_to_speech_port()
 
-            # Send evaluation with adaptive metrics
-            if answer.evaluation:
-                eval_message = {
-                    "type": "evaluation",
-                    "answer_id": str(answer.id),
-                    "score": answer.evaluation.score,
-                    "feedback": answer.evaluation.reasoning,
-                    "strengths": answer.evaluation.strengths,
-                    "weaknesses": answer.evaluation.weaknesses,
-                }
-            else:
-                eval_message = {
-                    "type": "evaluation",
-                    "answer_id": str(answer.id),
-                    "score": 0.0,
-                    "feedback": "No evaluation available",
-                    "strengths": [],
-                    "weaknesses": [],
-                }
-
-            # Add adaptive metrics if available
-            if answer.similarity_score is not None:
-                eval_message["similarity_score"] = answer.similarity_score
-            if answer.gaps:
-                eval_message["gaps"] = answer.gaps
-
-            await manager.send_message(interview_id, eval_message)
-
-            # If follow-up generated, send it immediately
-            if follow_up_question:
-                # Get TTS for follow-up
-                tts = container.text_to_speech_port()
-                audio_bytes = await tts.synthesize_speech(follow_up_question.text)
-                audio_data = base64.b64encode(audio_bytes).decode("utf-8")
-
-                await manager.send_message(
-                    interview_id,
-                    {
-                        "type": "follow_up_question",
-                        "question_id": str(follow_up_question.id),
-                        "parent_question_id": str(follow_up_question.parent_question_id),
-                        "text": follow_up_question.text,
-                        "generated_reason": follow_up_question.generated_reason,
-                        "order_in_sequence": follow_up_question.order_in_sequence,
-                        "audio_data": audio_data,
-                    },
-                )
-                # Don't proceed to next main question yet
-                break
-        else:
-            # Legacy: Process answer without adaptive features
-            use_case = ProcessAnswerUseCase(
-                answer_repository=container.answer_repository_port(session),
-                interview_repository=interview_repo,
-                question_repository=container.question_repository_port(session),
-                llm=container.llm_port(),
-            )
-
-            answer, has_more = await use_case.execute(
-                interview_id=interview_id,
-                question_id=UUID(data["question_id"]),
-                answer_text=data["answer_text"],
-            )
-
-            # Send evaluation
-            if answer.evaluation:
-                await manager.send_message(
-                    interview_id,
-                    {
-                        "type": "evaluation",
-                        "answer_id": str(answer.id),
-                        "score": answer.evaluation.score,
-                        "feedback": answer.evaluation.reasoning,
-                        "strengths": answer.evaluation.strengths,
-                        "weaknesses": answer.evaluation.weaknesses,
-                    },
-                )
-            else:
-                await manager.send_message(
-                    interview_id,
-                    {
-                        "type": "evaluation",
-                        "answer_id": str(answer.id),
-                        "score": 0.0,
-                        "feedback": "No evaluation available",
-                        "strengths": [],
-                        "weaknesses": [],
-                    },
-                )
+        # If follow-up generated, send it immediately
+        if follow_up_question:
+            await _send_follow_up_question(interview_id, follow_up_question, tts)
+            # Don't proceed to next main question yet
+            break
 
         # Send next question or complete
         if has_more:
-            question_use_case = GetNextQuestionUseCase(
-                interview_repository=container.interview_repository_port(session),
-                question_repository=container.question_repository_port(session),
+            await _send_next_question(
+                interview_id, interview, interview_repo, question_repo, tts
             )
-            question = await question_use_case.execute(interview_id)
-
-            if question:
-                interview = await container.interview_repository_port(
-                    session
-                ).get_by_id(interview_id)
-
-                if not interview:
-                    await manager.send_message(
-                        interview_id,
-                        {
-                            "type": "error",
-                            "code": "INTERVIEW_NOT_FOUND",
-                            "message": f"Interview {interview_id} not found",
-                        },
-                    )
-                    break
-
-                # Get TTS
-                tts = container.text_to_speech_port()
-                audio_bytes = await tts.synthesize_speech(question.text)
-                audio_data = base64.b64encode(audio_bytes).decode("utf-8")
-
-                await manager.send_message(
-                    interview_id,
-                    {
-                        "type": "question",
-                        "question_id": str(question.id),
-                        "text": question.text,
-                        "question_type": question.question_type,
-                        "difficulty": question.difficulty,
-                        "index": interview.current_question_index,
-                        "total": len(interview.question_ids),
-                        "audio_data": audio_data,
-                    },
-                )
         else:
-            # Complete interview
-            complete_use_case = CompleteInterviewUseCase(
-                interview_repository=container.interview_repository_port(session),
-            )
-            interview = await complete_use_case.execute(interview_id)
+            await _complete_interview(interview_id, interview_repo, answer_repo)
 
-            # Calculate overall score (average of all answer scores)
-            answer_repo = container.answer_repository_port(session)
-            answers = await answer_repo.get_by_interview_id(interview_id)
-            overall_score = (
-                sum(a.evaluation.score for a in answers if a.evaluation)
-                / len(answers)
-                if answers
-                else 0.0
-            )
-
-            await manager.send_message(
-                interview_id,
-                {
-                    "type": "interview_complete",
-                    "interview_id": str(interview.id),
-                    "overall_score": overall_score,
-                    "total_questions": len(interview.question_ids),
-                    "feedback_url": f"/api/interviews/{interview_id}/feedback",
-                },
-            )
         break
 
 
@@ -357,12 +400,17 @@ async def handle_get_next_question(interview_id: UUID, container):
         container: DI container
     """
     async for session in get_async_session():
-        use_case = GetNextQuestionUseCase(
-            interview_repository=container.interview_repository_port(session),
-            question_repository=container.question_repository_port(session),
-        )
+        interview_repo = container.interview_repository_port(session)
+        question_repo = container.question_repository_port(session)
+        tts = container.text_to_speech_port()
 
+        # Get next question
+        use_case = GetNextQuestionUseCase(
+            interview_repository=interview_repo,
+            question_repository=question_repo,
+        )
         question = await use_case.execute(interview_id)
+
         if not question:
             await manager.send_message(
                 interview_id,
@@ -374,37 +422,13 @@ async def handle_get_next_question(interview_id: UUID, container):
             )
             break
 
-        interview = await container.interview_repository_port(
-            session
-        ).get_by_id(interview_id)
-
+        # Validate interview exists
+        interview = await _validate_interview_exists(interview_id, interview_repo)
         if not interview:
-            await manager.send_message(
-                interview_id,
-                {
-                    "type": "error",
-                    "code": "INTERVIEW_NOT_FOUND",
-                    "message": f"Interview {interview_id} not found",
-                },
-            )
             break
 
-        # Get TTS
-        tts = container.text_to_speech_port()
-        audio_bytes = await tts.synthesize_speech(question.text)
-        audio_data = base64.b64encode(audio_bytes).decode("utf-8")
-
-        await manager.send_message(
-            interview_id,
-            {
-                "type": "question",
-                "question_id": str(question.id),
-                "text": question.text,
-                "question_type": question.question_type.value,
-                "difficulty": question.difficulty.value,
-                "index": interview.current_question_index,
-                "total": len(interview.question_ids),
-                "audio_data": audio_data,
-            },
+        # Send question with audio
+        await _send_next_question(
+            interview_id, interview, interview_repo, question_repo, tts
         )
         break

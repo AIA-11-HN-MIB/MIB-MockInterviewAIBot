@@ -8,12 +8,14 @@ These mappers handle the translation between the domain layer
 from ...domain.models.answer import Answer, AnswerEvaluation
 from ...domain.models.candidate import Candidate
 from ...domain.models.cv_analysis import CVAnalysis, ExtractedSkill
+from ...domain.models.follow_up_question import FollowUpQuestion
 from ...domain.models.interview import Interview, InterviewStatus
 from ...domain.models.question import DifficultyLevel, Question, QuestionType
 from .models import (
     AnswerModel,
     CandidateModel,
     CVAnalysisModel,
+    FollowUpQuestionModel,
     InterviewModel,
     QuestionModel,
 )
@@ -327,3 +329,61 @@ class CVAnalysisMapper:
         db_model.embedding = domain_model.embedding
         db_model.summary = domain_model.summary
         db_model.cv_metadata = domain_model.metadata
+
+
+class FollowUpQuestionMapper:
+    """Mapper for FollowUpQuestion domain model and FollowUpQuestionModel database model."""
+
+    @staticmethod
+    def to_domain(db_model: FollowUpQuestionModel) -> FollowUpQuestion:
+        """Convert database model to domain model.
+
+        Args:
+            db_model: SQLAlchemy model instance
+
+        Returns:
+            FollowUpQuestion domain model
+        """
+        return FollowUpQuestion(
+            id=db_model.id,
+            parent_question_id=db_model.parent_question_id,
+            interview_id=db_model.interview_id,
+            text=db_model.text,
+            generated_reason=db_model.generated_reason,
+            order_in_sequence=db_model.order_in_sequence,
+            created_at=db_model.created_at,
+        )
+
+    @staticmethod
+    def to_db_model(domain_model: FollowUpQuestion) -> FollowUpQuestionModel:
+        """Convert domain model to database model.
+
+        Args:
+            domain_model: FollowUpQuestion domain model
+
+        Returns:
+            FollowUpQuestionModel SQLAlchemy model
+        """
+        return FollowUpQuestionModel(
+            id=domain_model.id,
+            parent_question_id=domain_model.parent_question_id,
+            interview_id=domain_model.interview_id,
+            text=domain_model.text,
+            generated_reason=domain_model.generated_reason,
+            order_in_sequence=domain_model.order_in_sequence,
+            created_at=domain_model.created_at,
+        )
+
+    @staticmethod
+    def update_db_model(
+        db_model: FollowUpQuestionModel, domain_model: FollowUpQuestion
+    ) -> None:
+        """Update database model from domain model.
+
+        Args:
+            db_model: SQLAlchemy model to update
+            domain_model: FollowUpQuestion domain model with new data
+        """
+        db_model.text = domain_model.text
+        db_model.generated_reason = domain_model.generated_reason
+        db_model.order_in_sequence = domain_model.order_in_sequence
