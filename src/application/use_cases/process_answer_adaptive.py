@@ -9,6 +9,9 @@ from ...domain.models.answer import Answer
 from ...domain.models.follow_up_question import FollowUpQuestion
 from ...domain.models.interview import InterviewStatus
 from ...domain.ports.answer_repository_port import AnswerRepositoryPort
+from ...domain.ports.follow_up_question_repository_port import (
+    FollowUpQuestionRepositoryPort,
+)
 from ...domain.ports.interview_repository_port import InterviewRepositoryPort
 from ...domain.ports.llm_port import LLMPort
 from ...domain.ports.question_repository_port import QuestionRepositoryPort
@@ -33,6 +36,7 @@ class ProcessAnswerAdaptiveUseCase:
         answer_repository: AnswerRepositoryPort,
         interview_repository: InterviewRepositoryPort,
         question_repository: QuestionRepositoryPort,
+        follow_up_question_repository: FollowUpQuestionRepositoryPort,
         llm: LLMPort,
         vector_search: VectorSearchPort,
     ):
@@ -42,12 +46,14 @@ class ProcessAnswerAdaptiveUseCase:
             answer_repository: Answer storage
             interview_repository: Interview storage
             question_repository: Question storage
+            follow_up_question_repository: Follow-up question storage
             llm: LLM service for evaluation and gap detection
             vector_search: Vector database for similarity calculation
         """
         self.answer_repo = answer_repository
         self.interview_repo = interview_repository
         self.question_repo = question_repository
+        self.follow_up_question_repo = follow_up_question_repository
         self.llm = llm
         self.vector_search = vector_search
 
@@ -154,8 +160,8 @@ class ProcessAnswerAdaptiveUseCase:
                     gaps=gaps,
                     order=follow_up_count + 1,
                 )
-                # Save follow-up question
-                await self.question_repo.save(follow_up_question)  # type: ignore
+                # Save follow-up question to its own table
+                await self.follow_up_question_repo.save(follow_up_question)
                 # Track in interview
                 interview.add_adaptive_followup(follow_up_question.id)
                 await self.interview_repo.update(interview)

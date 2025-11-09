@@ -192,6 +192,7 @@ async def _process_answer(
         answer_repository=answer_repo,
         interview_repository=interview_repo,
         question_repository=question_repo,
+        follow_up_question_repository=container.follow_up_question_repository(),
         llm=container.llm_port(),
         vector_search=container.vector_search_port(),
     )
