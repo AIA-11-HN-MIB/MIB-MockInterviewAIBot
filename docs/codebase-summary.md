@@ -1,6 +1,6 @@
 # Codebase Summary
 
-**Last Updated**: 2025-11-08
+**Last Updated**: 2025-11-10
 **Version**: 0.1.0
 **Repository**: https://github.com/elios/elios-ai-service
 
@@ -39,14 +39,15 @@ Elios AI Interview Service is a Python-based AI-powered mock interview platform 
 EliosAIService/
 ├── src/                          # Source code (Clean Architecture layers)
 │   ├── domain/                   # Core business logic (no external dependencies)
-│   │   ├── models/              # Domain entities (5 files)
+│   │   ├── models/              # Domain entities (6 files)
 │   │   │   ├── __init__.py
 │   │   │   ├── candidate.py     # Candidate entity
 │   │   │   ├── interview.py     # Interview aggregate root
 │   │   │   ├── question.py      # Question value object
-│   │   │   ├── answer.py        # Answer entity with evaluation
+│   │   │   ├── answer.py        # Answer entity with evaluation & adaptive fields
+│   │   │   ├── follow_up_question.py  # Follow-up question for adaptive interviews ✅
 │   │   │   └── cv_analysis.py   # CV analysis entity
-│   │   └── ports/               # Abstract interfaces (11 files)
+│   │   └── ports/               # Abstract interfaces (12 files)
 │   │       ├── __init__.py
 │   │       ├── llm_port.py                      # LLM interface
 │   │       ├── vector_search_port.py            # Vector DB interface
@@ -58,19 +59,20 @@ EliosAIService/
 │   │       ├── candidate_repository_port.py     # Candidate persistence
 │   │       ├── interview_repository_port.py     # Interview persistence
 │   │       ├── answer_repository_port.py        # Answer persistence
-│   │       └── cv_analysis_repository_port.py   # CV analysis persistence
+│   │       ├── cv_analysis_repository_port.py   # CV analysis persistence
+│   │       └── follow_up_question_repository_port.py  # Follow-up question persistence ✅
 │   ├── application/             # Use cases and orchestration
 │   │   ├── __init__.py
 │   │   ├── dto/                 # Data Transfer Objects (3 files)
 │   │   │   ├── interview_dto.py # Interview request/response DTOs ✅
 │   │   │   ├── answer_dto.py    # Answer request/response DTOs ✅
 │   │   │   └── websocket_dto.py # WebSocket message DTOs ✅
-│   │   └── use_cases/           # Application business flows (5 files)
+│   │   └── use_cases/           # Application business flows (6 files)
 │   │       ├── __init__.py
 │   │       ├── analyze_cv.py    # CV analysis workflow ✅
-│   │       ├── start_interview.py # Interview initialization workflow ✅
+│   │       ├── plan_interview.py # Interview planning with adaptive question generation ✅
 │   │       ├── get_next_question.py # Retrieve next question ✅
-│   │       ├── process_answer.py # Handle answer submission & evaluation ✅
+│   │       ├── process_answer_adaptive.py # Adaptive answer evaluation & gap detection ✅
 │   │       └── complete_interview.py # Finalize interview session ✅
 │   ├── adapters/                # External service implementations
 │   │   ├── __init__.py
@@ -88,7 +90,7 @@ EliosAIService/
 │   │   │   ├── mock_tts_adapter.py          # Mock text-to-speech ✅
 │   │   │   ├── mock_cv_analyzer.py          # Mock CV analyzer ✅
 │   │   │   └── mock_analytics.py            # Mock analytics ✅
-│   │   ├── persistence/         # Database adapters (7 files)
+│   │   ├── persistence/         # Database adapters (8 files)
 │   │   │   ├── __init__.py
 │   │   │   ├── models.py        # SQLAlchemy ORM models
 │   │   │   ├── mappers.py       # Domain ↔ DB model conversion
@@ -96,7 +98,8 @@ EliosAIService/
 │   │   │   ├── question_repository.py       ✅
 │   │   │   ├── interview_repository.py      ✅
 │   │   │   ├── answer_repository.py         ✅
-│   │   │   └── cv_analysis_repository.py    ✅
+│   │   │   ├── cv_analysis_repository.py    ✅
+│   │   │   └── follow_up_question_repository.py  # Follow-up question persistence ✅
 │   │   └── api/                 # API layer
 │   │       ├── __init__.py
 │   │       ├── rest/            # REST endpoints (2 files)
@@ -120,8 +123,12 @@ EliosAIService/
 │           ├── __init__.py
 │           └── container.py     # DI container ✅
 ├── alembic/                     # Database migrations
-│   ├── versions/                # Migration scripts
-│   │   └── a4047ce5a909_initial_database_schema_with_all_tables.py ✅
+│   ├── versions/                # Migration scripts (sequential naming)
+│   │   ├── 0001_initial_database_schema_with_all_tables.py ✅
+│   │   ├── 0002_seed_sample_data.py ✅
+│   │   ├── 0003_add_planning_and_adaptive_fields.py ✅
+│   │   ├── 0004_seed_data_for_planning_and_adaptive.py ✅
+│   │   └── 0005_drop_reference_answer_column.py ✅
 │   ├── env.py                   # Alembic environment config
 │   └── script.py.mako          # Migration template
 ├── scripts/                     # Utility scripts
