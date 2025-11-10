@@ -68,7 +68,6 @@ class CVEmbeddingPreprocessor:
         savetime = datetime.now().isoformat()
 
         metadata = {
-            "candidate_name": candidate_name,
             "summary": summarized_info,
             "skills": skills,
             "experience_years": experience_years,
@@ -175,6 +174,16 @@ class CVProcessingAdapter(CVProcessingPort):
             topics.add(f"[Topic generation failed: {e}]")
         return list(topics)
 
+    def generate_interview_difficulty(experience_years: float) -> str:
+        if experience_years >= 10:
+            return "expert"
+        elif experience_years >= 5:
+            return "advanced"
+        elif experience_years >= 2:
+            return "medium"
+        else:
+            return "beginner"
+
         
     async def analyze_cv(self, cv_file_path: str, candidate_id: str) -> CVAnalysis:
         cv_text = self.read_cv(cv_file_path)
@@ -186,13 +195,6 @@ class CVProcessingAdapter(CVProcessingPort):
         suggested_topics = self.generate_interview_topics(skills, job_rank, experience_years)
         suggested_difficulty = self.generate_interview_difficulty(experience_years)
         metadata = await self.preprocessing.create_metadata_from_summary(summary=summary_info, difficulty=suggested_difficulty)
-        embedding = await self.vector_db.get_embedding(cv_text)
-
-        await self.vector_db.store_cv_embedding(
-            cv_analysis_id=candidate_id,
-            embedding=embedding,
-            metadatas=metadata
-        )
 
         return CVAnalysis(
             candidate_id=candidate_id,
@@ -203,7 +205,7 @@ class CVProcessingAdapter(CVProcessingPort):
             education_level=education_level,
             suggested_topics=suggested_topics,
             suggested_difficulty=suggested_difficulty,
-            embedding=embedding,
+            embedding="",
             summary=json.loads(summary_info).get("summary", ""),
             metadata=metadata,
             created_at=datetime.now().isoformat()   

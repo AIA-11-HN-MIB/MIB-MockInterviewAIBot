@@ -125,6 +125,9 @@ class ProcessAnswerAdaptiveUseCase:
             similarity_score = await self._calculate_similarity(
                 answer_text, question.ideal_answer  # type: ignore
             )
+
+            if(similarity_score==0.0):
+                similarity_score = 0.01  # avoid zero similarity
             answer.similarity_score = similarity_score
             logger.info(f"Similarity score: {similarity_score:.2f}")
         else:

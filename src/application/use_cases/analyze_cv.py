@@ -57,26 +57,29 @@ class AnalyzeCVUseCase:
         # Step 2: Generate embedding for the CV
         # Combine key information for embedding
         cv_text_for_embedding = f"""
+        Summary: {cv_analysis.summary}
         Skills: {', '.join([skill.name for skill in cv_analysis.skills])}
         Experience: {cv_analysis.work_experience_years} years
         Education: {cv_analysis.education_level}
-        Summary: {cv_analysis.summary}
-        """
+        Difficulty: {cv_analysis.suggested_difficulty}
+        """.strip()
 
         embedding = await self.vector_search.get_embedding(cv_text_for_embedding)
         cv_analysis.embedding = embedding
+        metadata = cv_analysis.metadata
 
         # Step 3: Store embedding in vector database for future question matching
         await self.vector_search.store_cv_embedding(
             cv_analysis_id=cv_analysis.id,
             embedding=embedding,
-            metadata={
-                "candidate_id": str(candidate_id),
-                "skills": [skill.name for skill in cv_analysis.skills],
-                "experience_years": cv_analysis.work_experience_years,
-                "education": cv_analysis.education_level,
-                "suggested_difficulty": cv_analysis.suggested_difficulty,
-            },
+            # metadata={
+            #     "candidate_id": str(candidate_id),
+            #     "skills": [skill.name for skill in cv_analysis.skills],
+            #     "experience_years": cv_analysis.work_experience_years,
+            #     "education": cv_analysis.education_level,
+            #     "suggested_difficulty": cv_analysis.suggested_difficulty,
+            # },
+            metadata = metadata
         )
 
         return cv_analysis
