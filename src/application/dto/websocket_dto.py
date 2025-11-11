@@ -97,15 +97,27 @@ class FollowUpQuestionMessage(BaseModel):
 
 
 class EvaluationMessage(BaseModel):
-    """Server sends answer evaluation with optional voice metrics."""
+    """Server sends answer evaluation with optional voice metrics (Phase 3 enhanced)."""
 
     type: Literal["evaluation"] = "evaluation"
     answer_id: UUID = Field(..., description="Unique answer ID")
-    score: float = Field(..., ge=0.0, le=100.0, description="Answer score (0-100)")
+    score: float = Field(..., ge=0.0, le=100.0, description="Overall combined score (0-100)")
     feedback: str = Field(..., description="Overall feedback")
     strengths: list[str] = Field(default_factory=list, description="Answer strengths")
     weaknesses: list[str] = Field(default_factory=list, description="Areas for improvement")
-    similarity_score: float | None = Field(None, description="Similarity to ideal answer")
+
+    # Detailed scoring breakdown (Phase 3)
+    theoretical_score: float | None = Field(
+        None, ge=0.0, le=100.0, description="Semantic/content score (0-100)"
+    )
+    speaking_score: float | None = Field(
+        None, ge=0.0, le=100.0, description="Voice delivery score (0-100)"
+    )
+
+    # Additional metrics
+    similarity_score: float | None = Field(
+        None, ge=0.0, le=1.0, description="Similarity to ideal answer (0-1)"
+    )
     gaps: dict[str, Any] | None = Field(None, description="Knowledge gaps detected")
     voice_metrics: dict[str, float] | None = Field(
         None, description="Voice quality metrics (if audio answer)"
