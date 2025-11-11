@@ -79,7 +79,7 @@ class Container:
         """
         if self._llm_port is None:
             # Use mock adapter if configured
-            if self.settings.use_mock_adapters:
+            if self.settings.use_mock_llm:
                 self._llm_port = MockLLMAdapter()
             elif self.settings.llm_provider == "openai":
                 if not self.settings.openai_api_key:
@@ -117,7 +117,7 @@ class Container:
         """
         if self._vector_search_port is None:
             # Use mock adapter if configured
-            if self.settings.use_mock_adapters:
+            if self.settings.use_mock_vector_search:
                 self._vector_search_port = MockVectorSearchAdapter()
             elif self.settings.vector_db_provider == "pinecone":
                 if not self.settings.pinecone_api_key:
@@ -227,7 +227,7 @@ class Container:
         Raises:
             NotImplementedError: Real implementation pending
         """
-        if self.settings.use_mock_adapters:
+        if self.settings.use_mock_cv_analyzer:
             return MockCVAnalyzerAdapter()
         else:
             # TODO: Implement real CV analyzer
@@ -246,7 +246,7 @@ class Container:
         """
         if self._stt_port is None:
             # Use mock adapter if configured
-            if self.settings.use_mock_adapters:
+            if self.settings.use_mock_stt:
                 self._stt_port = MockSTTAdapter()
             else:
                 # TODO: Implement Azure STT adapter
@@ -270,7 +270,7 @@ class Container:
         """
         if self._tts_port is None:
             # Use mock adapter if configured
-            if self.settings.use_mock_adapters:
+            if self.settings.use_mock_tts:
                 self._tts_port = MockTTSAdapter()
             else:
                 # TODO: Implement Edge TTS adapter
@@ -289,7 +289,7 @@ class Container:
         Raises:
             NotImplementedError: Real implementation pending
         """
-        if self.settings.use_mock_adapters:
+        if self.settings.use_mock_analytics:
             return MockAnalyticsAdapter()
         else:
             # TODO: Implement real analytics service

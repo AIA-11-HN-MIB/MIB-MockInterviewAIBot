@@ -122,7 +122,13 @@ class Settings(BaseSettings):
     ws_base_url: str = "ws://localhost:8000"
 
     # Mock Adapters (for development/testing)
-    use_mock_adapters: bool = True  # Set to False to use real adapters
+    # Individual flags for each adapter - set to False to use real implementations
+    use_mock_llm: bool = True
+    use_mock_vector_search: bool = True
+    use_mock_cv_analyzer: bool = True
+    use_mock_stt: bool = True
+    use_mock_tts: bool = True
+    use_mock_analytics: bool = True
 
     model_config = SettingsConfigDict(
         env_file=("../.env.local", ".env"),  # Try .env.local first, fallback to .env
