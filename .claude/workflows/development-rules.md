@@ -12,8 +12,8 @@
 - Use `docs-seeker` skill for exploring latest docs of plugins/packages
 - Use `gh` bash command to interact with Github features.
 - Use `psql` bash command to query database for debugging.
-- Use `gemini-vision` skill for describing details of images, videos, documents, etc.
-- Use `gemini-image-gen` skill and `imagemagick` skill for generating and editing images, videos, documents, etc.
+- Use `ai-multimodal` skill for describing details of images, videos, documents, etc.
+- Use `ai-multimodal` skill and `imagemagick` skill for generating and editing images, videos, documents, etc.
 - Use `sequential-thinking` skill for sequential thinking, analyzing code, debugging, etc.
 - **[IMPORTANT]** Follow the codebase structure and code standards in `./docs` during implementation.
 - **[IMPORTANT]** When you finish the implementation, send a full summary report to Discord channel with `./.claude/hooks/send-discord.sh 'Your message here'` script (remember to escape the string).

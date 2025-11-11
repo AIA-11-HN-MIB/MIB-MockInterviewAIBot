@@ -39,7 +39,7 @@ skill-name/
     └── assets/           - Files used in output (templates, icons, fonts, etc.)
 ```
 
-#### Requirements (important)
+#### Requirements (**IMPORTANT**)
 
 - Skill should be combined into specific topics, for example: `cloudflare`, `cloudflare-r2`, `cloudflare-workers`, `docker`, `gcloud` should be combined into `devops`
 - `SKILL.md` should be **less than 200 lines** and include the references of related markdown files and scripts.

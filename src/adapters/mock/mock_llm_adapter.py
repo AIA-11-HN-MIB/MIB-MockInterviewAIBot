@@ -21,9 +21,26 @@ class MockLLMAdapter(LLMPort):
         context: dict[str, Any],
         skill: str,
         difficulty: str,
+        exemplars: list[dict[str, Any]] | None = None,
     ) -> str:
-        """Generate mock question."""
-        return f"Mock question about {skill} at {difficulty} difficulty?"
+        """Generate mock question.
+
+        Args:
+            context: Interview context
+            skill: Target skill to test
+            difficulty: Question difficulty level
+            exemplars: Optional list of similar questions (for testing)
+
+        Returns:
+            Mock question text
+        """
+        base_question = f"Mock question about {skill} at {difficulty} difficulty?"
+
+        # Indicate exemplars were provided (for testing purposes)
+        if exemplars:
+            base_question += f" [Generated with {len(exemplars)} exemplar(s)]"
+
+        return base_question
 
     async def evaluate_answer(
         self,

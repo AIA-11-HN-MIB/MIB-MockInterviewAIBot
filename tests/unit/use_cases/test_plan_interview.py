@@ -19,6 +19,7 @@ class TestPlanInterviewUseCase:
         mock_cv_analysis_repo,
         mock_interview_repo,
         mock_question_repo,
+        mock_vector_search,
     ):
         """Test planning with 2 skills -> n=2 questions."""
         # Create CV with 2 skills
@@ -37,6 +38,7 @@ class TestPlanInterviewUseCase:
         # Execute use case
         use_case = PlanInterviewUseCase(
             llm=mock_llm,
+            vector_search=mock_vector_search,
             cv_analysis_repo=mock_cv_analysis_repo,
             interview_repo=mock_interview_repo,
             question_repo=mock_question_repo,
@@ -60,6 +62,7 @@ class TestPlanInterviewUseCase:
         mock_cv_analysis_repo,
         mock_interview_repo,
         mock_question_repo,
+        mock_vector_search,
     ):
         """Test planning with 4 skills -> n=3 questions."""
         cv = CVAnalysis(
@@ -78,6 +81,7 @@ class TestPlanInterviewUseCase:
 
         use_case = PlanInterviewUseCase(
             llm=mock_llm,
+            vector_search=mock_vector_search,
             cv_analysis_repo=mock_cv_analysis_repo,
             interview_repo=mock_interview_repo,
             question_repo=mock_question_repo,
@@ -99,6 +103,7 @@ class TestPlanInterviewUseCase:
         mock_cv_analysis_repo,
         mock_interview_repo,
         mock_question_repo,
+        mock_vector_search,
     ):
         """Test planning with 7 skills -> n=4 questions."""
         cv = CVAnalysis(
@@ -115,6 +120,7 @@ class TestPlanInterviewUseCase:
 
         use_case = PlanInterviewUseCase(
             llm=mock_llm,
+            vector_search=mock_vector_search,
             cv_analysis_repo=mock_cv_analysis_repo,
             interview_repo=mock_interview_repo,
             question_repo=mock_question_repo,
@@ -136,6 +142,7 @@ class TestPlanInterviewUseCase:
         mock_cv_analysis_repo,
         mock_interview_repo,
         mock_question_repo,
+        mock_vector_search,
     ):
         """Test planning with 10 skills -> n=5 (max)."""
         cv = CVAnalysis(
@@ -152,6 +159,7 @@ class TestPlanInterviewUseCase:
 
         use_case = PlanInterviewUseCase(
             llm=mock_llm,
+            vector_search=mock_vector_search,
             cv_analysis_repo=mock_cv_analysis_repo,
             interview_repo=mock_interview_repo,
             question_repo=mock_question_repo,
@@ -170,6 +178,7 @@ class TestPlanInterviewUseCase:
     async def test_plan_interview_questions_have_ideal_answer(
         self,
         mock_llm,
+        mock_vector_search,
         sample_cv_analysis,
         mock_cv_analysis_repo,
         mock_interview_repo,
@@ -180,6 +189,7 @@ class TestPlanInterviewUseCase:
 
         use_case = PlanInterviewUseCase(
             llm=mock_llm,
+            vector_search=mock_vector_search,
             cv_analysis_repo=mock_cv_analysis_repo,
             interview_repo=mock_interview_repo,
             question_repo=mock_question_repo,
@@ -206,10 +216,12 @@ class TestPlanInterviewUseCase:
         mock_cv_analysis_repo,
         mock_interview_repo,
         mock_question_repo,
+        mock_vector_search,
     ):
         """Test error when CV analysis not found."""
         use_case = PlanInterviewUseCase(
             llm=mock_llm,
+            vector_search=mock_vector_search,
             cv_analysis_repo=mock_cv_analysis_repo,
             interview_repo=mock_interview_repo,
             question_repo=mock_question_repo,
@@ -225,6 +237,7 @@ class TestPlanInterviewUseCase:
     async def test_plan_interview_metadata_stored(
         self,
         mock_llm,
+        mock_vector_search,
         sample_cv_analysis,
         mock_cv_analysis_repo,
         mock_interview_repo,
@@ -235,6 +248,7 @@ class TestPlanInterviewUseCase:
 
         use_case = PlanInterviewUseCase(
             llm=mock_llm,
+            vector_search=mock_vector_search,
             cv_analysis_repo=mock_cv_analysis_repo,
             interview_repo=mock_interview_repo,
             question_repo=mock_question_repo,
@@ -256,6 +270,7 @@ class TestPlanInterviewUseCase:
     async def test_plan_interview_status_progression(
         self,
         mock_llm,
+        mock_vector_search,
         sample_cv_analysis,
         mock_cv_analysis_repo,
         mock_interview_repo,
@@ -266,6 +281,7 @@ class TestPlanInterviewUseCase:
 
         use_case = PlanInterviewUseCase(
             llm=mock_llm,
+            vector_search=mock_vector_search,
             cv_analysis_repo=mock_cv_analysis_repo,
             interview_repo=mock_interview_repo,
             question_repo=mock_question_repo,
@@ -291,6 +307,7 @@ class TestQuestionCountCalculation:
         # Create use case instance (dependencies don't matter for this test)
         use_case = PlanInterviewUseCase(
             llm=None,  # type: ignore
+            vector_search=None,  # type: ignore
             cv_analysis_repo=None,  # type: ignore
             interview_repo=None,  # type: ignore
             question_repo=None,  # type: ignore
@@ -331,6 +348,7 @@ class TestQuestionCountCalculation:
 
         use_case = PlanInterviewUseCase(
             llm=None,  # type: ignore
+            vector_search=None,  # type: ignore
             cv_analysis_repo=None,  # type: ignore
             interview_repo=None,  # type: ignore
             question_repo=None,  # type: ignore

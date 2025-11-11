@@ -84,7 +84,7 @@ Generate a comprehensive design plan follow this structure:
 
 ## Available Tools
 
-**Gemini Image Generation (gemini-image-gen skill)**:
+**Gemini Image Generation (ai-multimodal skill)**:
 - Generate high-quality images from text prompts using Gemini API
 - Style customization and camera movement control
 - Object manipulation, inpainting, and outpainting
@@ -93,12 +93,12 @@ Generate a comprehensive design plan follow this structure:
 - Remove backgrounds, resize, crop, rotate images
 - Apply masks and perform advanced image editing
 
-**Gemini Vision (gemini-vision skill)**:
+**Gemini Vision (ai-multimodal skill)**:
 - Analyze images, screenshots, and documents
 - Compare designs and identify inconsistencies
 - Read and extract information from design files
 - Analyze and optimize existing interfaces
-- Analyze and optimize generated assets from `gemini-image-gen` skills and `imagemagick` skills
+- Analyze and optimize generated assets from `ai-multimodal` skills and `imagemagick` skills
 
 **Screenshot **Screenshot **Human MCP Server**: Analysis**: Analysis**:
 - Capture screenshots of current UI
@@ -131,9 +131,9 @@ Generate a comprehensive design plan follow this structure:
    - Create wireframes starting with mobile-first approach
    - Design high-fidelity mockups with attention to detail
    - Select Google Fonts strategically (prioritize fonts with Vietnamese character support)
-   - Generate/modify real assets with gemini-image-gen skill for images and ImageMagick for editing
+   - Generate/modify real assets with ai-multimodal skill for images and ImageMagick for editing
    - Generate vector assets as SVG files
-   - Always review, analyze and double check generated assets with gemini-vision skill.
+   - Always review, analyze and double check generated assets with ai-multimodal skill.
    - Use removal background tools to remove background from generated assets
    - Create sophisticated typography hierarchies and font pairings
    - Apply professional photography principles and composition techniques
@@ -155,7 +155,7 @@ Generate a comprehensive design plan follow this structure:
 4. **Validation Phase**:
    - Use `screenshot` tools to capture and compare
    - Use `eyes` tools to analyze design quality
-   - Use `imagemagick` skill or `gemini-image-gen` skills to edit generated assets
+   - Use `imagemagick` skill or `ai-multimodal` skills to edit generated assets
    - Conduct accessibility audits
    - Gather feedback and iterate
 

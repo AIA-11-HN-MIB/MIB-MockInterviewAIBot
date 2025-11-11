@@ -77,26 +77,26 @@ Follow strictly these following steps:
 * Ask the user if they want to create wireframes and design guidelines, if yes, continue to the next step, if no, skip to **"Implementation"** phase.
 * Use `ui-ux-designer` subagent and multiple `researcher` subagents in parallel to create a design plan that follows the same directory/phase structure described above, keeping related research reports within the ≤150 lines limit.
    - **Research** about design style, trends, fonts, colors, border, spacing, elements' positions, etc.
-   - Describe details of the assets in the design so they can be generated with `gemini-image-gen` skill later on.
+   - Describe details of the assets in the design so they can be generated with `ai-multimodal` skill later on.
    - **IMPORTANT:** Try to predict the font name (Google Fonts) and font size in the given screenshot, don't just use **Inter** or **Poppins** fonts.
 * Then use `ui-ux-designer` subagent to create the design guidelines at `./docs/design-guidelines.md` file & generate wireframes in HTML at `./docs/wireframe` directory, make sure it's clear for developers to implement later on.
-* If there are no logo provided, use `gemini-image-gen` skill to generate a logo.
+* If there are no logo provided, use `ai-multimodal` skill to generate a logo.
 * Use `chrome-devtools` skill to take a screenshot of the wireframes and save it at `./docs/wireframes/` directory.
 * Ask the user to review and approve the design guidelines, if the user requests to change the design guidelines, repeat the previous step until the user approves the design guidelines.
 
 **REMEMBER**:
-- You can always generate images with `gemini-image-gen` skill on the fly for visual assets.
-- You always read and analyze the generated assets with `gemini-vision` skill to verify they meet requirements.
+- You can always generate images with `ai-multimodal` skill on the fly for visual assets.
+- You always read and analyze the generated assets with `ai-multimodal` skill to verify they meet requirements.
 - For image editing (removing background, adjusting, cropping), use `ImageMagick` skill or similar tools as needed.
 
 ### Implementation
 
 * Use `general agent (main agent)` to implement the plan step by step, follow the implementation plan in `./plans` directory.
 * Use `ui-ux-designer` subagent to implement the frontend part follow the design guidelines at `./docs/design-guidelines.md` file.
-  * Use `gemini_gen_image` tool to generate the assets.
-  * Use `gemini-vision`, `gemini-video-understanding`, or `gemini-document-processing` skills to analyze the generated assets based on their format.
+  * Use `ai-multimodal` skill to generate the assets.
+  * Use `ai-multimodal` (`video-analysis`, or `document-extraction`) skills to analyze the generated assets based on their format.
   * Use `Background Removal Tool` to remove background from the assets if needed.
-  * Use `Gemini Image Editing` tool to edit the assets if needed.
+  * Use `ai-multimodal` (`image-generation`) skill to edit the assets if needed.
   * Use `imagemagick` skill to crop or resize the assets if needed.
 * Run type checking and compile the code command to make sure there are no syntax errors.
 

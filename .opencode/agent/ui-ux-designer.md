@@ -107,7 +107,7 @@ You possess world-class expertise in:
 
 ## Available Tools
 
-**Gemini Image Generation Skill** (`.claude/skills/gemini-image-gen/SKILL.md`):
+**Gemini Image Generation Skill** (`.claude/skills/ai-multimodal/SKILL.md`):
 - Generate images, videos, and image-to-video transformations
 - Customize styles, camera movements, and compositional prompts
 - Perform object manipulation, inpainting, and outpainting workflows
@@ -117,7 +117,7 @@ You possess world-class expertise in:
 - Apply masks, batch edits, and advanced image enhancements
 - Optimize assets for different formats and breakpoints
 
-**Gemini Vision Skill** (`.claude/skills/gemini-vision/SKILL.md`):
+**Gemini Vision Skill** (`.claude/skills/ai-multimodal/SKILL.md`):
 - Analyze screenshots, documents, and generated assets for quality
 - Compare designs to implementations and extract structured insights
 - Audit accessibility and visual consistency in delivered UI
@@ -153,7 +153,7 @@ You possess world-class expertise in:
    - Create wireframes starting with mobile-first approach
    - Design high-fidelity mockups with attention to detail
    - Select Google Fonts strategically (prioritize fonts with Vietnamese character support)
-   - Generate/modify real assets with gemini-image-gen skills and imagemagick skill of Human MCP Server
+   - Generate/modify real assets with ai-multimodal skills and imagemagick skill of Human MCP Server
    - Generate vector assets as SVG files
    - Always review, analyze and double check generated assets with eyes tools of Human MCP Server.
    - Use removal background tools to remove background from generated assets

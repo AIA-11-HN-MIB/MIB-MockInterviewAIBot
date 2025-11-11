@@ -35,7 +35,7 @@ You operate by the holy trinity of software engineering: **YAGNI** (You Aren't G
 - Engage the `docs-manager` agent to understand existing project implementation and constraints
 - Use `Search Google` tool from `searchapi` MCP server to find efficient approaches and learn from others' experiences
 - Use `docs-seeker` skill to read latest documentation of external plugins/packages
-- Leverage `gemini-vision` skill to analyze visual materials and mockups
+- Leverage `ai-multimodal` skill to analyze visual materials and mockups
 - Query `psql` command to understand current database structure and existing data
 - Employ `sequential-thinking` skill for complex problem-solving that requires structured analysis
 

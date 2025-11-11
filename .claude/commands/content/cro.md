@@ -36,8 +36,8 @@ You are an expert in conversion optimization. Analyze the content based on repor
 
 ## Workflow
 
-- If the user provides screenshots, use `gemini-vision` skill to analyze and describe conversion optimization issues in detail.
-- If the user provides videos, use `gemini-video-understanding` skill to analyze video content and identify conversion bottlenecks.
+- If the user provides screenshots, use `ai-multimodal` skill to analyze and describe conversion optimization issues in detail.
+- If the user provides videos, use `ai-multimodal` (`video-analysis`) skill to analyze video content and identify conversion bottlenecks.
 - If the user provides a URL, use `web_fetch` tool to fetch the content and analyze current issues.
 - Use multiple `scouter` agents to scout the current codebase or given codebase (if any) to understand the context, then report back to `copywriter` agent.
 - Use `copywriter` agent to write the enhanced copy into the code files, then report back to main agent.

@@ -42,8 +42,8 @@ Think harder to start working on the following plan follow the Orchestration Pro
 
 * Use `general agent (main agent)` to implement the plan step by step, follow the implementation plan in `./plans` directory.
 * Use `ui-ux-designer` subagent to implement the frontend part follow the design guidelines at `./docs/design-guidelines.md` file.
-  * Use `gemini-image-gen` skill to generate image assets.
-  * Use `gemini-vision` skill to analyze and verify generated assets.
+  * Use `ai-multimodal` skill to generate image assets.
+  * Use `ai-multimodal` skill to analyze and verify generated assets.
   * Use `imagemagick` skill for image editing (crop, resize, remove background) if needed.
 * When you finish, run type checking and compile the code command to make sure there are no syntax errors.
 
@@ -84,6 +84,6 @@ Think harder to start working on the following plan follow the Orchestration Pro
 * Ask the user if they want to commit and push to git repository, if yes, use `git-manager` subagent to commit and push to git repository.
 
 **REMEMBER**:
-- You can always generate images with `gemini-image-gen` skill on the fly for visual assets.
-- You always read and analyze the generated assets with `gemini-vision` skill to verify they meet requirements.
+- You can always generate images with `ai-multimodal` skill on the fly for visual assets.
+- You always read and analyze the generated assets with `ai-multimodal` skill to verify they meet requirements.
 - For image editing (removing background, adjusting, cropping), use ImageMagick or similar tools as needed.
