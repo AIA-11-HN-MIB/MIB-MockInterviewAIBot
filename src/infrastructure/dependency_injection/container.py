@@ -261,20 +261,26 @@ class Container:
             Configured STT service
 
         Raises:
-            NotImplementedError: Implementation pending
+            ValueError: If Azure Speech API key or region is not configured
         """
         if self._stt_port is None:
             # Use mock adapter if configured
             if self.settings.use_mock_stt:
                 self._stt_port = MockSTTAdapter()
             else:
-                # TODO: Implement Azure STT adapter
-                # from ...adapters.speech.azure_stt_adapter import AzureSTTAdapter
-                # self._stt_port = AzureSTTAdapter(
-                #     api_key=self.settings.azure_speech_key,
-                #     region=self.settings.azure_speech_region,
-                # )
-                raise NotImplementedError("Speech-to-text adapter not yet implemented")
+                # Use Azure Speech SDK
+                from ...adapters.speech.azure_stt_adapter import AzureSpeechToTextAdapter
+
+                if not self.settings.azure_speech_key:
+                    raise ValueError("Azure Speech API key not configured")
+                if not self.settings.azure_speech_region:
+                    raise ValueError("Azure Speech region not configured")
+
+                self._stt_port = AzureSpeechToTextAdapter(
+                    api_key=self.settings.azure_speech_key,
+                    region=self.settings.azure_speech_region,
+                    language=self.settings.azure_speech_language,
+                )
 
         return self._stt_port
 
@@ -285,17 +291,27 @@ class Container:
             Configured TTS service
 
         Raises:
-            NotImplementedError: Implementation pending
+            ValueError: If Azure Speech API key or region is not configured
         """
         if self._tts_port is None:
             # Use mock adapter if configured
             if self.settings.use_mock_tts:
                 self._tts_port = MockTTSAdapter()
             else:
-                # TODO: Implement Edge TTS adapter
-                # from ...adapters.speech.edge_tts_adapter import EdgeTTSAdapter
-                # self._tts_port = EdgeTTSAdapter()
-                raise NotImplementedError("Text-to-speech adapter not yet implemented")
+                # Use Azure Speech SDK
+                from ...adapters.speech.azure_tts_adapter import AzureTextToSpeechAdapter
+
+                if not self.settings.azure_speech_key:
+                    raise ValueError("Azure Speech API key not configured")
+                if not self.settings.azure_speech_region:
+                    raise ValueError("Azure Speech region not configured")
+
+                self._tts_port = AzureTextToSpeechAdapter(
+                    api_key=self.settings.azure_speech_key,
+                    region=self.settings.azure_speech_region,
+                    default_voice=self.settings.azure_speech_voice,
+                    cache_size=self.settings.azure_speech_cache_size,
+                )
 
         return self._tts_port
 

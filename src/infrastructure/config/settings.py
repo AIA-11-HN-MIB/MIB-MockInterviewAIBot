@@ -102,9 +102,12 @@ class Settings(BaseSettings):
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
-    # Speech Services
+    # Speech Services (Azure Speech SDK)
     azure_speech_key: str | None = None
     azure_speech_region: str = "eastus"
+    azure_speech_language: str = "en-US"
+    azure_speech_voice: str = "en-US-AriaNeural"
+    azure_speech_cache_size: int = 128  # LRU cache size for TTS
 
     # File Storage
     upload_dir: str = "./uploads"
