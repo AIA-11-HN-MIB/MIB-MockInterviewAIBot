@@ -3,6 +3,8 @@ import os
 import chromadb
 import asyncio
 import numpy as np
+from uuid import UUID
+from typing import Any, Dict
 import json
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings
@@ -17,7 +19,7 @@ QUESTION_COLLECTION_NAME = "question_embedding"
 
 chromaDB_client = chromadb.PersistentClient(path=CHROMA_PATH)
 cv_collection = chromaDB_client.get_or_create_collection(name=CV_COLLECTION_NAME, namespace="cv_process")
-# question_collection = chromaDB_client.get_or_create_collection(name=QUESTION_COLLECTION_NAME, namespace="question_process")
+question_collection = chromaDB_client.get_or_create_collection(name=QUESTION_COLLECTION_NAME, namespace="question_process")
 
 embedding_client = OpenAIEmbeddings(
     model="text-embedding-3-small",
@@ -122,23 +124,42 @@ class ChromaAdapter(VectorSearchPort):
     """
     This method calculate similarity between answer and given answer
     """
-    async def find_similar_answers(self, reference_ids, answer_embedding, reference_embeddings):
-        answer_np = np.array(answer_embedding).reshape(1, -1)
-        refs_np = np.array(reference_embeddings)
+    async def find_similar_answers(self, answer_embedding: list[float], reference_embeddings: list[list[float]]):
+        results = question_collection.query(
+        query_embeddings=reference_embeddings,
+        n_results=1,                            
+        where={"answer": {"$exists": True}},    
+        include=["embeddings", "metadatas"]
+        )
 
-        # Normalize vectors
-        answer_norm = answer_np / (np.linalg.norm(answer_np) + 1e-10)
-        refs_norm = refs_np / (np.linalg.norm(refs_np, axis=1, keepdims=True) + 1e-10)
+        embeddings_nested = results["embeddings"]
+        embeddings = [
+            embedding
+            for embedding_list in embeddings_nested
+            for embedding in embedding_list
+        ]
 
-        # Dot product = cosine similarity
-        similarities = np.dot(refs_norm, answer_norm.T).flatten().max()
+        ref_array = np.array(embeddings, dtype=np.float32)
+        ans_array = np.array(answer_embedding, dtype=np.float32).reshape(1, -1)
+        ref_norms = np.linalg.norm(ref_array, axis=1, keepdims=True)
+        ans_norm = np.linalg.norm(ans_array)
 
-        try:
-            loop = asyncio.get_event_loop()
-            max_similarity = await loop.run_in_executor(None, similarities)
-            return round(max_similarity, 4)
-
-        except Exception as e:
-            print(f"Error calculating answer similarity: {e}")
+        if ans_norm == 0 or np.any(ref_norms == 0):
             return 0.0
+
+        ref_normalized = ref_array / ref_norms
+        ans_normalized = ans_array / ans_norm
+
+        similarities = np.dot(ref_normalized, ans_normalized.T).flatten()
+
+        return float(np.max(similarities))
         
+    async def store_question_embedding(self, question_id: UUID, embedding: list[float], metadatas: dict[str, Any]):
+        try:
+            question_collection.add(
+                ids=[question_id],
+                embeddings=[embedding],
+                metadatas=[metadatas]
+            )
+        except Exception as e:
+            print(f"Error storing question embedding: {e}")
