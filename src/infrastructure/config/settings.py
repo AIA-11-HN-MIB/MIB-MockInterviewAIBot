@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4"
     openai_temperature: float = 0.7
 
+    # Azure OpenAI Configuration (alternative to standard OpenAI)
+    azure_openai_api_key: str | None = None
+    azure_openai_endpoint: str | None = None  # e.g., "https://your-resource.openai.azure.com/"
+    azure_openai_api_version: str = "2024-02-15-preview"
+    azure_openai_deployment_name: str | None = None  # Deployment name, not model name
+    use_azure_openai: bool = False  # Flag to enable Azure OpenAI
+
     # Anthropic Claude Configuration (alternative)
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-3-sonnet-20240229"
