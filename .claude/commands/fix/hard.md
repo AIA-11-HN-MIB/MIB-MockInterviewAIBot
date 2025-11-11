@@ -8,7 +8,7 @@ Ultrathink to plan & start fixing these issues follow the Orchestration Protocol
 
 ## Workflow:
 
-If the user provides a screenshots or videos, use `gemini-vision` skill to describe as detailed as possible the issue, make sure developers can predict the root causes easily based on the description.
+If the user provides a screenshots or videos, use `ai-multimodal` skill to describe as detailed as possible the issue, make sure developers can predict the root causes easily based on the description.
 
 Use `sequential-thinking` skill to break complex problems into sequential thought steps.
 Use `problem-solving` skills to tackle the issues.
@@ -38,7 +38,7 @@ Use `problem-solving` skills to tackle the issues.
   - **IMPORTANT:** In reports, list any unresolved questions at the end, if any.
 
 **REMEMBER**:
-- You can always generate images with `gemini-image-gen` skill on the fly for visual assets.
-- You always read and analyze the generated assets with `gemini-vision` skill to verify they meet requirements.
+- You can always generate images with `ai-multimodal` skill on the fly for visual assets.
+- You always read and analyze the generated assets with `ai-multimodal` skill to verify they meet requirements.
 - For image editing (removing background, adjusting, cropping), use `ImageMagick` skill or similar tools as needed.
 - **IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.

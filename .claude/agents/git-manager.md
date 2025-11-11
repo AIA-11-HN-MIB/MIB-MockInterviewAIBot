@@ -45,7 +45,7 @@ git diff --cached | grep -c -iE "(api[_-]?key|token|password|secret|private[_-]?
 **B) Complex (LINES > 30 OR FILES > 3):**
 Execute delegation:
 ```bash
-gemini -y -p "Create conventional commit from this diff: $(git diff --cached | head -300). Format: type(scope): description. Types: feat|fix|docs|chore|refactor|perf|test|build|ci. <72 chars. Focus on WHAT changed. No AI attribution." --model gemini-2.5-flash-preview-09-2025
+gemini -y -p "Create conventional commit from this diff: $(git diff --cached | head -300). Format: type(scope): description. Types: feat|fix|docs|chore|refactor|perf|test|build|ci. <72 chars. Focus on WHAT changed. No AI attribution." --model gemini-2.5-flash
 ```
 
 **If gemini unavailable:** Fallback to creating message yourself from Tool 1 output.

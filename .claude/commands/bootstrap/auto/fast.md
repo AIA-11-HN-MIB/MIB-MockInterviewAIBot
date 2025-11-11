@@ -52,13 +52,13 @@ Follow strictly these following steps:
   - For each phase, add `phase-XX-phase-name.md` files containing sections (Context links, Overview with date/priority/statuses, Key Insights, Requirements, Architecture, Related code files, Implementation Steps, Todo list, Success Criteria, Risk Assessment, Security Considerations, Next steps).
 * Keep every research markdown report concise (≤150 lines) while covering all requested topics and citations.
    - **Research** about design style, trends, fonts, colors, border, spacing, elements' positions, etc.
-   - Describe details of the assets in the design so they can be generated with `gemini-image-gen` skill later on.
+   - Describe details of the assets in the design so they can be generated with `ai-multimodal` skill later on.
    - **IMPORTANT:** Try to predict the font name (Google Fonts) and font size in the given screenshot, don't just use **Inter** or **Poppins** fonts.
 * **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
 2. **Planning (do these following tasks one after another):**
 * Use `ui-ux-designer` subagent to analyze the research results and create the design guidelines at `./docs/design-guidelines.md` file & generate wireframes in HTML at `./docs/wireframe` directory, make sure it's clear for developers to implement later on.
-* If there are no logo provided, use `gemini-image-gen` skill to generate a logo.
+* If there are no logo provided, use `ai-multimodal` skill to generate a logo.
 * Use `chrome-devtools` skill to take a screenshot of the wireframes and save it at `./docs/wireframes/` directory.
 * Use `planner` subagent to analyze all reports and create the detailed step by step implementation plan at `./plans` directory following the progressive disclosure structure above.
 * **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
@@ -67,10 +67,10 @@ Follow strictly these following steps:
 
 * Use `general agent (main agent)` to implement the plan step by step, follow the implementation plan in `./plans` directory.
 * Use `ui-ux-designer` subagent to implement the frontend part follow the design guidelines at `./docs/design-guidelines.md` file.
-  * Use `gemini-image-gen` skill to generate the assets.
-  * Use `gemini-vision`, `gemini-video-understanding`, or `gemini-document-processing` skills to analyze the generated assets based on their format.
+  * Use `ai-multimodal` skill to generate the assets.
+  * Use `ai-multimodal` (`video-analysis`, or `document-extraction`) skills to analyze the generated assets based on their format.
   * Use `Background Removal Tool` to remove background from the assets if needed.
-  * Use `Gemini Image Editing` tool to edit the assets if needed.
+  * Use `ai-multimodal` (`image-generation`) skill to edit the assets if needed.
   * Use `imagemagick` skill to crop or resize the assets if needed.
 * Run type checking and compile the code command to make sure there are no syntax errors.
 

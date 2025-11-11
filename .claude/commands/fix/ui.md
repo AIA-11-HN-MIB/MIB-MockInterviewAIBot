@@ -7,10 +7,10 @@ Use `ui-ux-designer` subagent to read and analyze `./docs/design-guidelines.md` 
 <issue>$ARGUMENTS</issue>
 
 ## Workflow
-If the user provides a screenshots or videos, use `gemini-vision` skill to describe as detailed as possible the issue, make sure developers can predict the root causes easily based on the description.
+If the user provides a screenshots or videos, use `ai-multimodal` skill to describe as detailed as possible the issue, make sure developers can predict the root causes easily based on the description.
 
 1. Use `ui-ux-designer` subagent to implement the fix step by step.
-2. Use screenshot capture tools along with `gemini-vision` skill to take screenshots of the implemented fix (at the exact parent container, don't take screenshot of the whole page) and use the appropriate Gemini analysis skills (`gemini-vision`, `gemini-video-understanding`, or `gemini-document-processing`) to analyze those outputs so the result matches the design guideline and addresses all issues.
+2. Use screenshot capture tools along with `ai-multimodal` skill to take screenshots of the implemented fix (at the exact parent container, don't take screenshot of the whole page) and use the appropriate Gemini analysis skills (`ai-multimodal`, `video-analysis`, or `document-extraction`) to analyze those outputs so the result matches the design guideline and addresses all issues.
   - If the issues are not addressed, repeat the process until all issues are addressed.
 3. Use `chrome-devtools` skill to analyze the implemented fix and make sure it matches the design guideline.
 4. Use `tester` agent to test the fix and compile the code to make sure it works, then report back to main agent.
@@ -29,7 +29,7 @@ If the user provides a screenshots or videos, use `gemini-vision` skill to descr
   * **IMPORTANT:** In reports, list any unresolved questions at the end, if any.
 
 **REMEMBER**:
-- You can always generate images with `gemini-image-gen` skill on the fly for visual assets.
-- You always read and analyze the generated assets with `gemini-vision` skill to verify they meet requirements.
+- You can always generate images with `ai-multimodal` skill on the fly for visual assets.
+- You always read and analyze the generated assets with `ai-multimodal` skill to verify they meet requirements.
 - For image editing (removing background, adjusting, cropping), use `ImageMagick` skill or similar tools as needed.
 - **IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.
