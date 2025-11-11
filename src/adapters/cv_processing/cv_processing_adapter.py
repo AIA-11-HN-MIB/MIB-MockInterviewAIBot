@@ -12,16 +12,16 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from ...domain.ports.cv_analyzer_port import CVProcessingPort
 from ...domain.models.cv_analysis import CVAnalysis
 from ...domain.ports.vector_search_port import VectorSearchPort
-
+from ...infrastructure.config import Settings
 _nlp_models = {}
 
 splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-
+setting = Settings()
 load_dotenv()
 
-openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai_client = AsyncOpenAI(api_key=setting.openai_api_key)
 
-embeddings_client = OpenAIEmbeddings(model="text-embedding-3-small", api_key=os.getenv("TEXT_EMBEDDING_API_KEY"))
+embeddings_client = OpenAIEmbeddings(model=setting.openai_embedding_api_key, api_key=setting.openai_embedding_api_key)
 
 def get_nlp_model(lang: str):
     if lang not in _nlp_models:
@@ -61,7 +61,6 @@ class CVEmbeddingPreprocessor:
     @staticmethod
     def create_metadata_from_summary(self, summary: str, difficulty: str) -> Dict[str, Any]:
         summarized_info = summary
-        candidate_name = json.loads(summary).get("candidate_name", "N/A")
         skills = json.loads(summary).get("skills", [])
         experience_years = json.loads(summary).get("experience", 0)
         education_level = json.loads(summary).get("education_level", "N/A")

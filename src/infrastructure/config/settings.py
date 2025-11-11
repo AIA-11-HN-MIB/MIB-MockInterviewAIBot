@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_model: str = "gpt-4"
     openai_temperature: float = 0.7
+    openai_embedding_model: str = "text-embedding-3-small"
+    openai_embedding_api_key: str | None = None
 
     # Anthropic Claude Configuration (alternative)
     anthropic_api_key: str | None = None
