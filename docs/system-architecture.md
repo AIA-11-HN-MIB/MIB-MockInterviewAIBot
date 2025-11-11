@@ -656,12 +656,12 @@ def get_container() -> Container:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Question Generation Flow
+### Question Generation Flow (Exemplar-Based)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Start Interview                               │
-│              StartInterviewUseCase                               │
+│                    Plan Interview                                │
+│              PlanInterviewUseCase                                │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ↓
@@ -672,32 +672,68 @@ def get_container() -> Container:
                          │
                          ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│         Find Similar Questions (Semantic Search)                 │
-│  vector_search.find_similar_questions(cv_analysis.embedding)    │
-│    → Returns questions matching candidate's skills               │
+│         Calculate Question Count (n) based on CV                 │
+│  Skill-based calculation: 2-5 questions depending on diversity  │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ↓
+     FOR each question (n times):
+┌─────────────────────────────────────────────────────────────────┐
+│     Build Search Query for Exemplars                             │
+│  Query: "{skill} {difficulty} question for {experience} dev"    │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│              Filter & Rank Questions                             │
-│  Domain logic: difficulty, skill coverage, diversity            │
+│     Find Similar Questions (Vector Search)                       │
+│  vector_search.find_similar_questions(query_embedding, top_k=5) │
+│  Filters: question_type, difficulty                             │
+│  Returns: Top 3 exemplars (similarity > 0.5)                    │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│              Create Interview Entity                             │
-│  interview = Interview(candidate_id, status=PREPARING)          │
-│  interview.add_question(q1.id)                                  │
-│  interview.add_question(q2.id)                                  │
+│     Generate Question with Exemplars                             │
+│  llm.generate_question(context, skill, difficulty, exemplars)   │
+│  → LLM uses exemplars for inspiration, generates NEW question   │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ↓
+┌─────────────────────────────────────────────────────────────────┐
+│     Generate Ideal Answer & Rationale                            │
+│  llm.generate_ideal_answer(question_text, context)              │
+│  llm.generate_rationale(question_text, ideal_answer)            │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ↓
+┌─────────────────────────────────────────────────────────────────┐
+│     Store Question in Database                                   │
+│  question_repo.save(question)                                   │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ↓
+┌─────────────────────────────────────────────────────────────────┐
+│     Store Question Embedding (Non-Blocking)                      │
+│  vector_search.store_question_embedding(id, embedding, metadata)│
+│  → Enables future exemplar searches                             │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         └──→ REPEAT for next question
+                         │
+                         ↓
+┌─────────────────────────────────────────────────────────────────┐
+│              Mark Interview as READY                             │
 │  interview.mark_ready(cv_analysis_id)                           │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ↓
-┌─────────────────────────────────────────────────────────────────┐
-│              Persist Interview                                   │
-│  interview_repo.save(interview)                                 │
+│  interview_repo.update(interview)                               │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+**Key Enhancements**:
+- Vector search retrieves exemplar questions before generation
+- LLM generates questions inspired by exemplars (not copies)
+- Questions stored in vector DB for future exemplar searches
+- Fallback: Generate without exemplars if vector search fails
+- Non-blocking embedding storage (failures don't stop flow)
 
 ## Data Flow
 

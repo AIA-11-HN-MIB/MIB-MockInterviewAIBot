@@ -16,7 +16,7 @@ Elios AI Interview Service leverages **Large Language Models (LLMs)** and **vect
 ### Key Features
 
 - **🎯 CV Analysis**: Extract skills, experience, and education from resumes
-- **🤖 Adaptive Questions**: Generate personalized interview questions based on candidate background
+- **🤖 Adaptive Questions**: Generate personalized interview questions using vector-based exemplar retrieval
 - **📊 Real-Time Evaluation**: Multi-dimensional answer assessment with instant feedback
 - **💬 Voice & Text Support**: Conduct interviews via text chat or voice (planned)
 - **📈 Comprehensive Reports**: Detailed performance analysis with actionable recommendations

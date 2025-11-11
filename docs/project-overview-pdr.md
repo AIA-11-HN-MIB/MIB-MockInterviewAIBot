@@ -108,19 +108,21 @@ Empower candidates to confidently prepare for real interviews by:
 ### 2. Adaptive Question Generation
 
 **Core Functionality**:
-- Semantic matching between CV and question bank
-- Dynamic question generation based on context
+- Exemplar-based question generation using vector search
+- Dynamic question creation with similar question inspiration
 - Difficulty progression throughout interview
 - Coverage of multiple skills and topics
 - Follow-up questions based on previous answers
 
-**Implementation Status**: ✅ Domain models complete, ✅ Use cases implemented, 🔄 API pending
+**Implementation Status**: ✅ Domain models complete, ✅ Use cases implemented, ✅ Vector search integrated
 
 **Technical Approach**:
 - PostgreSQL question bank with metadata
-- Vector similarity search for question selection
-- LLM-powered question generation
-- Context-aware follow-up logic
+- Vector similarity search retrieves 3 exemplar questions
+- Exemplars filtered by question_type, difficulty (similarity >0.5)
+- LLM generates NEW questions inspired by exemplars
+- Questions stored with embeddings for future exemplar searches
+- Graceful fallback: Generate without exemplars if search fails
 
 ### 3. Real-Time Answer Evaluation
 

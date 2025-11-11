@@ -298,14 +298,26 @@ Workflow:
 → Returns: CVAnalysis entity
 ```
 
-**StartInterviewUseCase** (`start_interview.py`):
+**PlanInterviewUseCase** (`plan_interview.py` - 381 lines) ✅:
 ```python
 Workflow:
-1. Validate CV analysis exists
-2. Find suitable questions via semantic search
-3. Create Interview entity with selected questions
-4. Mark interview as READY
+1. Load CV analysis
+2. Calculate n (2-5) based on skill diversity
+3. Create Interview entity (status=PREPARING)
+4. FOR each question:
+   ├─ Build search query (skill + difficulty + experience)
+   ├─ Find 3 exemplar questions (vector search with filters)
+   ├─ Generate question with exemplars (LLM)
+   ├─ Generate ideal answer + rationale
+   ├─ Store question in DB
+   └─ Store question embedding in vector DB (non-blocking)
+5. Mark interview as READY
 → Returns: Interview entity
+
+New Helper Methods:
+- _build_search_query(): Build vector search query
+- _find_exemplar_questions(): Retrieve exemplar questions
+- _store_question_embedding(): Store embeddings for future searches
 ```
 
 **GetNextQuestionUseCase** (`get_next_question.py` - 34 lines) ✅:
@@ -690,18 +702,20 @@ ruff check src/ && black --check src/ && mypy src/
 - Domain models (5 entities)
 - Repository ports (5 interfaces)
 - PostgreSQL persistence (5 repositories + models + mappers)
-- OpenAI LLM adapter (full implementation)
-- Pinecone vector adapter (full implementation)
+- OpenAI LLM adapter (full implementation with exemplar support) ✅
+- Pinecone vector adapter (full implementation) ✅
 - Mock adapters (6 total: LLM, Vector, STT, TTS, CV, Analytics) ✅
 - Database migrations (Alembic + async support)
 - Configuration management (Pydantic Settings + USE_MOCK_ADAPTERS flag)
 - Dependency injection container (mock adapter integration)
-- Use cases (AnalyzeCV, StartInterview, GetNextQuestion, ProcessAnswer, CompleteInterview)
+- Use cases (AnalyzeCV, PlanInterview, GetNextQuestion, ProcessAnswer, CompleteInterview) ✅
+- Vector search integration in PlanInterviewUseCase (3 new helper methods) ✅
+- Exemplar-based question generation (LLMPort enhanced) ✅
 - DTOs (3 files: interview, answer, websocket)
 - Database setup scripts
 - REST API (health check + interview endpoints)
 - WebSocket handler (real-time interview sessions)
-- All 29 unit tests passing with mocks
+- All 10 unit tests passing for PlanInterviewUseCase with mocks ✅
 
 ### 🔄 In Progress
 - CV processing adapters (spaCy, document parsing)
