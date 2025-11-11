@@ -9,7 +9,7 @@ Agent Skills are modular capabilities that extend Claude's functionality. Each S
 - Metadata (name, description)
 - Optional resources (scripts, templates, references)
 
-Skills are automatically discovered and used by Claude when relevant to the task.
+Skills are automatically discovered and used by Claude when relevant to the task using progressive disclosure principle.
 
 ## Skill Structure
 
@@ -17,16 +17,14 @@ Skills are automatically discovered and used by Claude when relevant to the task
 ```
 .claude/skills/
 └── my-skill/
-    ├── skill.md       # Instructions (required)
-    └── skill.json     # Metadata (required)
+    └── SKILL.md       # Uppercase filename, Metadata, instructions (required)
 ```
 
 ### With Resources
 ```
 .claude/skills/
 └── my-skill/
-    ├── skill.md
-    ├── skill.json
+    ├── SKILL.md       # Uppercase filename, Metadata, instructions (required)
     ├── scripts/       # Executable code
     ├── references/    # Documentation
     └── assets/        # Templates, images
@@ -34,28 +32,24 @@ Skills are automatically discovered and used by Claude when relevant to the task
 
 ## Creating Skills
 
-### skill.json
+### SKILL.md
 Metadata and configuration:
 
-```json
-{
-  "name": "my-skill",
-  "description": "Brief description of when to use this skill",
-  "version": "1.0.0",
-  "author": "Your Name"
-}
-```
-
-**Key fields:**
+**Metadata's fields:**
 - `name`: Unique identifier (kebab-case)
 - `description`: When Claude should activate this skill
 - `version`: Semantic version
 - `author`: Creator name or org
 
-### skill.md
 Main instructions for Claude:
 
 ```markdown
+---
+name: my-skill
+description: Brief description of when to use this skill
+version: 1.0.0
+---
+
 # Skill Name
 
 Description of what this skill does.
@@ -289,18 +283,13 @@ tar -xzf my-skill.tar.gz
 
 ### API Testing Skill
 
-**skill.json:**
-```json
-{
-  "name": "api-testing",
-  "description": "Test REST APIs with automated requests",
-  "version": "1.0.0",
-  "author": "Team"
-}
-```
-
-**skill.md:**
+**SKILL.md:**
 ```markdown
+---
+name: api-testing
+description: Test REST APIs with automated requests
+version: 1.0.0
+---
 # API Testing
 
 Test REST APIs with comprehensive validation.
@@ -329,17 +318,14 @@ Actions:
 
 ### Database Migration Skill
 
-**skill.json:**
-```json
-{
-  "name": "db-migrations",
-  "description": "Create and manage database migrations",
-  "version": "1.0.0"
-}
-```
-
-**skill.md:**
+**SKILL.md:**
 ```markdown
+---
+name: db-migrations
+description: Create and manage database migrations
+version: 1.0.0
+---
+
 # Database Migrations
 
 Create safe, reversible database schema changes.
@@ -364,9 +350,9 @@ See assets/migration-template.sql for standard format.
 
 ## Progressive Disclosure
 
-Keep skill.md concise (<200 lines) by:
+Keep `SKILL.md` concise (<100 lines) by:
 
-1. **Core instructions** in skill.md
+1. **Core instructions** in `SKILL.md`
 2. **Detailed docs** in references/
 3. **Executable code** in scripts/
 4. **Templates** in assets/
@@ -393,11 +379,10 @@ High-level steps that reference:
 
 ### Skill Not Activating
 - Check description specificity
-- Verify skill.json format
-- Ensure skill.md has clear activation criteria
+- Ensure `SKILL.md` has clear activation criteria
 
 ### Resource Not Found
-- Verify file paths in skill.md
+- Verify file paths in `SKILL.md`
 - Check directory structure
 - Use relative paths from skill root
 

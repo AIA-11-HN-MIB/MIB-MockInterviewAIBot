@@ -1,5 +1,5 @@
 ---
-description: Brainstorm a feature
+description: ⚡⚡ Brainstorm a feature
 argument-hint: [question]
 ---
 

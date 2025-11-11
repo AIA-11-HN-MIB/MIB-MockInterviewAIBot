@@ -1,5 +1,5 @@
 ---
-description: Use external agentic tools to scout given directories
+description: ⚡ Use external agentic tools to scout given directories
 argument-hint: [user-prompt] [scale]
 ---
 
@@ -11,7 +11,7 @@ Utilize external agentic tools to scout given directories or explore the codebas
 
 USER_PROMPT: $1
 SCALE: $2 (defaults to 3)
-RELEVANT_FILE_OUTPUT_DIR: `plans/scouts/`
+RELEVANT_FILE_OUTPUT_DIR: `plans/<plan-name>/reports/`
 
 ## Workflow:
 - Write a prompt for 'SCALE' number of agents to the `Task` tool that will immediately call the `Bash` tool to run these commands to kick off your agents to conduct the search:

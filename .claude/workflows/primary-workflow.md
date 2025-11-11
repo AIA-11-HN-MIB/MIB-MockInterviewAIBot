@@ -1,6 +1,7 @@
 # Primary Workflow
 
 **IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.
+**IMPORTANT**: Ensure token efficiency while maintaining high quality.
 
 #### 1. Code Implementation
 - Before you start, delegate to `planner` agent to create a implementation plan with TODO tasks in `./plans` directory.

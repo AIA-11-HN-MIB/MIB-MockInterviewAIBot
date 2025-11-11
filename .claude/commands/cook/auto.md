@@ -1,5 +1,5 @@
 ---
-description: Implement a feature automatically ("trust me bro")
+description: ⚡⚡ Implement a feature automatically ("trust me bro")
 argument-hint: [tasks]
 ---
 

@@ -25,10 +25,6 @@ Comprehensive guide for video understanding, temporal analysis, and YouTube proc
 - **gemini-2.5-flash**: Balanced, 1M-2M context
 - **gemini-2.5-flash-preview-09-2025**: Preview features, 1M context
 
-### Gemini 2.0 Series
-- **gemini-2.0-flash**: Fast processing
-- **gemini-2.0-flash-lite**: Lightweight option
-
 ### Context Windows
 - **2M token models**: ~2 hours (default) or ~6 hours (low-res)
 - **1M token models**: ~1 hour (default) or ~3 hours (low-res)

@@ -27,23 +27,26 @@ equipped with procedural knowledge that no model can fully possess.
 Every skill consists of a required SKILL.md file and optional bundled resources:
 
 ```
-skill-name/
-├── SKILL.md (required)
-│   ├── YAML frontmatter metadata (required)
-│   │   ├── name: (required)
-│   │   └── description: (required)
-│   └── Markdown instructions (required)
-└── Bundled Resources (optional)
-    ├── scripts/          - Executable code (Python/Bash/etc.)
-    ├── references/       - Documentation intended to be loaded into context as needed
-    └── assets/           - Files used in output (templates, icons, fonts, etc.)
+.claude/skills/
+└── skill-name/
+    ├── SKILL.md (required)
+    │   ├── YAML frontmatter metadata (required)
+    │   │   ├── name: (required)
+    │   │   ├── description: (required)
+    │   │   ├── license: (optional)
+    │   │   └── version: (optional)
+    │   └── Markdown instructions (required)
+    └── Bundled Resources (optional)
+        ├── scripts/          - Executable code (Python/Bash/etc.)
+        ├── references/       - Documentation intended to be loaded into context as needed
+        └── assets/           - Files used in output (templates, icons, fonts, etc.)
 ```
 
 #### Requirements (**IMPORTANT**)
 
 - Skill should be combined into specific topics, for example: `cloudflare`, `cloudflare-r2`, `cloudflare-workers`, `docker`, `gcloud` should be combined into `devops`
-- `SKILL.md` should be **less than 200 lines** and include the references of related markdown files and scripts.
-- Each script or referenced markdown file should be also **less than 200 lines**, remember that you can always split them into multiple files (**progressive disclosure** principle).
+- `SKILL.md` should be **less than 100 lines** and include the references of related markdown files and scripts.
+- Each script or referenced markdown file should be also **less than 100 lines**, remember that you can always split them into multiple files (**progressive disclosure** principle).
 - Descriptions in metadata of `SKILL.md` files should be both concise and still contains enough usecases of the references and scripts, this will help skills can be activated automatically during the implementation process of Claude Code.
 - **Referenced markdowns**:
   - Sacrifice grammar for the sake of concision when writing these files.
@@ -55,13 +58,19 @@ skill-name/
   - Create `.env.example` file to show the required environment variables.
   - Always write tests for these scripts.
 
+**IMPORTANT:**
+- Always keep in mind that `SKILL.md` and reference files should be token consumption efficient, so that **progressive disclosure** can be leveraged at best.
+- `SKILL.md` should be **less than 100 lines**
+- Referenced markdown file should be also **less than 100 lines**, remember that you can always split them into multiple files (**progressive disclosure** principle).
+- Referenced scripts: no limit on length, just make sure it works, no compile issues, no runtime issues, no dependencies issues, no environment issues, no platform issues.
+
 **Why?**
-Better **context engineering**: inspired from **progressive disclosure** technique of Agent Skills, when agent skills are activated, Claude Code will consider to load only relevant files into the context, instead of reading all long `SKILL.md` as before.
+Better **context engineering**: leverage **progressive disclosure** technique of Agent Skills, when agent skills are activated, Claude Code will consider to load only relevant files into the context, instead of reading all long `SKILL.md` as before.
 
 #### SKILL.md (required)
 
 **File name:** `SKILL.md` (uppercase)
-**File size:** Under 200 lines, if you need more, plit it to multiple files in `references` folder.
+**File size:** Under 100 lines, if you need more, plit it to multiple files in `references` folder.
 
 **Metadata Quality:** The `name` and `description` in YAML frontmatter determine when Claude will use the skill. Be specific about what the skill does and when to use it. Use the third-person (e.g. "This skill should be used when..." instead of "Use this skill when...").
 
@@ -75,6 +84,11 @@ Executable code (Python/Bash/etc.) for tasks that require deterministic reliabil
 - **Example**: `scripts/rotate_pdf.py` for PDF rotation tasks
 - **Benefits**: Token efficient, deterministic, may be executed without loading into context
 - **Note**: Scripts may still need to be read by Claude for patching or environment-specific adjustments
+
+**IMPORTANT:**
+- Write tests for scripts.
+- Run tests and make sure it works, if tests fail, fix them and run tests again, repeat until tests pass.
+- Run scripts manually with some usecases to make sure it works.
 
 ##### References (`references/`)
 

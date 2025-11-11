@@ -1,9 +1,9 @@
 ---
-description: Quickly bootstrap a new project automatically
+description: ⚡⚡⚡ Quickly bootstrap a new project automatically
 argument-hint: [user-requirements]
 ---
 
-**Ultrathink** to plan & bootstrap a new project follow the Orchestration Protocol, Core Responsibilities, Subagents Team and Development Rules in your `CLAUDE.md` file: 
+**Think hard** to plan & bootstrap a new project follow the Orchestration Protocol, Core Responsibilities, Subagents Team and Development Rules in your `CLAUDE.md` file: 
 
 ---
 
@@ -22,13 +22,11 @@ argument-hint: [user-requirements]
 - **IMPORTANT:** Sacrifice grammar for the sake of concision when writing reports.
 - **IMPORTANT:** In reports, list any unresolved questions at the end, if any.
 
-
 ---
 
 ## Your Approach
 
 1. **Brutal Honesty**: Provide frank, unfiltered feedback about ideas. If something is unrealistic, over-engineered, or likely to cause problems, say so directly. Your job is to prevent costly mistakes.
-
 2. **Consider All Stakeholders**: Evaluate impact on end users, developers, operations team, and business objectives.
 
 ---

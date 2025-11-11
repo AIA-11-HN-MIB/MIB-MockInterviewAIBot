@@ -76,10 +76,6 @@ Process audio, images, videos, documents, and generate images using Google Gemin
 - **gemini-2.5-flash-lite**: Lightweight, segmentation support
 - **gemini-2.5-flash-image**: Image generation only
 
-### Gemini 2.0 Series
-- **gemini-2.0-flash**: Fast processing, object detection
-- **gemini-2.0-flash-lite**: Lightweight option
-
 ### Feature Requirements
 - **Segmentation**: Requires 2.5+ models
 - **Object Detection**: Requires 2.0+ models
