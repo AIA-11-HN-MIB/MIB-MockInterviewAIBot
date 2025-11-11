@@ -241,6 +241,26 @@ class MockVectorSearch:
         hash_val = hash(text.lower()[:50])
         return [float((hash_val >> i) & 1) for i in range(128)]
 
+    async def find_similar_questions(
+        self,
+        query_embedding: list[float],
+        top_k: int = 5,
+        filters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return mock similar questions."""
+        # Return empty list by default (simulating empty vector DB)
+        # Tests can override this behavior
+        return []
+
+    async def store_question_embedding(
+        self,
+        question_id: UUID,
+        embedding: list[float],
+        metadata: dict[str, Any],
+    ) -> None:
+        """Mock embedding storage (no-op)."""
+        pass
+
     async def find_similar_answers(
         self,
         answer_embedding: list[float],
@@ -272,10 +292,13 @@ class MockLLM:
         )
 
     async def generate_question(
-        self, context: dict[str, Any], skill: str, difficulty: str
+        self, context: dict[str, Any], skill: str, difficulty: str, exemplars: list[dict[str, Any]] | None = None
     ) -> str:
         """Return mock question."""
-        return f"Mock question about {skill} at {difficulty} level"
+        base = f"Mock question about {skill} at {difficulty} level"
+        if exemplars:
+            base += f" [with {len(exemplars)} exemplars]"
+        return base
 
     async def generate_ideal_answer(
         self, question_text: str, context: dict[str, Any]

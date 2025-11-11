@@ -40,6 +40,7 @@ class OpenAIAdapter(LLMPort):
         context: dict[str, Any],
         skill: str,
         difficulty: str,
+        exemplars: list[dict[str, Any]] | None = None,
     ) -> str:
         """Generate an interview question using OpenAI.
 
@@ -47,6 +48,7 @@ class OpenAIAdapter(LLMPort):
             context: Interview context
             skill: Target skill to test
             difficulty: Question difficulty level
+            exemplars: Optional list of similar questions for inspiration
 
         Returns:
             Generated question text
@@ -61,9 +63,16 @@ class OpenAIAdapter(LLMPort):
         - Candidate's background: {context.get('cv_summary', 'Not provided')}
         - Previous topics covered: {context.get('covered_topics', [])}
         - Interview stage: {context.get('stage', 'early')}
-
-        Return only the question text, no additional explanation.
         """
+
+        # Add exemplars if provided
+        if exemplars:
+            user_prompt += "\n\nSimilar questions for inspiration (do NOT copy exactly):\n"
+            for i, ex in enumerate(exemplars[:3], 1):  # Limit to 3 exemplars
+                user_prompt += f"{i}. \"{ex.get('text', '')}\" ({ex.get('difficulty', 'UNKNOWN')})\n"
+            user_prompt += "\nGenerate a NEW question inspired by the style and structure above.\n"
+
+        user_prompt += "\nReturn only the question text, no additional explanation."
 
         response = await self.client.chat.completions.create(
             model=self.model,
