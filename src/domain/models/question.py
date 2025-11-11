@@ -42,7 +42,7 @@ class Question(BaseModel):
 
     # Pre-planning fields for adaptive interviews
     ideal_answer: str | None = None  # Reference answer for similarity scoring and evaluation
-    rationale: str | None = None  # Explanation of why this answer is ideal
+    rationale: str | None = None  # Explanation of why this question is suitable for the candidate
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
