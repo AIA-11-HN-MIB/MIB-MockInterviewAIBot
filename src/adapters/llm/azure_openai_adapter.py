@@ -1,6 +1,7 @@
 """Azure OpenAI LLM adapter implementation."""
 
 import json
+import re
 from typing import Any
 from uuid import UUID
 
@@ -94,11 +95,30 @@ class AzureOpenAIAdapter(LLMPort):
         content = response.choices[0].message.content
         return content.strip() if content else ""
 
+    @staticmethod
+    def _extract_json_from_markdown(content: str) -> str:
+        """Extract JSON from markdown code fences if present.
+
+        Args:
+            content: Content that may contain markdown-wrapped JSON
+
+        Returns:
+            Clean JSON string
+        """
+        if not content:
+            return "{}"
+
+        # Remove markdown code fences (```json ... ``` or ``` ... ```)
+        content = re.sub(r'^```(?:json)?\s*\n', '', content.strip(), flags=re.MULTILINE)
+        content = re.sub(r'\n```\s*$', '', content.strip(), flags=re.MULTILINE)
+
+        return content.strip()
+
     async def evaluate_answer(
         self,
         question: Question,
         answer_text: str,
-        context: dict[str, Any],
+        context: dict[str, Any], # TODO: update context to be more meaningful
     ) -> AnswerEvaluation:
         """Evaluate an answer using Azure OpenAI.
 
@@ -147,6 +167,7 @@ class AzureOpenAIAdapter(LLMPort):
         )
 
         content = response.choices[0].message.content or "{}"
+        content = self._extract_json_from_markdown(content)
         result = json.loads(content)
 
         return AnswerEvaluation(
@@ -286,6 +307,7 @@ class AzureOpenAIAdapter(LLMPort):
         )
 
         content = response.choices[0].message.content or "{}"
+        content = self._extract_json_from_markdown(content)
         result = json.loads(content)
         skills: list[dict[str, str]] = result.get("skills", [])
         return skills
@@ -436,6 +458,7 @@ Identify real conceptual gaps, not just missing synonyms."""
         )
 
         content = response.choices[0].message.content or "{}"
+        content = self._extract_json_from_markdown(content)
         result = json.loads(content)
 
         return {
@@ -596,6 +619,7 @@ Provide specific, data-driven recommendations that help candidates improve."""
             }
 
         try:
+            content = self._extract_json_from_markdown(content)
             recommendations = json.loads(content)
             return recommendations
         except json.JSONDecodeError:
