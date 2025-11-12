@@ -86,17 +86,23 @@ class Interview(BaseModel):
         self.status = new_status
         self.updated_at = datetime.utcnow()
 
+    def mark_idle(self, cv_analysis_id: UUID) -> None:
+        """Mark interview as idle after planning is complete.
+        """
+        self.transition_to(InterviewStatus.IDLE)
+        self.updated_at = datetime.utcnow()
+
     def start(self) -> None:
         """Start the interview.
 
         Raises:
             ValueError: If interview is not ready to start
         """
-        if self.status != InterviewStatus.IDLE:
-            raise ValueError(f"Cannot start interview with status: {self.status}")
 
         self.transition_to(InterviewStatus.QUESTIONING)
-        self.started_at = datetime.utcnow()
+        now = datetime.utcnow()
+        self.started_at = now
+        self.updated_at = now
 
     def complete(self) -> None:
         """Complete the interview.
@@ -104,30 +110,16 @@ class Interview(BaseModel):
         Raises:
             ValueError: If interview is not ready to complete
         """
-        if self.status != InterviewStatus.EVALUATING:
-            raise ValueError(f"Cannot complete interview with status: {self.status}")
-        if self.has_more_questions():
-            raise ValueError("Cannot complete interview while questions remain.")
 
         self.transition_to(InterviewStatus.COMPLETE)
-        self.completed_at = datetime.utcnow()
+        now = datetime.utcnow()
+        self.completed_at = now
+        self.updated_at = now
 
     def cancel(self) -> None:
         """Cancel the interview."""
         self.transition_to(InterviewStatus.CANCELLED)
-
-    def mark_ready(self, cv_analysis_id: UUID) -> None:
-        """Mark interview as ready after CV analysis.
-
-        Args:
-            cv_analysis_id: ID of the completed CV analysis
-        """
-        self.cv_analysis_id = cv_analysis_id
-        # Only transition if not already IDLE (idempotent)
-        if self.status != InterviewStatus.IDLE:
-            self.transition_to(InterviewStatus.IDLE)
-        else:
-            self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.utcnow()
 
     def add_question(self, question_id: UUID) -> None:
         """Add a question to the interview.
@@ -147,6 +139,7 @@ class Interview(BaseModel):
         self.answer_ids.append(answer_id)
         self.current_question_index += 1
         self.transition_to(InterviewStatus.EVALUATING)
+        self.updated_at = datetime.utcnow()
 
     def has_more_questions(self) -> bool:
         """Check if there are more questions to ask.
@@ -212,6 +205,7 @@ class Interview(BaseModel):
 
         self.adaptive_follow_ups.append(followup_id)
         self.transition_to(InterviewStatus.FOLLOW_UP)
+        self.updated_at = datetime.utcnow()
 
     def answer_followup(self) -> None:
         """Record follow-up answered, return to evaluation.
@@ -222,6 +216,7 @@ class Interview(BaseModel):
         if self.status != InterviewStatus.FOLLOW_UP:
             raise ValueError(f"Not in FOLLOW_UP state: {self.status}")
         self.transition_to(InterviewStatus.EVALUATING)
+        self.updated_at = datetime.utcnow()
 
     def can_ask_more_followups(self) -> bool:
         """Check if more follow-ups allowed for current parent question.
@@ -244,6 +239,7 @@ class Interview(BaseModel):
         """
         self.adaptive_follow_ups.append(question_id)
         self.transition_to(InterviewStatus.FOLLOW_UP)
+        self.updated_at = datetime.utcnow()
 
     def mark_follow_up_answered(self) -> None:
         """Return to evaluation after a follow-up response.
@@ -253,6 +249,7 @@ class Interview(BaseModel):
         if self.status != InterviewStatus.FOLLOW_UP:
             raise ValueError(f"Cannot mark follow-up answered in status: {self.status}")
         self.transition_to(InterviewStatus.EVALUATING)
+        self.updated_at = datetime.utcnow()
 
     def proceed_to_next_question(self) -> None:
         """Move to next question or complete interview.
@@ -268,12 +265,15 @@ class Interview(BaseModel):
         # Reset follow-up tracking
         self.current_parent_question_id = None
         self.current_followup_count = 0
+        now = datetime.utcnow()
 
         if self.has_more_questions():
             self.transition_to(InterviewStatus.QUESTIONING)
+            self.updated_at = now
         else:
             self.transition_to(InterviewStatus.COMPLETE)
-            self.completed_at = datetime.utcnow()
+            self.completed_at = now
+            self.updated_at = now
 
     def proceed_after_evaluation(self) -> None:
         """Advance interview after evaluation is complete.
@@ -288,7 +288,9 @@ class Interview(BaseModel):
             return
 
         self.transition_to(InterviewStatus.COMPLETE)
-        self.completed_at = datetime.utcnow()
+        now = datetime.utcnow()
+        self.completed_at = now
+        self.updated_at = now
 
     def is_planned(self) -> bool:
         """Check if interview has planning metadata.
