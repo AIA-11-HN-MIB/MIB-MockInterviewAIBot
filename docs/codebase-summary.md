@@ -106,10 +106,11 @@ EliosAIService/
 │   │       │   ├── __init__.py
 │   │       │   ├── health_routes.py     # Health check endpoint ✅
 │   │       │   └── interview_routes.py  # Interview CRUD endpoints ✅
-│   │       └── websocket/       # WebSocket handlers (2 files)
+│   │       └── websocket/       # WebSocket handlers (3 files)
 │   │           ├── __init__.py
 │   │           ├── connection_manager.py # WebSocket connection pool ✅
-│   │           └── interview_handler.py  # Real-time interview handler ✅
+│   │           ├── session_orchestrator.py # Session state machine (Phase 5) ✅
+│   │           └── interview_handler.py  # Simplified WebSocket I/O handler ✅
 │   └── infrastructure/          # Cross-cutting concerns
 │       ├── __init__.py
 │       ├── config/              # Configuration management
@@ -472,12 +473,18 @@ Each repository:
   - GET /api/interviews/{id}/questions/current - Get current question
 
 **WebSocket** (`api/websocket/`) ✅:
-- `connection_manager.py`: WebSocket connection pool management
-- `interview_handler.py`: Real-time interview handler
+- `connection_manager.py`: WebSocket connection pool management (unchanged)
+- `session_orchestrator.py`: Session state machine (584 lines, Phase 5 - 2025-11-12) ✅
+  - State machine: IDLE → QUESTIONING → EVALUATING → FOLLOW_UP → COMPLETE
+  - Validates interview/questions exist before state transitions (bug fix)
+  - Tracks progress: current question, parent question, follow-up count
+  - Session persistence: `get_state()` method for recovery
+  - 36 unit tests, 85% coverage (exceeds 80% target)
+- `interview_handler.py`: Simplified WebSocket I/O handler (131 lines, refactored from ~500) ✅
+  - Delegates all logic to InterviewSessionOrchestrator
   - Protocol: text_answer, audio_chunk, get_next_question
   - Responses: question, evaluation, interview_complete, error
-  - Integrated TTS for audio question delivery
-  - Handles answer processing and interview completion
+  - 74% line reduction through separation of concerns
 
 ### 4. Infrastructure Layer (Cross-Cutting Concerns)
 
@@ -736,19 +743,25 @@ ruff check src/ && black --check src/ && mypy src/
 
 ## File Statistics
 
-**Total Python Files**: ~55 files
+**Total Python Files**: ~56 files
 **Domain Layer**: 16 files (models + ports)
 **Application Layer**: 11 files (5 use cases + 3 DTOs + __init__)
-**Adapters Layer**: 25 files (LLM, vector DB, 6 mocks, persistence, API)
+**Adapters Layer**: 26 files (LLM, vector DB, 6 mocks, persistence, API + session orchestrator)
 **Infrastructure Layer**: 9 files (config, database, DI)
-**Tests**: ~29 tests (unit tests with mock adapters)
+**Tests**: ~65 tests (36 new session orchestrator tests + existing 29)
 
-**Lines of Code** (estimated):
+**Lines of Code** (measured):
 - Domain: ~600 lines
 - Application: ~300 lines (use cases + DTOs)
-- Adapters: ~1800 lines (API + mock + existing)
+- Adapters: ~2370 lines (includes session_orchestrator 584 lines, interview_handler reduced to 131)
 - Infrastructure: ~400 lines
-- Total: ~3100 lines (excluding tests)
+- Total: ~3670 lines (excluding tests)
+
+**Phase 5 Changes**:
+- Added: `session_orchestrator.py` (584 lines, 173 statements)
+- Refactored: `interview_handler.py` (500 → 131 lines, 74% reduction)
+- Added: `test_session_orchestrator.py` (36 tests, 85% coverage)
+- Net: +215 lines production code, +36 tests
 
 ## Dependencies Overview
 

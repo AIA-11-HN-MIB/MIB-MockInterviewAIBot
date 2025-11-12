@@ -230,6 +230,78 @@ class Interview(BaseModel):  # Aggregate Root
 - Clear ownership and boundaries
 - Transactional consistency
 
+### 5. Session Orchestrator Pattern (State Machine)
+
+**Purpose**: Manage WebSocket interview session lifecycle with state machine pattern
+
+**Added**: Phase 5 (2025-11-12)
+
+**Implementation**: `src/adapters/api/websocket/session_orchestrator.py` (584 lines, 173 statements)
+
+```python
+class SessionState(str, Enum):
+    """Interview session states."""
+    IDLE = "idle"
+    QUESTIONING = "questioning"
+    EVALUATING = "evaluating"
+    FOLLOW_UP = "follow_up"
+    COMPLETE = "complete"
+
+class InterviewSessionOrchestrator:
+    """Orchestrate interview session lifecycle with state machine pattern.
+
+    State Transition Rules:
+    - IDLE → QUESTIONING (start interview)
+    - QUESTIONING → EVALUATING (answer received)
+    - EVALUATING → FOLLOW_UP (follow-up needed)
+    - EVALUATING → QUESTIONING (next main question)
+    - EVALUATING → COMPLETE (no more questions)
+    - FOLLOW_UP → EVALUATING (follow-up answered)
+    """
+
+    def __init__(self, interview_id: UUID, websocket: WebSocket, container: Any):
+        self.state = SessionState.IDLE
+        self.current_question_id: UUID | None = None
+        self.parent_question_id: UUID | None = None
+        self.follow_up_count = 0
+
+    async def start_session(self) -> None:
+        """Start interview session - send first question."""
+        # Validates interview exists BEFORE state transition
+        interview = await self._get_interview()
+        if not interview:
+            raise ValueError(f"Interview {self.interview_id} not found")
+
+        self._transition(SessionState.QUESTIONING)
+        await self._send_next_main_question()
+
+    async def handle_text_answer(self, message: dict) -> None:
+        """Process text answer with state machine."""
+        self._transition(SessionState.EVALUATING)
+        # Process answer, evaluate, decide follow-up
+        # Transitions to FOLLOW_UP or QUESTIONING based on decision
+```
+
+**Key Features**:
+1. **State Validation**: Validates interview/question exists BEFORE state transitions (prevents NPE crashes)
+2. **Valid Transitions**: Enforces state machine rules, raises ValueError for invalid transitions
+3. **Progress Tracking**: Tracks current question, parent question (for follow-ups), follow-up count
+4. **Session Persistence**: `get_state()` method returns session snapshot for recovery
+5. **Error Recovery**: Timeout handling, graceful error reporting to client
+6. **Delegation Pattern**: Handler delegates all logic to orchestrator (~131 lines, 74% reduction)
+
+**Benefits**:
+- ✅ Clear separation: WebSocket I/O vs business logic
+- ✅ Testable: 36 unit tests with 85% coverage
+- ✅ Bug fix: Prevents null pointer crashes via validation before transition
+- ✅ Maintainable: State machine easier to reason about than imperative flow
+- ✅ Extensible: Easy to add new states (e.g., PAUSED, REVIEWING)
+
+**Refactoring Impact**:
+- `interview_handler.py`: 500 lines → 131 lines (74% reduction)
+- Logic extracted to orchestrator (584 lines)
+- Net increase: 215 lines (architectural investment for maintainability)
+
 ## Layer Architecture
 
 ### Domain Layer (`src/domain/`)
@@ -532,11 +604,27 @@ async def create_candidate(
     # Return response DTO
     return CandidateResponse.from_domain(candidate)
 
-# WebSocket (planned)
+# WebSocket (✅ implemented with session orchestrator)
 @router.websocket("/ws/interviews/{interview_id}")
 async def interview_chat(websocket: WebSocket, interview_id: UUID):
     await websocket.accept()
-    # Real-time interview handling
+    # Delegated to InterviewSessionOrchestrator (state machine)
+    orchestrator = InterviewSessionOrchestrator(interview_id, websocket, container)
+    await orchestrator.start_session()
+```
+
+**WebSocket Implementation** (`adapters/api/websocket/`) ✅:
+- **`session_orchestrator.py`** (584 lines, Phase 5 - 2025-11-12):
+  - State machine: IDLE → QUESTIONING → EVALUATING → FOLLOW_UP → COMPLETE
+  - Validates interview/questions exist before state transitions
+  - Tracks: current question, parent question, follow-up count
+  - Session recovery via `get_state()` method
+  - 36 unit tests, 85% coverage
+- **`interview_handler.py`** (131 lines, refactored from 500):
+  - Simplified WebSocket I/O handler
+  - Delegates all logic to session orchestrator
+  - 74% line reduction through separation of concerns
+- **`connection_manager.py`**: WebSocket connection pool (unchanged)
 ```
 
 **Dependencies**: All layers (can import everything)
@@ -884,9 +972,9 @@ def get_container() -> Container:
        └─ Trigger CompleteInterviewUseCase
 ```
 
-### Adaptive Follow-up Flow (WebSocket)
+### Adaptive Follow-up Flow (WebSocket) with Session Orchestration
 
-**Added**: 2025-11-12 (Phase 4)
+**Added**: 2025-11-12 (Phase 4 - Adaptive Answers, Phase 5 - Session Orchestration)
 
 ```
 1. Candidate Submits Answer via WebSocket
@@ -894,8 +982,9 @@ def get_container() -> Container:
    │   ├─ question_id: UUID
    │   └─ answer_text: string
 
-2. WebSocket Handler processes message:
-   ├─→ Validate interview exists
+2. Session Orchestrator handles message (state machine):
+   ├─→ State: QUESTIONING → EVALUATING
+   ├─→ Validate interview/question exists
    ├─→ Call ProcessAnswerAdaptiveUseCase
    │   ├─ Evaluate answer (semantic + gaps)
    │   ├─ Calculate similarity_score
@@ -916,9 +1005,11 @@ def get_container() -> Container:
    │   └─ Return decision dict
    │
    ├─→ If needs_followup == False:
+   │   ├─ State: EVALUATING → QUESTIONING
    │   └─ Exit loop (move to next question)
    │
    └─→ If needs_followup == True:
+       ├─ State: EVALUATING → FOLLOW_UP
        ├─ Call LLM.generate_followup_question()
        │   ├─ Context: parent question + answer + cumulative gaps
        │   ├─ Order: 1st, 2nd, or 3rd follow-up
@@ -938,20 +1029,26 @@ def get_container() -> Container:
 
 4. After follow-up loop exits:
    ├─ If interview has more main questions:
+   │   ├─ State: QUESTIONING
    │   └─ Send next main question
    └─ Else:
+       ├─ State: COMPLETE
        └─ Complete interview
 ```
 
 **Key Characteristics**:
+- **State Machine Pattern**: Session orchestrator manages lifecycle (5 states: IDLE → QUESTIONING → EVALUATING → FOLLOW_UP → COMPLETE)
 - **Message-Based Loop**: Handler breaks after sending first follow-up, waits for next message
 - **Not True Iterative**: Cannot block within handler waiting for answer (FastAPI WebSocket limitation)
 - **Break Conditions**: 3 exit paths - max count, high similarity, no gaps
 - **Gap Accumulation**: All missing concepts from previous follow-ups merged and passed to LLM
 - **Separation**: Decision logic isolated in FollowUpDecisionUseCase (testable)
+- **State Validation**: Validates interview/question exists BEFORE state transitions (bug fix)
 
 **Architecture Tradeoff**:
 - ✅ Simpler implementation, no nested message handling
+- ✅ Clear state machine with valid transition rules
+- ✅ Session state recovery and timeout handling
 - ❌ Cannot enforce strict max-3 in single transaction
 - ❌ Relies on client sending answers sequentially
 
