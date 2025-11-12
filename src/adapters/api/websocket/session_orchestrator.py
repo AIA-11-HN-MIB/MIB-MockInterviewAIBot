@@ -31,11 +31,11 @@ logger = logging.getLogger(__name__)
 class SessionState(str, Enum):
     """Interview session states."""
 
-    IDLE = "idle"
-    QUESTIONING = "questioning"
-    EVALUATING = "evaluating"
-    FOLLOW_UP = "follow_up"
-    COMPLETE = "complete"
+    IDLE = "IDLE"
+    QUESTIONING = "QUESTIONING"
+    EVALUATING = "EVALUATING"
+    FOLLOW_UP = "FOLLOW_UP"
+    COMPLETE = "COMPLETE"
 
 
 class InterviewSessionOrchestrator:

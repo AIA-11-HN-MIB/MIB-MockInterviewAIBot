@@ -77,7 +77,7 @@ def sample_interview(interview_id, question_id):
     """Sample interview entity."""
     interview = Interview(
         candidate_id=uuid4(),
-        status=InterviewStatus.IN_PROGRESS,
+        status=InterviewStatus.QUESTIONING,
         cv_analysis_id=uuid4(),
     )
     interview.id = interview_id

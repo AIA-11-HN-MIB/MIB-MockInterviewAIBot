@@ -67,7 +67,7 @@ class TestInterviewAdaptiveFields:
         """Test interview with plan_metadata."""
         interview = Interview(
             candidate_id=uuid4(),
-            status=InterviewStatus.READY,
+            status=InterviewStatus.IDLE,
         )
         interview.plan_metadata = {
             "n": 4,
@@ -82,7 +82,7 @@ class TestInterviewAdaptiveFields:
         """Test legacy interview without plan_metadata."""
         interview = Interview(
             candidate_id=uuid4(),
-            status=InterviewStatus.IN_PROGRESS,
+            status=InterviewStatus.IDLE,
         )
 
         assert interview.plan_metadata == {}
@@ -92,7 +92,7 @@ class TestInterviewAdaptiveFields:
         """Test adding adaptive follow-up questions."""
         interview = Interview(
             candidate_id=uuid4(),
-            status=InterviewStatus.IN_PROGRESS,
+            status=InterviewStatus.EVALUATING,
         )
 
         follow_up_id = uuid4()
@@ -106,12 +106,12 @@ class TestInterviewAdaptiveFields:
         cv_analysis_id = uuid4()
         interview = Interview(
             candidate_id=uuid4(),
-            status=InterviewStatus.PREPARING,
+            status=InterviewStatus.IDLE,
         )
 
         interview.mark_ready(cv_analysis_id)
 
-        assert interview.status == InterviewStatus.READY
+        assert interview.status == InterviewStatus.IDLE
         assert interview.cv_analysis_id == cv_analysis_id
 
 

@@ -50,7 +50,7 @@ class CompleteInterviewUseCase:
         if not interview:
             raise ValueError(f"Interview {interview_id} not found")
 
-        if interview.status != InterviewStatus.IN_PROGRESS:
+        if interview.status != InterviewStatus.EVALUATING:
             raise ValueError(f"Cannot complete interview with status: {interview.status}")
 
         # Generate summary if requested and dependencies available

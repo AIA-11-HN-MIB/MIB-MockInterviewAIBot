@@ -96,7 +96,7 @@ class ProcessAnswerAdaptiveUseCase:
         if not interview:
             raise ValueError(f"Interview {interview_id} not found")
 
-        if interview.status != InterviewStatus.IN_PROGRESS:
+        if interview.status != InterviewStatus.EVALUATING:
             raise ValueError(f"Interview not in progress: {interview.status}")
 
         # Step 2: Get question with ideal_answer

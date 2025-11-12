@@ -11,11 +11,12 @@ from pydantic import BaseModel, Field
 class InterviewStatus(str, Enum):
     """Interview status enumeration."""
 
-    PREPARING = "preparing"  # CV analysis in progress
-    READY = "ready"  # Ready to start
-    IN_PROGRESS = "in_progress"  # Interview ongoing
-    COMPLETED = "completed"  # Interview finished
-    CANCELLED = "cancelled"  # Interview cancelled
+    IDLE = "IDLE"  # Waiting to start questioning
+    QUESTIONING = "QUESTIONING"  # Asking a question
+    EVALUATING = "EVALUATING"  # Evaluating received answer(s)
+    FOLLOW_UP = "FOLLOW_UP"  # Awaiting follow-up response
+    COMPLETE = "COMPLETE"  # Interview finished
+    CANCELLED = "CANCELLED"  # Interview cancelled
 
 
 class Interview(BaseModel):
@@ -27,7 +28,7 @@ class Interview(BaseModel):
 
     id: UUID = Field(default_factory=uuid4)
     candidate_id: UUID
-    status: InterviewStatus = InterviewStatus.PREPARING
+    status: InterviewStatus = InterviewStatus.IDLE
     cv_analysis_id: UUID | None = None
     question_ids: list[UUID] = Field(default_factory=list)
     answer_ids: list[UUID] = Field(default_factory=list)
@@ -53,10 +54,10 @@ class Interview(BaseModel):
         Raises:
             ValueError: If interview is not ready to start
         """
-        if self.status != InterviewStatus.READY:
+        if self.status != InterviewStatus.IDLE:
             raise ValueError(f"Cannot start interview with status: {self.status}")
 
-        self.status = InterviewStatus.IN_PROGRESS
+        self.status = InterviewStatus.QUESTIONING
         self.started_at = datetime.utcnow()
         self.updated_at = datetime.utcnow()
 
@@ -64,12 +65,14 @@ class Interview(BaseModel):
         """Complete the interview.
 
         Raises:
-            ValueError: If interview is not in progress
+            ValueError: If interview is not ready to complete
         """
-        if self.status != InterviewStatus.IN_PROGRESS:
+        if self.status != InterviewStatus.EVALUATING:
             raise ValueError(f"Cannot complete interview with status: {self.status}")
+        if self.has_more_questions():
+            raise ValueError("Cannot complete interview while questions remain.")
 
-        self.status = InterviewStatus.COMPLETED
+        self.status = InterviewStatus.COMPLETE
         self.completed_at = datetime.utcnow()
         self.updated_at = datetime.utcnow()
 
@@ -85,7 +88,7 @@ class Interview(BaseModel):
             cv_analysis_id: ID of the completed CV analysis
         """
         self.cv_analysis_id = cv_analysis_id
-        self.status = InterviewStatus.READY
+        self.status = InterviewStatus.IDLE
         self.updated_at = datetime.utcnow()
 
     def add_question(self, question_id: UUID) -> None:
@@ -105,6 +108,7 @@ class Interview(BaseModel):
         """
         self.answer_ids.append(answer_id)
         self.current_question_index += 1
+        self.status = InterviewStatus.EVALUATING
         self.updated_at = datetime.utcnow()
 
     def has_more_questions(self) -> bool:
@@ -141,7 +145,11 @@ class Interview(BaseModel):
         Returns:
             True if interview is in progress, False otherwise
         """
-        return self.status == InterviewStatus.IN_PROGRESS
+        return self.status in {
+            InterviewStatus.QUESTIONING,
+            InterviewStatus.EVALUATING,
+            InterviewStatus.FOLLOW_UP,
+        }
 
     def add_adaptive_followup(self, question_id: UUID) -> None:
         """Add adaptive follow-up question to interview.
@@ -153,6 +161,28 @@ class Interview(BaseModel):
             ValueError: If follow-up limit exceeded (max 3 per main question)
         """
         self.adaptive_follow_ups.append(question_id)
+        self.status = InterviewStatus.FOLLOW_UP
+        self.updated_at = datetime.utcnow()
+
+    def mark_follow_up_answered(self) -> None:
+        """Return to evaluation after a follow-up response."""
+        if self.status != InterviewStatus.FOLLOW_UP:
+            raise ValueError(f"Cannot mark follow-up answered in status: {self.status}")
+        self.status = InterviewStatus.EVALUATING
+        self.updated_at = datetime.utcnow()
+
+    def proceed_after_evaluation(self) -> None:
+        """Advance interview after evaluation is complete."""
+        if self.status != InterviewStatus.EVALUATING:
+            raise ValueError(f"Cannot proceed from status: {self.status}")
+
+        if self.has_more_questions():
+            self.status = InterviewStatus.QUESTIONING
+            self.updated_at = datetime.utcnow()
+            return
+
+        self.status = InterviewStatus.COMPLETE
+        self.completed_at = datetime.utcnow()
         self.updated_at = datetime.utcnow()
 
     def is_planned(self) -> bool:

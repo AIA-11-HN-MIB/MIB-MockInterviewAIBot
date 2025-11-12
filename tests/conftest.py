@@ -68,7 +68,7 @@ def sample_interview_adaptive(sample_cv_analysis: CVAnalysis) -> Interview:
     """Sample adaptive interview with plan_metadata."""
     interview = Interview(
         candidate_id=sample_cv_analysis.candidate_id,
-        status=InterviewStatus.READY,
+        status=InterviewStatus.IDLE,
         cv_analysis_id=sample_cv_analysis.id,
     )
     interview.plan_metadata = {
@@ -88,7 +88,7 @@ def sample_interview_legacy() -> Interview:
     """Sample legacy interview without plan_metadata."""
     return Interview(
         candidate_id=uuid4(),
-        status=InterviewStatus.IN_PROGRESS,
+        status=InterviewStatus.QUESTIONING,
     )
 
 

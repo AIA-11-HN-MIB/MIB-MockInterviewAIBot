@@ -72,7 +72,7 @@ class TestCompleteInterviewUseCase:
         )
 
         # Verify interview completed
-        assert interview.status == InterviewStatus.COMPLETED
+        assert interview.status == InterviewStatus.COMPLETE
 
         # Verify summary generated
         assert summary is not None
@@ -104,7 +104,7 @@ class TestCompleteInterviewUseCase:
         )
 
         # Verify interview completed
-        assert interview.status == InterviewStatus.COMPLETED
+        assert interview.status == InterviewStatus.COMPLETE
 
         # Verify no summary generated
         assert summary is None
@@ -134,7 +134,7 @@ class TestCompleteInterviewUseCase:
         )
 
         # Verify interview completed
-        assert interview.status == InterviewStatus.COMPLETED
+        assert interview.status == InterviewStatus.COMPLETE
 
         # Verify no summary generated (missing dependencies)
         assert summary is None
@@ -160,7 +160,7 @@ class TestCompleteInterviewUseCase:
     ):
         """Test error when interview not IN_PROGRESS."""
         # Set status to COMPLETED
-        sample_interview_adaptive.status = InterviewStatus.COMPLETED
+        sample_interview_adaptive.status = InterviewStatus.COMPLETE
         await mock_interview_repo.save(sample_interview_adaptive)
 
         use_case = CompleteInterviewUseCase(
@@ -178,7 +178,7 @@ class TestCompleteInterviewUseCase:
     ):
         """Test error when interview status is READY (not started)."""
         # Set status to READY
-        sample_interview_adaptive.status = InterviewStatus.READY
+        sample_interview_adaptive.status = InterviewStatus.IDLE
         await mock_interview_repo.save(sample_interview_adaptive)
 
         use_case = CompleteInterviewUseCase(
@@ -417,7 +417,7 @@ class TestCompleteInterviewIntegration:
         )
 
         # Verify complete flow
-        assert interview.status == InterviewStatus.COMPLETED
+        assert interview.status == InterviewStatus.COMPLETE
         assert summary is not None
         assert summary["total_questions"] == 3
         assert summary["overall_score"] > 0.0

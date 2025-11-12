@@ -314,7 +314,7 @@ class TestProcessAnswerAdaptiveUseCase:
         mock_vector_search,
     ):
         """Test error when interview not IN_PROGRESS."""
-        sample_interview_adaptive.status = InterviewStatus.COMPLETED
+        sample_interview_adaptive.status = InterviewStatus.COMPLETE
         await mock_interview_repo.save(sample_interview_adaptive)
         await mock_question_repo.save(sample_question_with_ideal_answer)
 

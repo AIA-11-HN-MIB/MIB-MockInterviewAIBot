@@ -78,7 +78,7 @@ def interview(cv_analysis, questions):
     """Create interview with questions."""
     interview = Interview(
         candidate_id=cv_analysis.candidate_id,
-        status=InterviewStatus.READY,
+        status=InterviewStatus.IDLE,
         cv_analysis_id=cv_analysis.id,
     )
     interview.plan_metadata = {
@@ -344,7 +344,7 @@ class TestCompleteInterviewFlow:
 
                         # Mock complete interview
                         completed_interview = interview
-                        completed_interview.status = InterviewStatus.COMPLETED
+                        completed_interview.status = InterviewStatus.COMPLETE
                         mock_complete_instance = AsyncMock()
                         # CompleteInterviewUseCase now returns tuple (Interview, dict | None)
                         mock_complete_instance.execute = AsyncMock(return_value=(completed_interview, None))
@@ -941,7 +941,7 @@ class TestInterviewCompletion:
 
                         # Mock complete interview
                         completed_interview = interview
-                        completed_interview.status = InterviewStatus.COMPLETED
+                        completed_interview.status = InterviewStatus.COMPLETE
                         mock_complete_instance = AsyncMock()
                         # CompleteInterviewUseCase now returns tuple (Interview, dict | None)
                         mock_complete_instance.execute = AsyncMock(return_value=(completed_interview, None))
