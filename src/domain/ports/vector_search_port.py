@@ -44,22 +44,6 @@ class VectorSearchPort(ABC):
         """
         pass
 
-    
-    @abstractmethod
-    async def store_CV_level_embedding(
-        self,
-        cv_id: str,
-        level_data: Dict
-    ) -> bool:
-        """Store a CV level vector embedding.
-
-        Args:
-            cv_id: Unique CV identifier
-            embedding: Vector embedding
-            metadata: Additional metadata (level, score, strengths, weaknesses, etc.)
-        """
-        pass
-
     @abstractmethod
     async def find_similar_questions(
         self,

@@ -16,6 +16,7 @@ from ...domain.ports.interview_repository_port import InterviewRepositoryPort
 from ...domain.ports.llm_port import LLMPort
 from ...domain.ports.question_repository_port import QuestionRepositoryPort
 from ...domain.ports.vector_search_port import VectorSearchPort
+from .combine_evaluation import CombineEvaluationUseCase
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class ProcessAnswerAdaptiveUseCase:
         follow_up_question_repository: FollowUpQuestionRepositoryPort,
         llm: LLMPort,
         vector_search: VectorSearchPort,
+        combine_evaluation: CombineEvaluationUseCase | None = None,
     ):
         """Initialize use case with required ports.
 
@@ -49,6 +51,7 @@ class ProcessAnswerAdaptiveUseCase:
             follow_up_question_repository: Follow-up question storage
             llm: LLM service for evaluation and gap detection
             vector_search: Vector database for similarity calculation
+            combine_evaluation: Evaluation combiner (optional, will create if None)
         """
         self.answer_repo = answer_repository
         self.interview_repo = interview_repository
@@ -56,6 +59,7 @@ class ProcessAnswerAdaptiveUseCase:
         self.follow_up_question_repo = follow_up_question_repository
         self.llm = llm
         self.vector_search = vector_search
+        self.combine_evaluation = combine_evaluation or CombineEvaluationUseCase()
 
     async def execute(
         self,
@@ -63,14 +67,16 @@ class ProcessAnswerAdaptiveUseCase:
         question_id: UUID,
         answer_text: str,
         audio_file_path: str | None = None,
+        voice_metrics: dict[str, float] | None = None,
     ) -> tuple[Answer, FollowUpQuestion | None, bool]:
-        """Process answer with adaptive evaluation.
+        """Process answer with adaptive evaluation including voice metrics.
 
         Args:
             interview_id: The interview UUID
             question_id: The question UUID
             answer_text: The answer text
             audio_file_path: Optional audio file path for voice answers
+            voice_metrics: Optional voice quality metrics from STT
 
         Returns:
             Tuple of (Answer with evaluation, optional FollowUpQuestion, has_more_questions)
@@ -119,6 +125,25 @@ class ProcessAnswerAdaptiveUseCase:
             },
         )
         answer.evaluate(evaluation)
+
+        # Step 4.5: Store voice metrics and compute combined evaluation (Phase 3)
+        if voice_metrics:
+            answer.voice_metrics = voice_metrics
+            logger.info(f"Voice metrics stored: {voice_metrics}")
+
+            # Combine theoretical and speaking evaluations
+            combined_result = self.combine_evaluation.execute(evaluation, voice_metrics)
+            answer.speaking_score = combined_result["speaking_score"]
+            answer.overall_score = combined_result["overall_score"]
+            logger.info(
+                f"Combined scores: theoretical={combined_result['theoretical_score']:.1f}, "
+                f"speaking={combined_result['speaking_score']:.1f}, "
+                f"overall={combined_result['overall_score']:.1f}"
+            )
+        else:
+            # Text-only answer: use theoretical score as overall score
+            answer.overall_score = evaluation.score
+            logger.info(f"Text-only answer: overall_score={evaluation.score:.1f}")
 
         # Step 5: Calculate similarity score (if ideal_answer exists)
         if question.has_ideal_answer():

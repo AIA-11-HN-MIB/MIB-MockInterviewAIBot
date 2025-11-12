@@ -103,8 +103,7 @@ if command -v jq >/dev/null 2>&1; then
         remaining=$(( end_sec - now_sec )); (( remaining<0 )) && remaining=0
         rh=$(( remaining / 3600 )); rm=$(( (remaining % 3600) / 60 ))
         end_hm=$(fmt_time_hm "$end_sec")
-        session_txt="$(printf '%dh %dm until reset at %s (%d%%)' "$rh" "$rm" "$end_hm" "$session_pct")"
-        session_bar=$(progress_bar "$session_pct" 10)
+        session_txt="$(printf '%dh %dm until reset at %s' "$rh" "$rm" "$end_hm")"
       fi
     fi
   fi
@@ -123,7 +122,6 @@ fi
 # session time
 if [ -n "$session_txt" ]; then
   printf '  ⌛ %s%s%s' "$(session_color)" "$session_txt" "$(rst)"
-  printf '  %s[%s]%s' "$(session_color)" "$session_bar" "$(rst)"
 fi
 # cost
 if [ -n "$cost_usd" ] && [[ "$cost_usd" =~ ^[0-9.]+$ ]]; then

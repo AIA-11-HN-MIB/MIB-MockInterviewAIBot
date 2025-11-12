@@ -1,5 +1,5 @@
 ---
-description: Implement payment integration with Polar.sh
+description: ⚡⚡ Implement payment integration with Polar.sh
 argument-hint: [tasks]
 ---
 

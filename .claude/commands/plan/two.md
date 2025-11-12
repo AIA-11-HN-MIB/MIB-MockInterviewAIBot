@@ -1,5 +1,5 @@
 ---
-description: Research & create an implementation plan with 2 approaches
+description: ⚡⚡⚡⚡ Research & create an implementation plan with 2 approaches
 argument-hint: [task]
 ---
 

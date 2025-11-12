@@ -158,8 +158,7 @@ my-plugin/
 │   └── another-command.md
 ├── skills/             # Agent skills
 │   └── my-skill/
-│       ├── skill.md
-│       └── skill.json
+│       └── SKILL.md
 ├── hooks/              # Hook scripts
 │   ├── hooks.json
 │   └── scripts/
@@ -354,8 +353,7 @@ code-quality-plugin/
 │   └── format.md
 ├── skills/
 │   └── code-review/
-│       ├── skill.md
-│       └── skill.json
+│       └── SKILL.md
 └── hooks/
     ├── hooks.json
     └── scripts/

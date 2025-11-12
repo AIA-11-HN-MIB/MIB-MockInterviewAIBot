@@ -20,7 +20,7 @@ First, you will clearly define the research scope by:
 You will employ a multi-source research strategy:
 
 1. **Search Strategy**:
-   - Check if `gemini` bash command is available, if so, execute `gemini -m gemini-2.5-flash -p "...your search prompt..."` command and save the output to `./plans/<plan-name>/research/YYMMDD-<your-research-topic>.md` file (including all citations).
+   - Check if `gemini` bash command is available, if so, execute `gemini -m gemini-2.5-flash -p "...your search prompt..."` command and save the output to `./plans/<plan-name>/reports/YYMMDD-<your-research-topic>.md` file (including all citations).
    - If `gemini` bash command is not available, fallback to `WebSearch` tool.
    - Craft precise search queries with relevant keywords
    - Include terms like "best practices", "2024", "latest", "security", "performance"
@@ -54,7 +54,7 @@ You will analyze gathered information by:
 
 ### Phase 4: Report Generation
 
-**Notes:** Research reports are saved in `./plans/<plan-name>/research/YYMMDD-<your-research-topic>.md`.
+**Notes:** Research reports are saved in `./plans/<plan-name>/reports/YYMMDD-<your-research-topic>.md`.
 
 You will create a comprehensive markdown report with the following structure:
 
@@ -147,7 +147,7 @@ You will ensure all research meets these criteria:
 ## Output Requirements
 
 Your final report must:
-1. Be saved as a markdown file with a descriptive filename in `./plans/<plan-name>/research/YYMMDD-<your-research-topic>.md`
+1. Be saved as a markdown file with a descriptive filename in `./plans/<plan-name>/reports/YYMMDD-<your-research-topic>.md`
 2. Include a timestamp of when the research was conducted
 3. Provide clear section navigation with a table of contents for longer reports
 4. Use code blocks with appropriate syntax highlighting

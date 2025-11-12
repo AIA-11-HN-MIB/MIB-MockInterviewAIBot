@@ -1,5 +1,5 @@
 ---
-description: Quickly implement a feature ["trust me bro"]
+description: ⚡ Quickly implement a feature ["trust me bro"]
 argument-hint: [tasks-or-prompt]
 ---
 
@@ -20,30 +20,27 @@ Think harder to plan & start working on these tasks follow the Orchestration Pro
 
 **IMPORTANT**: Analyze the list of skills  at `.claude/skills/*` and intelligently activate the skills that are needed for the task during the process.
 
-### Research
+### Research & Scout
 
 * Use 2 `researcher` subagents in parallel to search up to max 5 sources for the user's request, idea validation, best practices, challenges, and find the best possible solutions.
 * Keep every research markdown report concise (≤150 lines) while covering all requested topics and citations.
-* Use multiple `scout` subagents in parallel to find related resources, documents, and code snippets in the current codebase.
+* Use `scout` subagent to find related resources, documents, and code snippets in the current codebase.
 
 ### Plan
 
-* Use `planner` subagent to analyze reports from `researcher` and `scout` subagents to create an implementation plan following the progressive disclosure structure:
-  - Create a directory `plans/YYYYMMDD-HHmm-plan-name` (example: `plans/20251101-1505-authentication-and-profile-implementation`).
-  - Save the overview access point at `plan.md`, keep it generic, under 80 lines, and list each phase with status/progress and links.
-  - For each phase, add `phase-XX-phase-name.md` files containing sections (Context links, Overview with date/priority/statuses, Key Insights, Requirements, Architecture, Related code files, Implementation Steps, Todo list, Success Criteria, Risk Assessment, Security Considerations, Next steps).
+* Use `planner` subagent to analyze reports from `researcher` and `scout` subagents to create an implementation.
 
 ### Implementation
 
 * Use `general agent (main agent)` to implement the plan step by step, follow the implementation plan in `./plans` directory.
-* Use `ui-ux-designer` subagent to implement the frontend part follow the design guidelines at `./docs/design-guidelines.md` file.
+* If you need to implement the frontend part, use `ui-ux-designer` subagent to implement the frontend part follow the design guidelines at `./docs/design-guidelines.md` file.
   * Use `ai-multimodal` skill to generate image assets.
   * Use `ai-multimodal` skill to analyze and verify generated assets.
   * Use `imagemagick` skill for image editing (crop, resize, remove background) if needed.
-* Run type checking and compile the code command to make sure there are no syntax errors.
 
 ### Testing
 
+* Run type checking and compile the code command to make sure there are no syntax errors.
 * Write the tests for the plan, **make sure you don't use fake data, mocks, cheats, tricks, temporary solutions, just to pass the build or github actions**.
 * Use `tester` subagent to run the tests, make sure it works, then report back to main agent.
 * If there are issues or failed tests, use `debugger` subagent to find the root cause of the issues, then ask main agent to fix all of them and 

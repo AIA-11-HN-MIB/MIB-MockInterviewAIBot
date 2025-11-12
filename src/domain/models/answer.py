@@ -59,6 +59,15 @@ class Answer(BaseModel):
     )  # Cosine similarity vs ideal_answer
     gaps: dict[str, Any] | None = None  # Detected concept gaps {keywords: [], entities: []}
 
+    # NEW: Voice evaluation fields (Phase 3)
+    voice_metrics: dict[str, float] | None = None  # Voice quality metrics from STT
+    speaking_score: float | None = Field(
+        None, ge=0.0, le=100.0
+    )  # Speaking score (0-100) from voice metrics
+    overall_score: float | None = Field(
+        None, ge=0.0, le=100.0
+    )  # Combined theoretical + speaking score
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
     evaluated_at: datetime | None = None
 
@@ -143,3 +152,35 @@ class Answer(BaseModel):
         no_gaps = not self.has_gaps()
 
         return similarity_ok or no_gaps
+
+    def get_voice_metrics(self) -> dict[str, float] | None:
+        """Get voice metrics if available.
+
+        Returns:
+            Voice metrics dict or None
+        """
+        return self.voice_metrics
+
+    def has_voice_metrics(self) -> bool:
+        """Check if voice metrics are available.
+
+        Returns:
+            True if voice metrics exist
+        """
+        return self.voice_metrics is not None and len(self.voice_metrics) > 0
+
+    def get_overall_score(self) -> float | None:
+        """Get the overall combined score.
+
+        Returns:
+            Overall score if available, None otherwise
+        """
+        return self.overall_score
+
+    def get_theoretical_score(self) -> float | None:
+        """Get the theoretical (semantic) score.
+
+        Returns:
+            Theoretical score from evaluation, None if not evaluated
+        """
+        return self.evaluation.score if self.evaluation else None
