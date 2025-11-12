@@ -1,9 +1,13 @@
-"""Interview session orchestrator with state machine pattern."""
+"""Interview session orchestrator - stateless coordinator for interview flow.
+
+REFACTORED: Removed dual state machines (SessionState + InterviewStatus).
+Now relies solely on domain Interview entity for state management.
+Orchestrator loads fresh state from DB before each operation.
+"""
 
 import base64
 import logging
 from datetime import datetime
-from enum import Enum
 from typing import Any
 from uuid import UUID
 
@@ -28,26 +32,17 @@ from ....infrastructure.database.session import get_async_session
 logger = logging.getLogger(__name__)
 
 
-class SessionState(str, Enum):
-    """Interview session states."""
-
-    IDLE = "IDLE"
-    QUESTIONING = "QUESTIONING"
-    EVALUATING = "EVALUATING"
-    FOLLOW_UP = "FOLLOW_UP"
-    COMPLETE = "COMPLETE"
-
-
 class InterviewSessionOrchestrator:
-    """Orchestrate interview session lifecycle with state machine pattern.
+    """Stateless orchestrator for interview session flow.
 
-    This orchestrator manages the complete interview flow:
-    - State transitions (IDLE → QUESTIONING → EVALUATING → FOLLOW_UP → COMPLETE)
-    - Progress tracking (current question, follow-up count)
-    - Error recovery and timeout handling
-    - Session persistence
+    This orchestrator coordinates interview flow by delegating state management
+    to the domain Interview entity:
+    - Loads fresh interview state from DB before operations
+    - Uses domain methods for state transitions (start, ask_followup, proceed_to_next_question)
+    - No in-memory state tracking (stateless)
+    - WebSocket message coordination and TTS generation
 
-    The state machine ensures valid transitions and prevents invalid operations.
+    The domain Interview entity is the single source of truth for all state.
     """
 
     def __init__(
@@ -66,89 +61,35 @@ class InterviewSessionOrchestrator:
         self.interview_id = interview_id
         self.websocket = websocket
         self.container = container
-        self.state = SessionState.IDLE
-        self.current_question_id: UUID | None = None
-        self.parent_question_id: UUID | None = None  # For follow-up tracking
-        self.follow_up_count = 0
         self.created_at = datetime.utcnow()
         self.last_activity = datetime.utcnow()
 
         logger.info(
             f"Session orchestrator created for interview {interview_id}",
-            extra={"interview_id": str(interview_id), "state": self.state},
-        )
-
-    def _transition(self, new_state: SessionState) -> None:
-        """Transition to new state with validation.
-
-        Args:
-            new_state: Target state
-
-        Raises:
-            ValueError: If transition is invalid
-
-        State transition rules:
-        - IDLE → QUESTIONING (start interview)
-        - QUESTIONING → EVALUATING (answer received)
-        - EVALUATING → FOLLOW_UP (follow-up needed)
-        - EVALUATING → QUESTIONING (next main question)
-        - EVALUATING → COMPLETE (no more questions)
-        - FOLLOW_UP → EVALUATING (follow-up answered)
-        """
-        valid_transitions = {
-            SessionState.IDLE: [SessionState.QUESTIONING],
-            SessionState.QUESTIONING: [SessionState.EVALUATING],
-            SessionState.EVALUATING: [
-                SessionState.FOLLOW_UP,
-                SessionState.QUESTIONING,
-                SessionState.COMPLETE,
-            ],
-            SessionState.FOLLOW_UP: [SessionState.EVALUATING],
-            SessionState.COMPLETE: [],  # Terminal state
-        }
-
-        allowed = valid_transitions.get(self.state, [])
-        if new_state not in allowed:
-            raise ValueError(
-                f"Invalid state transition: {self.state} → {new_state}. "
-                f"Allowed transitions from {self.state}: {allowed}"
-            )
-
-        old_state = self.state
-        self.state = new_state
-        self.last_activity = datetime.utcnow()
-
-        logger.info(
-            f"State transition: {old_state} → {new_state}",
-            extra={
-                "interview_id": str(self.interview_id),
-                "from_state": old_state,
-                "to_state": new_state,
-            },
+            extra={"interview_id": str(interview_id)},
         )
 
     async def start_session(self) -> None:
         """Start interview session by sending first question.
 
-        Raises:
-            ValueError: If session already started, interview not found, or no questions
-        """
-        if self.state != SessionState.IDLE:
-            raise ValueError(f"Session already started (current state: {self.state})")
+        Delegates state management to domain Interview entity.
 
+        Raises:
+            ValueError: If interview not found, already started, or no questions
+        """
         async for session in get_async_session():
             interview_repo = self.container.interview_repository_port(session)
             question_repo = self.container.question_repository_port(session)
             tts = self.container.text_to_speech_port()
 
-            # Get interview for context (before transitioning state)
+            # Load fresh interview state from DB
             interview = await interview_repo.get_by_id(self.interview_id)
             if not interview:
                 logger.error(f"Interview {self.interview_id} not found")
                 await self._send_error("INTERVIEW_NOT_FOUND", "Interview not found")
                 raise ValueError(f"Interview {self.interview_id} not found")
 
-            # Get first question (before transitioning state)
+            # Get first question
             use_case = GetNextQuestionUseCase(
                 interview_repository=interview_repo,
                 question_repository=question_repo,
@@ -160,12 +101,9 @@ class InterviewSessionOrchestrator:
                 await self._send_error("NO_QUESTIONS", "No questions available")
                 raise ValueError(f"No questions available for interview {self.interview_id}")
 
-            # Now transition to QUESTIONING (after validation)
-            self._transition(SessionState.QUESTIONING)
-
-            # Track current question
-            self.current_question_id = question.id
-            self.parent_question_id = question.id  # First question is its own parent
+            # Use domain method for state transition (IDLE → QUESTIONING)
+            interview.start()
+            await interview_repo.update(interview)
 
             # Generate TTS audio
             audio_bytes = await tts.synthesize_speech(question.text)
@@ -186,16 +124,19 @@ class InterviewSessionOrchestrator:
             )
 
             logger.info(
-                f"Sent first question: {question.id}",
+                f"Started interview, sent first question: {question.id}",
                 extra={
                     "interview_id": str(self.interview_id),
                     "question_id": str(question.id),
+                    "status": interview.status.value,
                 },
             )
             break
 
     async def handle_answer(self, answer_text: str) -> None:
-        """Handle answer based on current state.
+        """Handle answer based on interview state from DB.
+
+        Loads fresh interview state to determine if answering main question or follow-up.
 
         Args:
             answer_text: Candidate's answer text
@@ -203,39 +144,57 @@ class InterviewSessionOrchestrator:
         Raises:
             ValueError: If called in invalid state
         """
-        if self.state == SessionState.QUESTIONING:
-            await self._handle_main_question_answer(answer_text)
+        async for session in get_async_session():
+            interview_repo = self.container.interview_repository_port(session)
 
-        elif self.state == SessionState.FOLLOW_UP:
-            await self._handle_followup_answer(answer_text)
+            # Load fresh state from DB
+            interview = await interview_repo.get_by_id(self.interview_id)
+            if not interview:
+                raise ValueError(f"Interview {self.interview_id} not found")
 
-        else:
-            raise ValueError(
-                f"Cannot handle answer in state {self.state}. "
-                f"Expected QUESTIONING or FOLLOW_UP"
-            )
+            # Route based on domain status
+            from ....domain.models.interview import InterviewStatus
+
+            if interview.status == InterviewStatus.QUESTIONING:
+                await self._handle_main_question_answer(answer_text)
+            elif interview.status == InterviewStatus.FOLLOW_UP:
+                await self._handle_followup_answer(answer_text)
+            else:
+                raise ValueError(
+                    f"Cannot handle answer in status {interview.status}. "
+                    f"Expected QUESTIONING or FOLLOW_UP"
+                )
+            break
 
     async def _handle_main_question_answer(self, answer_text: str) -> None:
         """Handle answer to main question.
 
         Flow:
-        1. Transition to EVALUATING
-        2. Process answer (evaluation + gap detection)
+        1. Load interview state, get current question ID
+        2. Process answer (triggers QUESTIONING → EVALUATING via domain)
         3. Make follow-up decision
         4. Either send follow-up OR next main question OR complete
 
         Args:
             answer_text: Candidate's answer text
         """
-        self._transition(SessionState.EVALUATING)
-
         async for session in get_async_session():
             interview_repo = self.container.interview_repository_port(session)
             question_repo = self.container.question_repository_port(session)
             answer_repo = self.container.answer_repository_port(session)
             follow_up_repo = self.container.follow_up_question_repository()
 
-            # Process answer with adaptive evaluation
+            # Load fresh interview state
+            interview = await interview_repo.get_by_id(self.interview_id)
+            if not interview:
+                raise ValueError(f"Interview {self.interview_id} not found")
+
+            # Get current question ID from interview
+            current_question_id = interview.get_current_question_id()
+            if not current_question_id:
+                raise ValueError("No current question in interview")
+
+            # Process answer with adaptive evaluation (triggers state transition inside use case)
             use_case = ProcessAnswerAdaptiveUseCase(
                 answer_repository=answer_repo,
                 interview_repository=interview_repo,
@@ -247,12 +206,15 @@ class InterviewSessionOrchestrator:
 
             answer, has_more = await use_case.execute(
                 interview_id=self.interview_id,
-                question_id=self.current_question_id,  # type: ignore
+                question_id=current_question_id,
                 answer_text=answer_text,
             )
 
             # Send evaluation
             await self._send_evaluation(answer)
+
+            # Reload interview (state may have changed in use case)
+            interview = await interview_repo.get_by_id(self.interview_id)
 
             # Make follow-up decision
             decision_use_case = FollowUpDecisionUseCase(
@@ -262,7 +224,7 @@ class InterviewSessionOrchestrator:
 
             decision = await decision_use_case.execute(
                 interview_id=self.interview_id,
-                parent_question_id=self.parent_question_id,  # type: ignore
+                parent_question_id=current_question_id,  # Current question is the parent
                 latest_answer=answer,
             )
 
@@ -274,7 +236,7 @@ class InterviewSessionOrchestrator:
             # If follow-up needed, generate and send
             if decision["needs_followup"]:
                 await self._generate_and_send_followup(
-                    answer, decision, question_repo, follow_up_repo, interview_repo
+                    answer, decision, question_repo, follow_up_repo, interview_repo, current_question_id
                 )
                 break
 
@@ -292,23 +254,36 @@ class InterviewSessionOrchestrator:
         """Handle answer to follow-up question.
 
         Flow:
-        1. Transition to EVALUATING
-        2. Process answer (evaluation + gap detection)
+        1. Load interview state, get parent question ID and last follow-up ID
+        2. Process answer (triggers FOLLOW_UP → EVALUATING via domain)
         3. Make follow-up decision again (may generate another follow-up)
         4. Either send another follow-up OR next main question OR complete
 
         Args:
             answer_text: Candidate's answer text
         """
-        self._transition(SessionState.EVALUATING)
-
         async for session in get_async_session():
             interview_repo = self.container.interview_repository_port(session)
             question_repo = self.container.question_repository_port(session)
             answer_repo = self.container.answer_repository_port(session)
             follow_up_repo = self.container.follow_up_question_repository()
 
-            # Process answer (current_question_id is follow-up question ID)
+            # Load fresh interview state
+            interview = await interview_repo.get_by_id(self.interview_id)
+            if not interview:
+                raise ValueError(f"Interview {self.interview_id} not found")
+
+            # Get parent question ID and last follow-up ID from interview
+            parent_question_id = interview.current_parent_question_id
+            if not parent_question_id:
+                raise ValueError("No parent question tracked in interview")
+
+            # Last follow-up is the most recent in adaptive_follow_ups list
+            if not interview.adaptive_follow_ups:
+                raise ValueError("No follow-up questions tracked in interview")
+            current_followup_id = interview.adaptive_follow_ups[-1]
+
+            # Process answer (triggers state transition inside use case)
             use_case = ProcessAnswerAdaptiveUseCase(
                 answer_repository=answer_repo,
                 interview_repository=interview_repo,
@@ -320,12 +295,15 @@ class InterviewSessionOrchestrator:
 
             answer, has_more = await use_case.execute(
                 interview_id=self.interview_id,
-                question_id=self.current_question_id,  # type: ignore
+                question_id=current_followup_id,
                 answer_text=answer_text,
             )
 
             # Send evaluation
             await self._send_evaluation(answer)
+
+            # Reload interview
+            interview = await interview_repo.get_by_id(self.interview_id)
 
             # Make follow-up decision (using parent question ID)
             decision_use_case = FollowUpDecisionUseCase(
@@ -335,7 +313,7 @@ class InterviewSessionOrchestrator:
 
             decision = await decision_use_case.execute(
                 interview_id=self.interview_id,
-                parent_question_id=self.parent_question_id,  # type: ignore
+                parent_question_id=parent_question_id,
                 latest_answer=answer,
             )
 
@@ -347,7 +325,7 @@ class InterviewSessionOrchestrator:
             # If another follow-up needed, generate and send
             if decision["needs_followup"]:
                 await self._generate_and_send_followup(
-                    answer, decision, question_repo, follow_up_repo, interview_repo
+                    answer, decision, question_repo, follow_up_repo, interview_repo, parent_question_id
                 )
                 break
 
@@ -368,8 +346,9 @@ class InterviewSessionOrchestrator:
         question_repo: QuestionRepositoryPort,
         follow_up_repo: FollowUpQuestionRepositoryPort,
         interview_repo: InterviewRepositoryPort,
+        parent_question_id: UUID,
     ) -> None:
-        """Generate and send follow-up question.
+        """Generate and send follow-up question using domain methods.
 
         Args:
             answer: Latest answer entity
@@ -377,13 +356,14 @@ class InterviewSessionOrchestrator:
             question_repo: Question repository
             follow_up_repo: Follow-up question repository
             interview_repo: Interview repository
+            parent_question_id: UUID of parent question
         """
-        # Get current question for context
-        current_question = await question_repo.get_by_id(self.parent_question_id)  # type: ignore
+        # Get parent question for context
+        parent_question = await question_repo.get_by_id(parent_question_id)
 
         # Generate follow-up question with cumulative context
         follow_up_text = await self.container.llm_port().generate_followup_question(
-            parent_question=current_question.text if current_question else "Unknown",
+            parent_question=parent_question.text if parent_question else "Unknown",
             answer_text=answer.text,
             missing_concepts=decision["cumulative_gaps"],
             severity=answer.gaps.get("severity", "moderate") if answer.gaps else "moderate",
@@ -393,7 +373,7 @@ class InterviewSessionOrchestrator:
 
         # Create and save follow-up question entity
         follow_up = FollowUpQuestion(
-            parent_question_id=self.parent_question_id,  # type: ignore
+            parent_question_id=parent_question_id,
             interview_id=self.interview_id,
             text=follow_up_text,
             generated_reason=decision["reason"],
@@ -401,16 +381,11 @@ class InterviewSessionOrchestrator:
         )
         await follow_up_repo.save(follow_up)
 
-        # Track in interview
+        # Use domain method to track follow-up (triggers EVALUATING → FOLLOW_UP)
         interview = await interview_repo.get_by_id(self.interview_id)
         if interview:
-            interview.add_adaptive_followup(follow_up.id)
+            interview.ask_followup(follow_up.id, parent_question_id)
             await interview_repo.update(interview)
-
-        # Update session state
-        self.current_question_id = follow_up.id
-        self.follow_up_count = decision["follow_up_count"] + 1
-        self._transition(SessionState.FOLLOW_UP)
 
         # Send follow-up question with audio
         tts = self.container.text_to_speech_port()
@@ -421,7 +396,7 @@ class InterviewSessionOrchestrator:
             {
                 "type": "follow_up_question",
                 "question_id": str(follow_up.id),
-                "parent_question_id": str(follow_up.parent_question_id),
+                "parent_question_id": str(parent_question_id),
                 "text": follow_up.text,
                 "generated_reason": follow_up.generated_reason,
                 "order_in_sequence": follow_up.order_in_sequence,
@@ -429,21 +404,33 @@ class InterviewSessionOrchestrator:
             }
         )
 
-        logger.info(f"Sent follow-up #{self.follow_up_count}")
+        logger.info(
+            f"Sent follow-up #{follow_up.order_in_sequence}",
+            extra={
+                "interview_id": str(self.interview_id),
+                "follow_up_id": str(follow_up.id),
+                "parent_question_id": str(parent_question_id),
+            }
+        )
 
     async def _send_next_main_question(
         self,
         interview_repo: InterviewRepositoryPort,
         question_repo: QuestionRepositoryPort,
     ) -> None:
-        """Send next main question.
+        """Send next main question using domain methods.
 
         Args:
             interview_repo: Interview repository
             question_repo: Question repository
         """
-        # Reset follow-up tracking
-        self.follow_up_count = 0
+        # Load interview and use domain method (EVALUATING → QUESTIONING, resets counters)
+        interview = await interview_repo.get_by_id(self.interview_id)
+        if not interview:
+            raise ValueError(f"Interview {self.interview_id} not found")
+
+        interview.proceed_to_next_question()
+        await interview_repo.update(interview)
 
         # Get next question
         use_case = GetNextQuestionUseCase(
@@ -457,12 +444,7 @@ class InterviewSessionOrchestrator:
             await self._complete_interview(interview_repo, None)
             return
 
-        # Update session state
-        self.current_question_id = question.id
-        self.parent_question_id = question.id  # New main question
-        self._transition(SessionState.QUESTIONING)
-
-        # Get interview for context
+        # Reload interview for updated index
         interview = await interview_repo.get_by_id(self.interview_id)
 
         # Generate TTS audio
@@ -484,7 +466,14 @@ class InterviewSessionOrchestrator:
             }
         )
 
-        logger.info(f"Sent next main question: {question.id}")
+        logger.info(
+            f"Sent next main question: {question.id}",
+            extra={
+                "interview_id": str(self.interview_id),
+                "question_id": str(question.id),
+                "status": interview.status.value if interview else "unknown",
+            }
+        )
 
     async def _complete_interview(
         self,
@@ -493,7 +482,9 @@ class InterviewSessionOrchestrator:
         question_repo: QuestionRepositoryPort | None = None,
         follow_up_repo: FollowUpQuestionRepositoryPort | None = None,
     ) -> None:
-        """Complete interview, generate summary, and send final results.
+        """Complete interview using domain methods, generate summary, send results.
+
+        State transition handled by CompleteInterviewUseCase.
 
         Args:
             interview_repo: Interview repository
@@ -501,7 +492,6 @@ class InterviewSessionOrchestrator:
             question_repo: Question repository (optional, for summary generation)
             follow_up_repo: Follow-up question repository (optional, for summary)
         """
-        self._transition(SessionState.COMPLETE)
 
         # Get LLM for summary generation
         llm = self.container.llm_port()
@@ -605,18 +595,39 @@ class InterviewSessionOrchestrator:
             }
         )
 
-    def get_state(self) -> dict[str, Any]:
-        """Get current session state for persistence.
+    async def get_state(self) -> dict[str, Any]:
+        """Get current session state from DB (stateless).
+
+        Loads fresh interview state from database.
 
         Returns:
-            State dict with all session data
+            State dict with interview data from DB
         """
+        async for session in get_async_session():
+            interview_repo = self.container.interview_repository_port(session)
+            interview = await interview_repo.get_by_id(self.interview_id)
+
+            if not interview:
+                return {
+                    "interview_id": str(self.interview_id),
+                    "status": "NOT_FOUND",
+                    "created_at": self.created_at.isoformat(),
+                    "last_activity": self.last_activity.isoformat(),
+                }
+
+            return {
+                "interview_id": str(self.interview_id),
+                "status": interview.status.value,
+                "current_question_id": str(interview.get_current_question_id()) if interview.get_current_question_id() else None,
+                "parent_question_id": str(interview.current_parent_question_id) if interview.current_parent_question_id else None,
+                "followup_count": interview.current_followup_count,
+                "progress": f"{interview.current_question_index}/{len(interview.question_ids)}",
+                "created_at": self.created_at.isoformat(),
+                "last_activity": self.last_activity.isoformat(),
+            }
+
+        # Fallback (should not reach here)
         return {
             "interview_id": str(self.interview_id),
-            "state": self.state,
-            "current_question_id": str(self.current_question_id) if self.current_question_id else None,
-            "parent_question_id": str(self.parent_question_id) if self.parent_question_id else None,
-            "follow_up_count": self.follow_up_count,
-            "created_at": self.created_at.isoformat(),
-            "last_activity": self.last_activity.isoformat(),
+            "error": "Failed to retrieve state",
         }

@@ -91,6 +91,8 @@ def upgrade() -> None:
         # Added in 0003
         sa.Column('plan_metadata', postgresql.JSONB(astext_type=sa.Text()), server_default='{}', nullable=False),
         sa.Column('adaptive_follow_ups', postgresql.ARRAY(postgresql.UUID(as_uuid=True)), server_default='{}', nullable=False),
+        sa.Column('current_parent_question_id', postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column('current_followup_count', sa.Integer(), nullable=False, server_default='0'),
         sa.Column('started_at', sa.DateTime(), nullable=True),
         sa.Column('completed_at', sa.DateTime(), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False),

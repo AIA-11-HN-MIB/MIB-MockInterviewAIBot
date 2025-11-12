@@ -141,7 +141,7 @@ class Settings(BaseSettings):
     use_mock_analytics: bool = True
 
     model_config = SettingsConfigDict(
-        env_file=("../.env.local", "../.env"),  # Try .env.local first, fallback to .env
+        env_file=("../.env.local", "../.env", ".env"),  # Try .env.local first, fallback to .env
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
