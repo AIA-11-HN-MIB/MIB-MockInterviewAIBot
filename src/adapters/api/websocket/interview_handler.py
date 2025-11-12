@@ -186,7 +186,7 @@ async def _process_answer(
         container: DI container
 
     Returns:
-        Tuple of (answer, follow_up_question, has_more)
+        Tuple of (answer, has_more)
     """
     use_case = ProcessAnswerAdaptiveUseCase(
         answer_repository=answer_repo,
@@ -321,7 +321,13 @@ async def _complete_interview(interview_id: UUID, interview_repo, answer_repo):
 
 
 async def handle_text_answer(interview_id: UUID, data: dict, container):
-    """Handle text answer from client with adaptive evaluation.
+    """Handle text answer from client with iterative follow-up loop.
+
+    Implements Phase 4 adaptive follow-up logic:
+    - Evaluate answer
+    - Check decision (FollowUpDecisionUseCase)
+    - Generate 0-3 follow-ups based on gaps
+    - Exit loop when similarity >=0.8 OR no gaps OR max 3 reached
 
     Args:
         interview_id: Interview UUID
@@ -333,16 +339,29 @@ async def handle_text_answer(interview_id: UUID, data: dict, container):
         interview_repo = container.interview_repository_port(session)
         question_repo = container.question_repository_port(session)
         answer_repo = container.answer_repository_port(session)
+        follow_up_repo = container.follow_up_question_repository()
 
         # Validate interview exists
         interview = await _validate_interview_exists(interview_id, interview_repo)
         if not interview:
             break
 
+        # Get question to determine if it's main or follow-up
+        question_id = UUID(data["question_id"])
+        current_question = await question_repo.get_by_id(question_id)
+
+        # Determine parent question ID (for tracking follow-up count)
+        parent_question_id = question_id  # Default: current is parent
+
+        # Check if current question is a follow-up
+        follow_up_question = await follow_up_repo.get_by_id(question_id)
+        if follow_up_question:
+            parent_question_id = follow_up_question.parent_question_id
+
         # Process answer with adaptive evaluation
-        answer, follow_up_question, has_more = await _process_answer(
+        answer, has_more = await _process_answer(
             interview_id=interview_id,
-            question_id=UUID(data["question_id"]),
+            question_id=question_id,
             answer_text=data["answer_text"],
             answer_repo=answer_repo,
             interview_repo=interview_repo,
@@ -353,16 +372,71 @@ async def handle_text_answer(interview_id: UUID, data: dict, container):
         # Send evaluation
         await _send_evaluation(interview_id, answer)
 
-        # Get TTS once (will be used for either follow-up or next question)
+        # Get TTS once
         tts = container.text_to_speech_port()
 
-        # If follow-up generated, send it immediately
-        if follow_up_question:
-            await _send_follow_up_question(interview_id, follow_up_question, tts)
-            # Don't proceed to next main question yet
+        # ITERATIVE FOLLOW-UP LOOP (Phase 4)
+        # Loop will not actually wait for answers within this function
+        # Instead, it breaks after sending first follow-up and waits for next message
+        # This is a limitation of current architecture - noted in plan
+        from ...application.use_cases.follow_up_decision import FollowUpDecisionUseCase
+
+        decision_use_case = FollowUpDecisionUseCase(
+            answer_repository=answer_repo,
+            follow_up_question_repository=follow_up_repo,
+        )
+
+        # Make decision: should we generate follow-up?
+        decision = await decision_use_case.execute(
+            interview_id=interview_id,
+            parent_question_id=parent_question_id,
+            latest_answer=answer,
+        )
+
+        logger.info(
+            f"Follow-up decision: needs={decision['needs_followup']}, "
+            f"reason='{decision['reason']}', count={decision['follow_up_count']}"
+        )
+
+        # If follow-up needed, generate and send
+        if decision["needs_followup"]:
+            # Generate follow-up question with cumulative context
+            follow_up_text = await container.llm_port().generate_followup_question(
+                parent_question=current_question.text if current_question else "Unknown",
+                answer_text=answer.text,
+                missing_concepts=decision["cumulative_gaps"],
+                severity=answer.gaps.get("severity", "moderate") if answer.gaps else "moderate",
+                order=decision["follow_up_count"] + 1,
+                cumulative_gaps=decision["cumulative_gaps"],
+            )
+
+            # Create and save follow-up question entity
+            from ...domain.models.follow_up_question import FollowUpQuestion
+
+            follow_up = FollowUpQuestion(
+                parent_question_id=parent_question_id,
+                interview_id=interview_id,
+                text=follow_up_text,
+                generated_reason=decision["reason"],
+                order_in_sequence=decision["follow_up_count"] + 1,
+            )
+            await follow_up_repo.save(follow_up)
+
+            # Track in interview
+            interview.add_adaptive_followup(follow_up.id)
+            await interview_repo.update(interview)
+
+            # Send follow-up question with audio
+            await _send_follow_up_question(interview_id, follow_up, tts)
+
+            logger.info(f"Sent follow-up #{decision['follow_up_count'] + 1}")
+
+            # Exit and wait for next answer
+            # NOTE: This breaks the "iterative loop within single handler" pattern
+            # Follow-ups are handled by receiving the next message
             break
 
-        # Send next question or complete
+        # No follow-up needed - send next main question or complete
         if has_more:
             await _send_next_question(
                 interview_id, interview, interview_repo, question_repo, tts

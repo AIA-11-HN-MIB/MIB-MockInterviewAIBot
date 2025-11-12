@@ -1,9 +1,8 @@
-"""Initial database schema with all tables
+"""Create all database tables
 
 Revision ID: 0001
 Revises:
-Create Date: 2025-10-31 14:29:38.298134
-
+Create Date: 2025-11-12 00:00:00.000000
 """
 from typing import Sequence, Union
 
@@ -19,7 +18,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema - create all tables."""
+    """Upgrade schema - create all tables with all columns."""
 
     # Create candidates table
     op.create_table(
@@ -35,6 +34,7 @@ def upgrade() -> None:
     op.create_index('idx_candidates_created_at', 'candidates', ['created_at'])
 
     # Create questions table
+    # Note: reference_answer column is excluded (was dropped in migration 0005)
     op.create_table(
         'questions',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
@@ -43,10 +43,12 @@ def upgrade() -> None:
         sa.Column('difficulty', sa.String(50), nullable=False),
         sa.Column('skills', postgresql.ARRAY(sa.String(100)), nullable=False, server_default='{}'),
         sa.Column('tags', postgresql.ARRAY(sa.String(100)), nullable=False, server_default='{}'),
-        sa.Column('reference_answer', sa.Text(), nullable=True),
         sa.Column('evaluation_criteria', sa.Text(), nullable=True),
         sa.Column('version', sa.Integer(), nullable=False, server_default='1'),
         sa.Column('embedding', postgresql.ARRAY(sa.Float()), nullable=True),
+        # Added in 0003
+        sa.Column('ideal_answer', sa.Text(), nullable=True),
+        sa.Column('rationale', sa.Text(), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=False),
     )
@@ -86,6 +88,9 @@ def upgrade() -> None:
         sa.Column('question_ids', postgresql.ARRAY(postgresql.UUID(as_uuid=True)), nullable=False, server_default='{}'),
         sa.Column('answer_ids', postgresql.ARRAY(postgresql.UUID(as_uuid=True)), nullable=False, server_default='{}'),
         sa.Column('current_question_index', sa.Integer(), nullable=False, server_default='0'),
+        # Added in 0003
+        sa.Column('plan_metadata', postgresql.JSONB(astext_type=sa.Text()), server_default='{}', nullable=False),
+        sa.Column('adaptive_follow_ups', postgresql.ARRAY(postgresql.UUID(as_uuid=True)), server_default='{}', nullable=False),
         sa.Column('started_at', sa.DateTime(), nullable=True),
         sa.Column('completed_at', sa.DateTime(), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False),
@@ -111,6 +116,9 @@ def upgrade() -> None:
         sa.Column('evaluation', postgresql.JSONB(), nullable=True),
         sa.Column('embedding', postgresql.ARRAY(sa.Float()), nullable=True),
         sa.Column('metadata', postgresql.JSONB(), nullable=False, server_default='{}'),
+        # Added in 0003
+        sa.Column('similarity_score', sa.Float(), nullable=True),
+        sa.Column('gaps', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('evaluated_at', sa.DateTime(), nullable=True),
         sa.ForeignKeyConstraint(['interview_id'], ['interviews.id'], ondelete='CASCADE'),
@@ -121,12 +129,71 @@ def upgrade() -> None:
     op.create_index('idx_answers_question_id', 'answers', ['question_id'])
     op.create_index('idx_answers_candidate_id', 'answers', ['candidate_id'])
     op.create_index('idx_answers_created_at', 'answers', ['created_at'])
+    # Indexes added in 0003
+    op.create_index(
+        'idx_answers_similarity_score',
+        'answers',
+        ['similarity_score'],
+        postgresql_where=sa.text('similarity_score IS NOT NULL'),
+    )
+    op.create_index(
+        'idx_answers_gaps',
+        'answers',
+        ['gaps'],
+        postgresql_using='gin',
+        postgresql_where=sa.text('gaps IS NOT NULL'),
+    )
+    # Constraint added in 0003
+    op.create_check_constraint(
+        'check_similarity_score_bounds',
+        'answers',
+        'similarity_score IS NULL OR (similarity_score >= 0 AND similarity_score <= 1)',
+    )
+
+    # Create follow_up_questions table (added in 0003)
+    op.create_table(
+        'follow_up_questions',
+        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, nullable=False),
+        sa.Column(
+            'parent_question_id',
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey('questions.id', ondelete='CASCADE'),
+            nullable=False,
+        ),
+        sa.Column(
+            'interview_id',
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey('interviews.id', ondelete='CASCADE'),
+            nullable=False,
+        ),
+        sa.Column('text', sa.Text(), nullable=False),
+        sa.Column('generated_reason', sa.Text(), nullable=False),
+        sa.Column('order_in_sequence', sa.Integer(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), nullable=False),
+    )
+    op.create_index(
+        'idx_follow_up_questions_parent_question_id',
+        'follow_up_questions',
+        ['parent_question_id'],
+    )
+    op.create_index(
+        'idx_follow_up_questions_interview_id',
+        'follow_up_questions',
+        ['interview_id'],
+    )
+    op.create_index(
+        'idx_follow_up_questions_created_at',
+        'follow_up_questions',
+        ['created_at'],
+    )
 
 
 def downgrade() -> None:
     """Downgrade schema - drop all tables."""
+    op.drop_table('follow_up_questions')
     op.drop_table('answers')
     op.drop_table('interviews')
     op.drop_table('cv_analyses')
     op.drop_table('questions')
     op.drop_table('candidates')
+

@@ -211,18 +211,31 @@ A weaker answer would miss these comprehensive details."""
         missing_concepts: list[str],
         severity: str,
         order: int,
+        cumulative_gaps: list[str] | None = None,
+        previous_follow_ups: list[dict[str, Any]] | None = None,
     ) -> str:
-        """Mock follow-up question generation.
+        """Mock follow-up question generation with cumulative context.
 
         Args:
             parent_question: Original question text
-            answer_text: Candidate's answer to parent question
-            missing_concepts: List of concepts missing from answer
+            answer_text: Candidate's answer to parent question (or latest follow-up)
+            missing_concepts: List of concepts missing from current answer
             severity: Gap severity
             order: Follow-up order in sequence
+            cumulative_gaps: All unique gaps accumulated across follow-up cycle
+            previous_follow_ups: Previous follow-up questions and answers for context
 
         Returns:
             Follow-up question text
         """
-        concepts_str = ', '.join(missing_concepts[:2]) if missing_concepts else "that concept"
-        return f"Can you elaborate more on {concepts_str}? Please provide specific examples."
+        # Use cumulative gaps if available, otherwise current missing concepts
+        target_concepts = cumulative_gaps if cumulative_gaps else missing_concepts
+        concepts_str = ', '.join(target_concepts[:2]) if target_concepts else "that concept"
+
+        # Add order context to make questions unique per iteration
+        if order == 1:
+            return f"Can you elaborate more on {concepts_str}? Please provide specific examples."
+        elif order == 2:
+            return f"Let's dive deeper into {concepts_str}. Can you explain the underlying principles?"
+        else:
+            return f"Final question on {concepts_str}: How would you apply this in a real-world scenario?"

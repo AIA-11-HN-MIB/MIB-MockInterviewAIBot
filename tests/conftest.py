@@ -218,6 +218,25 @@ class MockAnswerRepository:
         return [a for a in self.answers.values() if a.interview_id == interview_id]
 
 
+class MockFollowUpQuestionRepository:
+    """Mock follow-up question repository for testing."""
+
+    def __init__(self) -> None:
+        self.follow_ups: dict[UUID, list[FollowUpQuestion]] = {}
+
+    async def save(self, follow_up: FollowUpQuestion) -> FollowUpQuestion:
+        parent_id = follow_up.parent_question_id
+        if parent_id not in self.follow_ups:
+            self.follow_ups[parent_id] = []
+        self.follow_ups[parent_id].append(follow_up)
+        return follow_up
+
+    async def get_by_parent_question_id(
+        self, parent_question_id: UUID
+    ) -> list[FollowUpQuestion]:
+        return self.follow_ups.get(parent_question_id, [])
+
+
 class MockCVAnalysisRepository:
     """Mock CV analysis repository for testing."""
 
@@ -387,3 +406,9 @@ def mock_vector_search() -> MockVectorSearch:
 def mock_llm() -> MockLLM:
     """Mock LLM fixture."""
     return MockLLM()
+
+
+@pytest.fixture
+def mock_follow_up_question_repo() -> MockFollowUpQuestionRepository:
+    """Mock follow-up question repository fixture."""
+    return MockFollowUpQuestionRepository()

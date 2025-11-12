@@ -168,15 +168,19 @@ class LLMPort(ABC):
         missing_concepts: list[str],
         severity: str,
         order: int,
+        cumulative_gaps: list[str] | None = None,
+        previous_follow_ups: list[dict[str, Any]] | None = None,
     ) -> str:
         """Generate targeted follow-up question.
 
         Args:
             parent_question: Original question text
-            answer_text: Candidate's answer to parent question
-            missing_concepts: List of concepts missing from answer
+            answer_text: Candidate's answer to parent question (or latest follow-up)
+            missing_concepts: List of concepts missing from current answer
             severity: Gap severity ("minor" | "moderate" | "major")
             order: Follow-up order in sequence (1, 2, 3, ...)
+            cumulative_gaps: All unique gaps accumulated across follow-up cycle (optional)
+            previous_follow_ups: Previous follow-up questions and answers for context (optional)
 
         Returns:
             Follow-up question text
