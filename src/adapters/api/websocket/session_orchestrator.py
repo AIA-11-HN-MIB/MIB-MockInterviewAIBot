@@ -148,9 +148,7 @@ class InterviewSessionOrchestrator:
             interview_repo = self.container.interview_repository_port(session)
 
             # Load fresh state from DB
-            interview = await interview_repo.get_by_id(self.interview_id)
-            if not interview:
-                raise ValueError(f"Interview {self.interview_id} not found")
+            interview = await self._get_interview_or_raise(interview_repo)
 
             # Route based on domain status
             from ....domain.models.interview import InterviewStatus
@@ -185,9 +183,7 @@ class InterviewSessionOrchestrator:
             follow_up_repo = self.container.follow_up_question_repository()
 
             # Load fresh interview state
-            interview = await interview_repo.get_by_id(self.interview_id)
-            if not interview:
-                raise ValueError(f"Interview {self.interview_id} not found")
+            interview = await self._get_interview_or_raise(interview_repo)
 
             # Get current question ID from interview
             current_question_id = interview.get_current_question_id()
@@ -214,7 +210,7 @@ class InterviewSessionOrchestrator:
             await self._send_evaluation(answer)
 
             # Reload interview (state may have changed in use case)
-            interview = await interview_repo.get_by_id(self.interview_id)
+            interview = await self._get_interview_or_raise(interview_repo)
 
             # Make follow-up decision
             decision_use_case = FollowUpDecisionUseCase(
@@ -269,9 +265,7 @@ class InterviewSessionOrchestrator:
             follow_up_repo = self.container.follow_up_question_repository()
 
             # Load fresh interview state
-            interview = await interview_repo.get_by_id(self.interview_id)
-            if not interview:
-                raise ValueError(f"Interview {self.interview_id} not found")
+            interview = await self._get_interview_or_raise(interview_repo)
 
             # Get parent question ID and last follow-up ID from interview
             parent_question_id = interview.current_parent_question_id
@@ -303,7 +297,7 @@ class InterviewSessionOrchestrator:
             await self._send_evaluation(answer)
 
             # Reload interview
-            interview = await interview_repo.get_by_id(self.interview_id)
+            interview = await self._get_interview_or_raise(interview_repo)
 
             # Make follow-up decision (using parent question ID)
             decision_use_case = FollowUpDecisionUseCase(
@@ -382,7 +376,7 @@ class InterviewSessionOrchestrator:
         await follow_up_repo.save(follow_up)
 
         # Use domain method to track follow-up (triggers EVALUATING → FOLLOW_UP)
-        interview = await interview_repo.get_by_id(self.interview_id)
+        interview = await self._get_interview_or_raise(interview_repo)
         if interview:
             interview.ask_followup(follow_up.id, parent_question_id)
             await interview_repo.update(interview)
@@ -425,9 +419,7 @@ class InterviewSessionOrchestrator:
             question_repo: Question repository
         """
         # Load interview and use domain method (EVALUATING → QUESTIONING, resets counters)
-        interview = await interview_repo.get_by_id(self.interview_id)
-        if not interview:
-            raise ValueError(f"Interview {self.interview_id} not found")
+        interview = await self._get_interview_or_raise(interview_repo)
 
         interview.proceed_to_next_question()
         await interview_repo.update(interview)
@@ -445,7 +437,7 @@ class InterviewSessionOrchestrator:
             return
 
         # Reload interview for updated index
-        interview = await interview_repo.get_by_id(self.interview_id)
+        interview = await self._get_interview_or_raise(interview_repo)
 
         # Generate TTS audio
         tts = self.container.text_to_speech_port()
@@ -595,6 +587,25 @@ class InterviewSessionOrchestrator:
             }
         )
 
+    async def _get_interview_or_raise(
+        self, interview_repo: InterviewRepositoryPort
+    ) -> Any:
+        """Get interview by ID or raise ValueError if not found.
+
+        Args:
+            interview_repo: Interview repository
+
+        Returns:
+            Interview entity
+
+        Raises:
+            ValueError: If interview not found
+        """
+        interview = await interview_repo.get_by_id(self.interview_id)
+        if not interview:
+            raise ValueError(f"Interview {self.interview_id} not found")
+        return interview
+
     async def get_state(self) -> dict[str, Any]:
         """Get current session state from DB (stateless).
 
@@ -605,7 +616,7 @@ class InterviewSessionOrchestrator:
         """
         async for session in get_async_session():
             interview_repo = self.container.interview_repository_port(session)
-            interview = await interview_repo.get_by_id(self.interview_id)
+            interview = await self._get_interview_or_raise(interview_repo)
 
             if not interview:
                 return {
