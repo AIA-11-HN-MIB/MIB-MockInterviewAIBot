@@ -6,7 +6,6 @@ from typing import Any
 from uuid import UUID
 
 from ...domain.models.answer import Answer
-from ...domain.models.follow_up_question import FollowUpQuestion
 from ...domain.models.interview import InterviewStatus
 from ...domain.ports.answer_repository_port import AnswerRepositoryPort
 from ...domain.ports.follow_up_question_repository_port import (
@@ -68,8 +67,11 @@ class ProcessAnswerAdaptiveUseCase:
         answer_text: str,
         audio_file_path: str | None = None,
         voice_metrics: dict[str, float] | None = None,
-    ) -> tuple[Answer, FollowUpQuestion | None, bool]:
+    ) -> tuple[Answer, bool]:
         """Process answer with adaptive evaluation including voice metrics.
+
+        NOTE: This use case no longer generates follow-up questions.
+        Follow-up generation is delegated to WebSocket handler using FollowUpDecisionUseCase.
 
         Args:
             interview_id: The interview UUID
@@ -79,7 +81,7 @@ class ProcessAnswerAdaptiveUseCase:
             voice_metrics: Optional voice quality metrics from STT
 
         Returns:
-            Tuple of (Answer with evaluation, optional FollowUpQuestion, has_more_questions)
+            Tuple of (Answer with evaluation, has_more_questions)
 
         Raises:
             ValueError: If interview or question not found, or invalid state
@@ -112,6 +114,8 @@ class ProcessAnswerAdaptiveUseCase:
             audio_file_path=audio_file_path,
             similarity_score=None,  # Will be calculated if ideal_answer exists
             gaps=None,  # Will be populated by gap detection
+            speaking_score=None,  # Will be set if voice_metrics provided
+            overall_score=None,  # Will be calculated from evaluation
             created_at=datetime.utcnow(),
         )
 
@@ -174,31 +178,16 @@ class ProcessAnswerAdaptiveUseCase:
         interview.add_answer(saved_answer.id)
         await self.interview_repo.update(interview)
 
-        # Step 9: Decide if follow-up needed
-        follow_up_question = None
-        if question.has_ideal_answer():
-            # Count existing follow-ups for this question
-            follow_up_count = self._count_follow_ups_for_question(interview, question_id)
-
-            if self._should_generate_followup(saved_answer, follow_up_count):
-                follow_up_question = await self._generate_followup(
-                    interview_id=interview_id,
-                    parent_question=question,
-                    answer=saved_answer,
-                    gaps=gaps,
-                    order=follow_up_count + 1,
-                )
-                # Save follow-up question to its own table
-                await self.follow_up_question_repo.save(follow_up_question)
-                # Track in interview
-                interview.add_adaptive_followup(follow_up_question.id)
-                await self.interview_repo.update(interview)
-                logger.info(f"Generated follow-up question #{follow_up_count + 1}")
-
-        # Step 10: Check if more questions
+        # Step 9: Check if more questions
         has_more = interview.has_more_questions()
 
-        return saved_answer, follow_up_question, has_more
+        similarity_str = f"{saved_answer.similarity_score:.2f}" if saved_answer.similarity_score is not None else "N/A"
+        logger.info(
+            f"Answer processed: similarity={similarity_str}, "
+            f"gaps={len(gaps.get('concepts', []))}, has_more={has_more}"
+        )
+
+        return saved_answer, has_more
 
     async def _calculate_similarity(self, answer_text: str, ideal_answer: str) -> float:
         """Calculate cosine similarity between answer and ideal_answer.
@@ -351,92 +340,3 @@ class ProcessAnswerAdaptiveUseCase:
             keyword_gaps=keyword_gaps,
         )
 
-    def _should_generate_followup(self, answer: Answer, follow_up_count: int) -> bool:
-        """Decide if follow-up question should be generated.
-
-        Args:
-            answer: The evaluated answer
-            follow_up_count: Number of existing follow-ups
-
-        Returns:
-            True if follow-up needed
-        """
-        # Stop if already 3 follow-ups
-        if follow_up_count >= 3:
-            logger.info("Max follow-ups (3) reached")
-            return False
-
-        # Check if answer is adaptive complete
-        if answer.is_adaptive_complete():
-            logger.info("Answer meets adaptive completion criteria")
-            return False
-
-        # Check similarity threshold
-        if answer.similarity_score and answer.similarity_score >= 0.8:
-            logger.info(f"Similarity {answer.similarity_score:.2f} >= 0.8, no follow-up")
-            return False
-
-        # Check if confirmed gaps exist
-        if answer.gaps and answer.gaps.get("confirmed"):
-            logger.info("Confirmed gaps detected, generating follow-up")
-            return True
-
-        # Default: no follow-up
-        return False
-
-    async def _generate_followup(
-        self,
-        interview_id: UUID,
-        parent_question: Any,
-        answer: Answer,
-        gaps: dict[str, Any],
-        order: int,
-    ) -> FollowUpQuestion:
-        """Generate targeted follow-up question based on gaps.
-
-        Args:
-            interview_id: Interview ID
-            parent_question: Original question
-            answer: Candidate's answer
-            gaps: Detected gaps
-            order: Follow-up order (1, 2, or 3)
-
-        Returns:
-            Generated FollowUpQuestion
-        """
-        missing_concepts = gaps.get("concepts", [])
-        severity = gaps.get("severity", "moderate")
-
-        # Use port method instead of direct client access
-        follow_up_text = await self.llm.generate_followup_question(
-            parent_question=parent_question.text,
-            answer_text=answer.text,
-            missing_concepts=missing_concepts,
-            severity=severity,
-            order=order,
-        )
-
-        # Create FollowUpQuestion entity
-        follow_up = FollowUpQuestion(
-            parent_question_id=parent_question.id,
-            interview_id=interview_id,
-            text=follow_up_text,
-            generated_reason=f"Missing concepts: {', '.join(missing_concepts[:3])}",
-            order_in_sequence=order,
-        )
-
-        return follow_up
-
-    def _count_follow_ups_for_question(self, interview: Any, question_id: UUID) -> int:
-        """Count how many follow-ups already exist for a question.
-
-        Args:
-            interview: Interview entity
-            question_id: Parent question ID
-
-        Returns:
-            Count of follow-ups for this question
-        """
-        # For MVP, count from adaptive_follow_ups list
-        # TODO: In production, query FollowUpQuestion table by parent_question_id
-        return len(interview.adaptive_follow_ups)

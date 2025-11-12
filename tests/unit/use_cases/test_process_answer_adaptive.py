@@ -21,6 +21,7 @@ class TestProcessAnswerAdaptiveUseCase:
         mock_answer_repo,
         mock_interview_repo,
         mock_question_repo,
+        mock_follow_up_question_repo,
         mock_llm,
         mock_vector_search,
     ):
@@ -38,20 +39,20 @@ class TestProcessAnswerAdaptiveUseCase:
             answer_repository=mock_answer_repo,
             interview_repository=mock_interview_repo,
             question_repository=mock_question_repo,
+            follow_up_question_repository=mock_follow_up_question_repo,
             llm=mock_llm,
             vector_search=mock_vector_search,
         )
 
-        answer, follow_up, has_more = await use_case.execute(
+        answer, has_more = await use_case.execute(
             interview_id=sample_interview_adaptive.id,
             question_id=sample_question_with_ideal_answer.id,
             answer_text=answer_text,
         )
 
-        # Verify no follow-up generated
+        # Verify evaluation and gaps (no longer testing follow-up generation)
         assert answer.similarity_score is not None
         assert answer.similarity_score >= 0.8
-        assert follow_up is None
         assert answer.gaps is not None
 
     @pytest.mark.asyncio
@@ -62,10 +63,11 @@ class TestProcessAnswerAdaptiveUseCase:
         mock_answer_repo,
         mock_interview_repo,
         mock_question_repo,
+        mock_follow_up_question_repo,
         mock_llm,
         mock_vector_search,
     ):
-        """Test low similarity (< 80%) with gaps -> generate follow-up."""
+        """Test low similarity (< 80%) with gaps -> gaps detected."""
         # Setup
         await mock_interview_repo.save(sample_interview_adaptive)
         await mock_question_repo.save(sample_question_with_ideal_answer)
@@ -77,20 +79,22 @@ class TestProcessAnswerAdaptiveUseCase:
             answer_repository=mock_answer_repo,
             interview_repository=mock_interview_repo,
             question_repository=mock_question_repo,
+            follow_up_question_repository=mock_follow_up_question_repo,
             llm=mock_llm,
             vector_search=mock_vector_search,
         )
 
-        answer, follow_up, has_more = await use_case.execute(
+        answer, has_more = await use_case.execute(
             interview_id=sample_interview_adaptive.id,
             question_id=sample_question_with_ideal_answer.id,
             answer_text=answer_text,
         )
 
-        # Verify follow-up generated (mock always generates gaps for short answers)
+        # Verify gaps detected (mock generates gaps for short answers)
         assert answer.similarity_score is not None
-        # Note: Mock may return high similarity, but gaps will be detected
-        # Real test: if gaps confirmed, follow-up should be generated
+        assert answer.gaps is not None
+        # Gaps should be detected for brief answers
+        assert answer.gaps.get("confirmed") is True
 
     @pytest.mark.asyncio
     async def test_followup_max_3_limit(
@@ -100,10 +104,11 @@ class TestProcessAnswerAdaptiveUseCase:
         mock_answer_repo,
         mock_interview_repo,
         mock_question_repo,
+        mock_follow_up_question_repo,
         mock_llm,
         mock_vector_search,
     ):
-        """Test max 3 follow-ups per question."""
+        """Test gap detection still works regardless of follow-up count."""
         await mock_interview_repo.save(sample_interview_adaptive)
         await mock_question_repo.save(sample_question_with_ideal_answer)
 
@@ -111,6 +116,7 @@ class TestProcessAnswerAdaptiveUseCase:
             answer_repository=mock_answer_repo,
             interview_repository=mock_interview_repo,
             question_repository=mock_question_repo,
+            follow_up_question_repository=mock_follow_up_question_repo,
             llm=mock_llm,
             vector_search=mock_vector_search,
         )
@@ -118,17 +124,16 @@ class TestProcessAnswerAdaptiveUseCase:
         # Simulate 3 follow-ups already exist
         sample_interview_adaptive.adaptive_follow_ups = [uuid4(), uuid4(), uuid4()]
 
-        answer_text = "Brief answer"  # Would normally trigger follow-up
+        answer_text = "Brief answer"  # Would normally trigger gap detection
 
-        answer, follow_up, has_more = await use_case.execute(
+        answer, has_more = await use_case.execute(
             interview_id=sample_interview_adaptive.id,
             question_id=sample_question_with_ideal_answer.id,
             answer_text=answer_text,
         )
 
-        # Should not generate 4th follow-up
-        # Note: This depends on gap detection, mock may not trigger
-        # In real scenario with confirmed gaps, no follow-up due to max 3
+        # Gap detection still works, but follow-up generation is handled by WebSocket handler
+        assert answer.gaps is not None
 
     @pytest.mark.asyncio
     async def test_answer_evaluation_stored(
@@ -138,6 +143,7 @@ class TestProcessAnswerAdaptiveUseCase:
         mock_answer_repo,
         mock_interview_repo,
         mock_question_repo,
+        mock_follow_up_question_repo,
         mock_llm,
         mock_vector_search,
     ):
@@ -149,11 +155,12 @@ class TestProcessAnswerAdaptiveUseCase:
             answer_repository=mock_answer_repo,
             interview_repository=mock_interview_repo,
             question_repository=mock_question_repo,
+            follow_up_question_repository=mock_follow_up_question_repo,
             llm=mock_llm,
             vector_search=mock_vector_search,
         )
 
-        answer, follow_up, has_more = await use_case.execute(
+        answer, has_more = await use_case.execute(
             interview_id=sample_interview_adaptive.id,
             question_id=sample_question_with_ideal_answer.id,
             answer_text="Test answer",
@@ -173,6 +180,7 @@ class TestProcessAnswerAdaptiveUseCase:
         mock_answer_repo,
         mock_interview_repo,
         mock_question_repo,
+        mock_follow_up_question_repo,
         mock_llm,
         mock_vector_search,
     ):
@@ -184,11 +192,12 @@ class TestProcessAnswerAdaptiveUseCase:
             answer_repository=mock_answer_repo,
             interview_repository=mock_interview_repo,
             question_repository=mock_question_repo,
+            follow_up_question_repository=mock_follow_up_question_repo,
             llm=mock_llm,
             vector_search=mock_vector_search,
         )
 
-        answer, follow_up, has_more = await use_case.execute(
+        answer, has_more = await use_case.execute(
             interview_id=sample_interview_adaptive.id,
             question_id=sample_question_with_ideal_answer.id,
             answer_text="Recursion calls itself with base case and examples",
@@ -196,7 +205,7 @@ class TestProcessAnswerAdaptiveUseCase:
 
         # Similarity should be calculated
         assert answer.similarity_score is not None
-        assert 0.0 <= answer.similarity_score <= 1.0
+        assert 0.0 < answer.similarity_score <= 1.0
 
     @pytest.mark.asyncio
     async def test_no_similarity_without_ideal_answer(
@@ -206,6 +215,7 @@ class TestProcessAnswerAdaptiveUseCase:
         mock_answer_repo,
         mock_interview_repo,
         mock_question_repo,
+        mock_follow_up_question_repo,
         mock_llm,
         mock_vector_search,
     ):
@@ -217,11 +227,12 @@ class TestProcessAnswerAdaptiveUseCase:
             answer_repository=mock_answer_repo,
             interview_repository=mock_interview_repo,
             question_repository=mock_question_repo,
+            follow_up_question_repository=mock_follow_up_question_repo,
             llm=mock_llm,
             vector_search=mock_vector_search,
         )
 
-        answer, follow_up, has_more = await use_case.execute(
+        answer, has_more = await use_case.execute(
             interview_id=sample_interview_adaptive.id,
             question_id=sample_question_without_ideal_answer.id,
             answer_text="Tell me about a project",
@@ -229,7 +240,6 @@ class TestProcessAnswerAdaptiveUseCase:
 
         # No similarity for behavioral questions
         assert answer.similarity_score is None
-        assert follow_up is None  # No follow-ups without ideal_answer
 
     @pytest.mark.asyncio
     async def test_interview_not_found_error(
@@ -238,6 +248,7 @@ class TestProcessAnswerAdaptiveUseCase:
         mock_answer_repo,
         mock_interview_repo,
         mock_question_repo,
+        mock_follow_up_question_repo,
         mock_llm,
         mock_vector_search,
     ):
@@ -248,6 +259,7 @@ class TestProcessAnswerAdaptiveUseCase:
             answer_repository=mock_answer_repo,
             interview_repository=mock_interview_repo,
             question_repository=mock_question_repo,
+            follow_up_question_repository=mock_follow_up_question_repo,
             llm=mock_llm,
             vector_search=mock_vector_search,
         )
@@ -266,6 +278,7 @@ class TestProcessAnswerAdaptiveUseCase:
         mock_answer_repo,
         mock_interview_repo,
         mock_question_repo,
+        mock_follow_up_question_repo,
         mock_llm,
         mock_vector_search,
     ):
@@ -276,6 +289,7 @@ class TestProcessAnswerAdaptiveUseCase:
             answer_repository=mock_answer_repo,
             interview_repository=mock_interview_repo,
             question_repository=mock_question_repo,
+            follow_up_question_repository=mock_follow_up_question_repo,
             llm=mock_llm,
             vector_search=mock_vector_search,
         )
@@ -295,6 +309,7 @@ class TestProcessAnswerAdaptiveUseCase:
         mock_answer_repo,
         mock_interview_repo,
         mock_question_repo,
+        mock_follow_up_question_repo,
         mock_llm,
         mock_vector_search,
     ):
@@ -307,6 +322,7 @@ class TestProcessAnswerAdaptiveUseCase:
             answer_repository=mock_answer_repo,
             interview_repository=mock_interview_repo,
             question_repository=mock_question_repo,
+            follow_up_question_repository=mock_follow_up_question_repo,
             llm=mock_llm,
             vector_search=mock_vector_search,
         )
@@ -333,6 +349,7 @@ class TestGapDetection:
             answer_repository=None,  # type: ignore
             interview_repository=None,  # type: ignore
             question_repository=None,  # type: ignore
+            follow_up_question_repository=None,  # type: ignore
             llm=None,  # type: ignore
             vector_search=None,  # type: ignore
         )
@@ -362,6 +379,7 @@ class TestGapDetection:
             answer_repository=None,  # type: ignore
             interview_repository=None,  # type: ignore
             question_repository=None,  # type: ignore
+            follow_up_question_repository=None,  # type: ignore
             llm=None,  # type: ignore
             vector_search=None,  # type: ignore
         )
@@ -382,69 +400,25 @@ class TestGapDetection:
 
 
 class TestFollowUpDecisionLogic:
-    """Test _should_generate_followup decision logic."""
+    """Tests for follow-up decision logic - MOVED TO FollowUpDecisionUseCase.
+
+    NOTE: These tests are deprecated as _should_generate_followup() has been
+    removed from ProcessAnswerAdaptiveUseCase and moved to FollowUpDecisionUseCase.
+    See tests/unit/application/use_cases/test_follow_up_decision.py for new tests.
+    """
 
     def test_should_not_generate_max_followups_reached(
         self, sample_answer_low_similarity
     ):
-        """Test no follow-up when max 3 reached."""
-        from src.application.use_cases.process_answer_adaptive import (
-            ProcessAnswerAdaptiveUseCase,
-        )
-
-        use_case = ProcessAnswerAdaptiveUseCase(
-            answer_repository=None,  # type: ignore
-            interview_repository=None,  # type: ignore
-            question_repository=None,  # type: ignore
-            llm=None,  # type: ignore
-            vector_search=None,  # type: ignore
-        )
-
-        should_generate = use_case._should_generate_followup(
-            sample_answer_low_similarity, follow_up_count=3
-        )
-
-        assert should_generate is False
+        """DEPRECATED: Follow-up logic moved to FollowUpDecisionUseCase."""
+        pytest.skip("Follow-up decision logic moved to FollowUpDecisionUseCase")
 
     def test_should_not_generate_high_similarity(self, sample_answer_high_similarity):
-        """Test no follow-up when similarity >= 80%."""
-        from src.application.use_cases.process_answer_adaptive import (
-            ProcessAnswerAdaptiveUseCase,
-        )
-
-        use_case = ProcessAnswerAdaptiveUseCase(
-            answer_repository=None,  # type: ignore
-            interview_repository=None,  # type: ignore
-            question_repository=None,  # type: ignore
-            llm=None,  # type: ignore
-            vector_search=None,  # type: ignore
-        )
-
-        should_generate = use_case._should_generate_followup(
-            sample_answer_high_similarity, follow_up_count=0
-        )
-
-        assert should_generate is False
+        """DEPRECATED: Follow-up logic moved to FollowUpDecisionUseCase."""
+        pytest.skip("Follow-up decision logic moved to FollowUpDecisionUseCase")
 
     def test_should_generate_low_similarity_with_gaps(
         self, sample_answer_low_similarity
     ):
-        """Test follow-up generation when similarity < 80% and gaps confirmed."""
-        from src.application.use_cases.process_answer_adaptive import (
-            ProcessAnswerAdaptiveUseCase,
-        )
-
-        use_case = ProcessAnswerAdaptiveUseCase(
-            answer_repository=None,  # type: ignore
-            interview_repository=None,  # type: ignore
-            question_repository=None,  # type: ignore
-            llm=None,  # type: ignore
-            vector_search=None,  # type: ignore
-        )
-
-        should_generate = use_case._should_generate_followup(
-            sample_answer_low_similarity, follow_up_count=0
-        )
-
-        # Low similarity + confirmed gaps -> generate
-        assert should_generate is True
+        """DEPRECATED: Follow-up logic moved to FollowUpDecisionUseCase."""
+        pytest.skip("Follow-up decision logic moved to FollowUpDecisionUseCase")

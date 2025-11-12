@@ -1,7 +1,7 @@
 # System Architecture
 
-**Last Updated**: 2025-11-02
-**Version**: 0.1.0
+**Last Updated**: 2025-11-12
+**Version**: 0.2.0
 **Project**: Elios AI Interview Service
 **Repository**: https://github.com/elios/elios-ai-service
 
@@ -364,6 +364,50 @@ class StartInterviewUseCase:
         interview.mark_ready(cv_analysis_id)
 
         return interview
+
+# FollowUpDecisionUseCase.py - 152 lines ✅
+class FollowUpDecisionUseCase:
+    """Decides if follow-up question should be generated based on gaps."""
+
+    def __init__(
+        self,
+        answer_repository: AnswerRepositoryPort,
+        follow_up_question_repository: FollowUpQuestionRepositoryPort,
+    ):
+        self.answer_repo = answer_repository
+        self.follow_up_repo = follow_up_question_repository
+
+    async def execute(
+        self,
+        interview_id: UUID,
+        parent_question_id: UUID,
+        latest_answer: Answer,
+    ) -> dict[str, Any]:
+        """Decide if follow-up needed based on break conditions.
+
+        Break Conditions (exit if ANY met):
+        1. follow_up_count >= 3 (max reached)
+        2. similarity_score >= 0.8 (quality sufficient)
+        3. gaps.confirmed == False (no gaps detected)
+
+        Returns decision dict with needs_followup, reason, count, cumulative_gaps
+        """
+        # Count existing follow-ups for this parent question
+        follow_ups = await self.follow_up_repo.get_by_parent_question_id(parent_question_id)
+        follow_up_count = len(follow_ups)
+
+        # Break condition 1: Max reached
+        if follow_up_count >= 3:
+            return {"needs_followup": False, "reason": "Max follow-ups (3) reached", ...}
+
+        # Break condition 2 & 3: Quality sufficient or no gaps
+        if latest_answer.is_adaptive_complete():
+            return {"needs_followup": False, "reason": "Answer complete", ...}
+
+        # Accumulate gaps from all previous follow-ups
+        cumulative_gaps = await self._accumulate_gaps(follow_ups, latest_answer)
+
+        return {"needs_followup": True, "reason": f"Detected {len(cumulative_gaps)} gaps", ...}
 ```
 
 **Dependencies**: Domain models and ports only
@@ -784,7 +828,7 @@ def get_container() -> Container:
    └─ Client can now start asking questions
 ```
 
-### Answer Evaluation Flow
+### Answer Evaluation Flow (Basic)
 
 ```
 1. Candidate Submits Answer
@@ -838,6 +882,103 @@ def get_container() -> Container:
    │   └─ Return next question
    └─ else:
        └─ Trigger CompleteInterviewUseCase
+```
+
+### Adaptive Follow-up Flow (WebSocket)
+
+**Added**: 2025-11-12 (Phase 4)
+
+```
+1. Candidate Submits Answer via WebSocket
+   ├─→ Message type: "text_answer"
+   │   ├─ question_id: UUID
+   │   └─ answer_text: string
+
+2. WebSocket Handler processes message:
+   ├─→ Validate interview exists
+   ├─→ Call ProcessAnswerAdaptiveUseCase
+   │   ├─ Evaluate answer (semantic + gaps)
+   │   ├─ Calculate similarity_score
+   │   ├─ Detect concept gaps
+   │   └─ Return Answer with evaluation
+   │
+   └─→ Send evaluation to client
+
+3. Follow-up Decision Loop (max 3 iterations):
+   ├─→ Call FollowUpDecisionUseCase
+   │   ├─ Count existing follow-ups for parent question
+   │   ├─ Check break conditions:
+   │   │   ├─ If follow_up_count >= 3 → Exit
+   │   │   ├─ If similarity_score >= 0.8 → Exit
+   │   │   └─ If no gaps detected → Exit
+   │   │
+   │   ├─ Accumulate gaps from previous follow-ups
+   │   └─ Return decision dict
+   │
+   ├─→ If needs_followup == False:
+   │   └─ Exit loop (move to next question)
+   │
+   └─→ If needs_followup == True:
+       ├─ Call LLM.generate_followup_question()
+       │   ├─ Context: parent question + answer + cumulative gaps
+       │   ├─ Order: 1st, 2nd, or 3rd follow-up
+       │   └─ Returns targeted follow-up text
+       │
+       ├─ Store follow-up question in database
+       │   └─ FollowUpQuestionRepository.create()
+       │
+       ├─ Generate TTS audio for follow-up
+       │   └─ TextToSpeechPort.synthesize()
+       │
+       ├─ Send follow-up to client (WebSocket)
+       │   └─ Message type: "followup_question"
+       │
+       └─ Break loop (wait for next client message)
+           └─ Next answer re-enters loop at step 3
+
+4. After follow-up loop exits:
+   ├─ If interview has more main questions:
+   │   └─ Send next main question
+   └─ Else:
+       └─ Complete interview
+```
+
+**Key Characteristics**:
+- **Message-Based Loop**: Handler breaks after sending first follow-up, waits for next message
+- **Not True Iterative**: Cannot block within handler waiting for answer (FastAPI WebSocket limitation)
+- **Break Conditions**: 3 exit paths - max count, high similarity, no gaps
+- **Gap Accumulation**: All missing concepts from previous follow-ups merged and passed to LLM
+- **Separation**: Decision logic isolated in FollowUpDecisionUseCase (testable)
+
+**Architecture Tradeoff**:
+- ✅ Simpler implementation, no nested message handling
+- ❌ Cannot enforce strict max-3 in single transaction
+- ❌ Relies on client sending answers sequentially
+
+**Sequence Diagram**:
+```
+Client              Handler             FollowUpDecision    LLM
+  │                    │                      │              │
+  ├─ text_answer ────→ │                      │              │
+  │                    ├─ evaluate answer     │              │
+  │                    ├─ execute() ─────────→│              │
+  │                    │                      ├─ check count │
+  │                    │                      ├─ check gaps  │
+  │                    │←─ decision dict ─────┤              │
+  │                    │  {needs: true}       │              │
+  │                    ├─ generate_followup ─────────────→   │
+  │                    │←─ follow-up text ─────────────────  │
+  │←─ followup_question│                      │              │
+  │                    │ (breaks, waits)      │              │
+  │                    │                      │              │
+  ├─ text_answer ────→ │                      │              │
+  │                    ├─ evaluate answer     │              │
+  │                    ├─ execute() ─────────→│              │
+  │                    │                      ├─ check count │
+  │                    │                      ├─ similarity  │
+  │                    │←─ decision dict ─────┤              │
+  │                    │  {needs: false}      │              │
+  │←─ next_question ───│                      │              │
 ```
 
 ## Database Architecture

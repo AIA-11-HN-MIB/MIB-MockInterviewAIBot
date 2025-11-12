@@ -442,36 +442,54 @@ Identify real conceptual gaps, not just missing synonyms."""
         missing_concepts: list[str],
         severity: str,
         order: int,
+        cumulative_gaps: list[str] | None = None,
+        previous_follow_ups: list[dict[str, Any]] | None = None,
     ) -> str:
-        """Generate follow-up question using OpenAI.
+        """Generate follow-up question using OpenAI with cumulative context.
 
         Args:
             parent_question: Original question text
-            answer_text: Candidate's answer to parent question
-            missing_concepts: List of concepts missing from answer
+            answer_text: Candidate's answer to parent question (or latest follow-up)
+            missing_concepts: List of concepts missing from current answer
             severity: Gap severity
             order: Follow-up order in sequence
+            cumulative_gaps: All unique gaps accumulated across follow-up cycle
+            previous_follow_ups: Previous follow-up questions and answers for context
 
         Returns:
             Follow-up question text
         """
+        # Build cumulative context if available
+        cumulative_context = ""
+        if cumulative_gaps and len(cumulative_gaps) > 0:
+            cumulative_context = f"\nAll Missing Concepts (cumulative): {', '.join(cumulative_gaps)}"
+
+        # Build previous follow-ups context if available
+        previous_context = ""
+        if previous_follow_ups and len(previous_follow_ups) > 0:
+            previous_context = "\n\nPrevious Follow-ups:"
+            for i, fu in enumerate(previous_follow_ups, 1):
+                previous_context += f"\n  #{i}: {fu.get('question', 'N/A')}"
+                previous_context += f"\n      Answer: {fu.get('answer', 'N/A')[:100]}..."
+
         prompt = f"""
 Original Question: {parent_question}
-Candidate's Answer: {answer_text}
-Missing Concepts: {', '.join(missing_concepts)}
-Gap Severity: {severity}
+Latest Answer: {answer_text}
+Current Missing Concepts: {', '.join(missing_concepts)}
+Gap Severity: {severity}{cumulative_context}{previous_context}
 
-Generate focused follow-up question addressing missing concepts.
+Generate focused follow-up question (#{order}) addressing the most critical missing concepts.
 The question should:
 - Be specific and concise
-- Help candidate demonstrate understanding of: {', '.join(missing_concepts[:2])}
-- Be appropriate for follow-up #{order}
+- Prioritize concepts: {', '.join(missing_concepts[:2])}
+- Avoid repeating previous follow-up questions
+- Be progressively more targeted (this is follow-up #{order} of max 3)
 
 Return only the question text.
 """
 
-        system_prompt = """You are an expert technical interviewer generating follow-ups.
-Ask questions that probe specific missing concepts."""
+        system_prompt = """You are an expert technical interviewer generating adaptive follow-ups.
+Ask questions that probe specific missing concepts while considering the full interview context."""
 
         response = await self.client.chat.completions.create(
             model="gpt-3.5-turbo",
