@@ -1033,8 +1033,75 @@ def get_container() -> Container:
    │   └─ Send next main question
    └─ Else:
        ├─ State: COMPLETE
-       └─ Complete interview
+       └─ Generate interview summary (Phase 6)
+           └─ Complete interview
 ```
+
+### Interview Summary Generation Flow (Phase 6)
+
+**Added**: 2025-11-12 (Phase 6 - Final Summary Generation)
+
+```
+1. Interview Completion Triggered
+   ├─→ State: EVALUATING → COMPLETE
+   ├─→ No more main questions remain
+   └─→ Call CompleteInterviewUseCase
+
+2. CompleteInterviewUseCase orchestrates (86 lines):
+   ├─→ Mark interview as COMPLETED
+   ├─→ If generate_summary=True:
+   │   ├─ Call GenerateSummaryUseCase
+   │   └─ Store summary in interview.metadata["summary"]
+   └─→ Save interview to database
+
+3. GenerateSummaryUseCase aggregates results (376 lines):
+   ├─→ Fetch all answers for interview
+   ├─→ Calculate aggregate metrics:
+   │   ├─ Overall score = 70% theoretical + 30% speaking
+   │   ├─ Theoretical score: avg(all answer similarity_scores)
+   │   ├─ Speaking score: avg(voice_metrics.overall_quality)
+   │   └─ Default speaking=85 if no voice answers
+   │
+   ├─→ Analyze gap progression:
+   │   ├─ Count answers with follow-ups
+   │   ├─ Identify gaps_filled (confirmed→False after follow-up)
+   │   ├─ Identify gaps_remaining (still confirmed=True)
+   │   └─ Build progression dict
+   │
+   ├─→ Generate LLM recommendations:
+   │   ├─ Pass evaluations, scores, gaps to LLM
+   │   ├─ LLM analyzes performance holistically
+   │   └─ Returns: strengths, weaknesses, study_topics, technique_tips
+   │
+   └─→ Build final summary dict:
+       ├─ overall_score: float
+       ├─ theoretical_score: float
+       ├─ speaking_score: float
+       ├─ answer_count: int
+       ├─ gap_progression: dict (filled, remaining, questions_with_followups)
+       ├─ strengths: list[str] (from LLM)
+       ├─ weaknesses: list[str] (from LLM)
+       ├─ study_topics: list[str] (from LLM)
+       └─ technique_tips: list[str] (from LLM)
+
+4. Session Orchestrator sends summary via WebSocket:
+   └─→ Message type: "interview_complete"
+       ├─ interview_id: UUID
+       ├─ summary: dict (all metrics + LLM recommendations)
+       └─ timestamp: str
+```
+
+**Key Metrics**:
+- **Overall Score**: 70% theoretical (answer similarity) + 30% speaking (voice quality)
+- **Gap Progression**: Tracks knowledge gaps filled during follow-ups vs remaining
+- **LLM Recommendations**: Personalized strengths, weaknesses, study topics, technique tips
+
+**Implementation Details**:
+- GenerateSummaryUseCase: 376 lines, 100% test coverage (14 tests)
+- CompleteInterviewUseCase: Updated to 86 lines, 100% test coverage (10 tests)
+- LLMPort enhanced with `generate_interview_recommendations()` method
+- Implemented in 3 adapters: OpenAI, AzureOpenAI, MockLLM
+- Summary stored in `interview.metadata["summary"]` as JSONB
 
 **Key Characteristics**:
 - **State Machine Pattern**: Session orchestrator manages lifecycle (5 states: IDLE → QUESTIONING → EVALUATING → FOLLOW_UP → COMPLETE)

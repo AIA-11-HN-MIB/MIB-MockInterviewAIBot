@@ -371,6 +371,18 @@ class MockLLM:
         concepts_str = ', '.join(missing_concepts[:2]) if missing_concepts else "that concept"
         return f"Can you elaborate more on {concepts_str}? Please provide specific examples."
 
+    async def generate_interview_recommendations(
+        self,
+        context: dict[str, Any],
+    ) -> dict[str, list[str]]:
+        """Mock interview recommendations generation."""
+        return {
+            "strengths": ["Clear communication", "Good problem-solving", "Strong technical knowledge"],
+            "weaknesses": ["Could provide more examples", "Needs to elaborate on concepts"],
+            "study_topics": ["Advanced algorithms", "System design patterns", "Best practices"],
+            "technique_tips": ["Speak more slowly", "Use concrete examples", "Structure answers better"],
+        }
+
 
 @pytest.fixture
 def mock_question_repo() -> MockQuestionRepository:

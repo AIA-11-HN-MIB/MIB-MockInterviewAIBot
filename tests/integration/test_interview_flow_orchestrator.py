@@ -346,7 +346,8 @@ class TestCompleteInterviewFlow:
                         completed_interview = interview
                         completed_interview.status = InterviewStatus.COMPLETED
                         mock_complete_instance = AsyncMock()
-                        mock_complete_instance.execute = AsyncMock(return_value=completed_interview)
+                        # CompleteInterviewUseCase now returns tuple (Interview, dict | None)
+                        mock_complete_instance.execute = AsyncMock(return_value=(completed_interview, None))
                         mock_complete.return_value = mock_complete_instance
 
                         await orchestrator.handle_answer("I worked on a challenging microservices project")
@@ -942,7 +943,8 @@ class TestInterviewCompletion:
                         completed_interview = interview
                         completed_interview.status = InterviewStatus.COMPLETED
                         mock_complete_instance = AsyncMock()
-                        mock_complete_instance.execute = AsyncMock(return_value=completed_interview)
+                        # CompleteInterviewUseCase now returns tuple (Interview, dict | None)
+                        mock_complete_instance.execute = AsyncMock(return_value=(completed_interview, None))
                         mock_complete.return_value = mock_complete_instance
 
                         await orchestrator.handle_answer("Final answer")

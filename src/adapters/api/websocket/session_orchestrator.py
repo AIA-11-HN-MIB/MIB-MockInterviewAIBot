@@ -282,7 +282,9 @@ class InterviewSessionOrchestrator:
             if has_more:
                 await self._send_next_main_question(interview_repo, question_repo)
             else:
-                await self._complete_interview(interview_repo, answer_repo)
+                await self._complete_interview(
+                    interview_repo, answer_repo, question_repo, follow_up_repo
+                )
 
             break
 
@@ -353,7 +355,9 @@ class InterviewSessionOrchestrator:
             if has_more:
                 await self._send_next_main_question(interview_repo, question_repo)
             else:
-                await self._complete_interview(interview_repo, answer_repo)
+                await self._complete_interview(
+                    interview_repo, answer_repo, question_repo, follow_up_repo
+                )
 
             break
 
@@ -486,42 +490,76 @@ class InterviewSessionOrchestrator:
         self,
         interview_repo: InterviewRepositoryPort,
         answer_repo: AnswerRepositoryPort | None,
+        question_repo: QuestionRepositoryPort | None = None,
+        follow_up_repo: FollowUpQuestionRepositoryPort | None = None,
     ) -> None:
-        """Complete interview and send final results.
+        """Complete interview, generate summary, and send final results.
 
         Args:
             interview_repo: Interview repository
             answer_repo: Answer repository (optional)
+            question_repo: Question repository (optional, for summary generation)
+            follow_up_repo: Follow-up question repository (optional, for summary)
         """
         self._transition(SessionState.COMPLETE)
 
-        # Complete interview
+        # Get LLM for summary generation
+        llm = self.container.llm_port()
+
+        # Complete interview with summary generation
         complete_use_case = CompleteInterviewUseCase(
             interview_repository=interview_repo,
+            answer_repository=answer_repo,
+            question_repository=question_repo,
+            follow_up_question_repository=follow_up_repo,
+            llm=llm,
         )
-        interview = await complete_use_case.execute(self.interview_id)
-
-        # Calculate overall score
-        overall_score = 0.0
-        if answer_repo:
-            answers = await answer_repo.get_by_interview_id(self.interview_id)
-            if answers:
-                overall_score = (
-                    sum(a.evaluation.score for a in answers if a.evaluation)
-                    / len(answers)
-                )
-
-        await self._send_message(
-            {
-                "type": "interview_complete",
-                "interview_id": str(interview.id),
-                "overall_score": overall_score,
-                "total_questions": len(interview.question_ids),
-                "feedback_url": f"/api/interviews/{self.interview_id}/feedback",
-            }
+        interview, summary = await complete_use_case.execute(
+            self.interview_id, generate_summary=True
         )
 
-        logger.info(f"Interview {self.interview_id} completed")
+        # Send summary message to client
+        if summary:
+            await self._send_message(
+                {
+                    "type": "interview_complete",
+                    "interview_id": summary["interview_id"],
+                    "overall_score": summary["overall_score"],
+                    "theoretical_score_avg": summary["theoretical_score_avg"],
+                    "speaking_score_avg": summary["speaking_score_avg"],
+                    "total_questions": summary["total_questions"],
+                    "total_follow_ups": summary["total_follow_ups"],
+                    "gap_progression": summary["gap_progression"],
+                    "strengths": summary["strengths"],
+                    "weaknesses": summary["weaknesses"],
+                    "study_recommendations": summary["study_recommendations"],
+                    "technique_tips": summary["technique_tips"],
+                    "completion_time": summary["completion_time"],
+                    "feedback_url": f"/api/interviews/{self.interview_id}/feedback",
+                }
+            )
+        else:
+            # Fallback if summary generation failed
+            overall_score = 0.0
+            if answer_repo:
+                answers = await answer_repo.get_by_interview_id(self.interview_id)
+                if answers:
+                    overall_score = (
+                        sum(a.evaluation.score for a in answers if a.evaluation)
+                        / len(answers)
+                    )
+
+            await self._send_message(
+                {
+                    "type": "interview_complete",
+                    "interview_id": str(interview.id),
+                    "overall_score": overall_score,
+                    "total_questions": len(interview.question_ids),
+                    "feedback_url": f"/api/interviews/{self.interview_id}/feedback",
+                }
+            )
+
+        logger.info(f"Interview {self.interview_id} completed with summary")
 
     async def _send_evaluation(self, answer: Answer) -> None:
         """Send evaluation message.

@@ -503,3 +503,96 @@ Ask questions that probe specific missing concepts while considering the full in
 
         content = response.choices[0].message.content
         return content.strip() if content else "Can you elaborate on that?"
+
+    async def generate_interview_recommendations(
+        self,
+        context: dict[str, Any],
+    ) -> dict[str, list[str]]:
+        """Generate personalized interview recommendations using OpenAI.
+
+        Args:
+            context: Interview context including:
+                - interview_id: str
+                - total_answers: int
+                - gap_progression: dict
+                - evaluations: list[dict]
+
+        Returns:
+            Dict with strengths, weaknesses, study topics, and technique tips
+        """
+        evaluations = context.get("evaluations", [])
+        gap_progression = context.get("gap_progression", {})
+
+        # Build evaluation summary
+        eval_summary = "\n".join(
+            [
+                f"- Question {i+1}: Score {e['score']:.1f}/100"
+                f"\n  Strengths: {', '.join(e.get('strengths', []))}"
+                f"\n  Weaknesses: {', '.join(e.get('weaknesses', []))}"
+                for i, e in enumerate(evaluations)
+            ]
+        )
+
+        prompt = f"""
+Interview Performance Analysis
+
+Total Questions Answered: {len(evaluations)}
+Gap Progression:
+- Questions with Follow-ups: {gap_progression.get('questions_with_followups', 0)}
+- Gaps Filled: {gap_progression.get('gaps_filled', 0)}
+- Gaps Remaining: {gap_progression.get('gaps_remaining', 0)}
+
+Detailed Evaluations:
+{eval_summary}
+
+Generate personalized interview feedback in JSON format with these exact keys:
+{{
+    "strengths": ["strength 1", "strength 2", ...],  // 3-5 specific strengths
+    "weaknesses": ["weakness 1", "weakness 2", ...],  // 3-5 specific weaknesses
+    "study_topics": ["topic 1", "topic 2", ...],  // 3-7 specific topics to study
+    "technique_tips": ["tip 1", "tip 2", ...]  // 2-5 interview technique improvements
+}}
+
+Make recommendations:
+- Specific and actionable (not generic)
+- Based on actual performance data
+- Prioritized by impact
+- Constructive and encouraging
+
+Return ONLY valid JSON."""
+
+        system_prompt = """You are an expert interview coach analyzing candidate performance.
+Provide specific, data-driven recommendations that help candidates improve."""
+
+        response = await self.client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.7,
+            max_tokens=800,
+            response_format={"type": "json_object"},
+        )
+
+        content = response.choices[0].message.content
+        if not content:
+            # Fallback recommendations
+            return {
+                "strengths": ["Good technical foundation"],
+                "weaknesses": ["Could provide more detail in answers"],
+                "study_topics": ["Review core concepts"],
+                "technique_tips": ["Practice explaining concepts clearly"],
+            }
+
+        try:
+            recommendations = json.loads(content)
+            return recommendations
+        except json.JSONDecodeError:
+            # Fallback if JSON parsing fails
+            return {
+                "strengths": ["Good technical foundation"],
+                "weaknesses": ["Could provide more detail in answers"],
+                "study_topics": ["Review core concepts"],
+                "technique_tips": ["Practice explaining concepts clearly"],
+            }

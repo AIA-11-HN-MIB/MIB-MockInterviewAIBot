@@ -186,3 +186,26 @@ class LLMPort(ABC):
             Follow-up question text
         """
         pass
+
+    @abstractmethod
+    async def generate_interview_recommendations(
+        self,
+        context: dict[str, Any],
+    ) -> dict[str, list[str]]:
+        """Generate personalized interview recommendations.
+
+        Args:
+            context: Interview context including:
+                - interview_id: str
+                - total_answers: int
+                - gap_progression: dict (gaps filled, remaining, etc.)
+                - evaluations: list[dict] (scores, strengths, weaknesses per answer)
+
+        Returns:
+            Dict with keys:
+                - strengths: list[str] (top 3-5 strengths)
+                - weaknesses: list[str] (top 3-5 weaknesses)
+                - study_topics: list[str] (topic-specific study recommendations)
+                - technique_tips: list[str] (voice, pacing, structure tips)
+        """
+        pass
