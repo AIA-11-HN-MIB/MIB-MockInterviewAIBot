@@ -112,8 +112,11 @@ class ProcessAnswerAdaptiveUseCase:
         # Step 2: Detect if this is a follow-up question
         is_followup, parent_question_id = await self._is_followup_question(question_id)
 
-        # Step 3: Get question (handles both main and follow-up)
-        question = await self._get_question(question_id)
+        # Step 3: Get question (main or follow-up parent)
+        if is_followup:
+            question = await self._get_follow_up_question(question_id)
+        else:
+            question = await self._get_question(question_id)
 
         # Step 4: Build follow-up context if applicable
         followup_context = None
@@ -149,7 +152,7 @@ class ProcessAnswerAdaptiveUseCase:
 
         # Step 7: Calculate similarity (if ideal_answer exists)
         similarity_score = None
-        if question.has_ideal_answer() and question.ideal_answer:
+        if question.has_ideal_answer():
             similarity_score = await self._calculate_similarity(
                 answer_text, question.ideal_answer
             )
@@ -243,29 +246,41 @@ class ProcessAnswerAdaptiveUseCase:
         return saved_answer, saved_evaluation, has_more
 
     async def _get_question(self, question_id: UUID) -> Question:
-        """Get question (main or follow-up).
-
-        Returns parent question for follow-ups (to access ideal_answer).
-        Context building happens separately in _build_followup_context().
+        """Get main question.
 
         Args:
             question_id: Question UUID
 
         Returns:
-            Question entity (parent if follow-up)
+            Question entity
 
         Raises:
             ValueError: If question not found
         """
-        # Try main question first
         question = await self.question_repo.get_by_id(question_id)
-        if question:
-            return question
+        if not question:
+            raise ValueError(f"Question {question_id} not found")
+        return question
 
-        # Try follow-up question
+    async def _get_follow_up_question(self, question_id: UUID) -> Question:
+        """Get follow-up question and return its parent question.
+
+        Returns parent question for follow-ups (to access ideal_answer).
+        Context building happens separately in _build_followup_context().
+
+        Args:
+            question_id: Follow-up question UUID
+
+        Returns:
+            Parent Question entity
+
+        Raises:
+            ValueError: If follow-up or parent question not found
+        """
+        # Get follow-up question
         follow_up = await self.follow_up_question_repo.get_by_id(question_id)
         if not follow_up:
-            raise ValueError(f"Question {question_id} not found")
+            raise ValueError(f"Follow-up question {question_id} not found")
 
         # Get parent question (for ideal_answer)
         parent = await self.question_repo.get_by_id(follow_up.parent_question_id)
