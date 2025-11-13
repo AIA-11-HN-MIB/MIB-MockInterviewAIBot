@@ -104,6 +104,12 @@ class Interview(BaseModel):
         self.started_at = now
         self.updated_at = now
 
+    def mark_evaluating(self) -> None:
+        """Mark interview as evaluating after an answer is added.
+        """
+        self.transition_to(InterviewStatus.EVALUATING)
+        self.updated_at = datetime.utcnow()
+
     def complete(self) -> None:
         """Complete the interview.
 
@@ -138,7 +144,6 @@ class Interview(BaseModel):
         """
         self.answer_ids.append(answer_id)
         self.current_question_index += 1
-        self.transition_to(InterviewStatus.EVALUATING)
         self.updated_at = datetime.utcnow()
 
     def has_more_questions(self) -> bool:

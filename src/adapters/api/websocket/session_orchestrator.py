@@ -180,10 +180,12 @@ class InterviewSessionOrchestrator:
             interview_repo = self.container.interview_repository_port(session)
             question_repo = self.container.question_repository_port(session)
             answer_repo = self.container.answer_repository_port(session)
-            follow_up_repo = self.container.follow_up_question_repository()
+            follow_up_repo = self.container.follow_up_question_repository(session)
 
             # Load fresh interview state
             interview = await self._get_interview_or_raise(interview_repo)
+            interview.mark_evaluating()
+            await interview_repo.update(interview)
 
             # Get current question ID from interview
             current_question_id = interview.get_current_question_id()
@@ -262,10 +264,12 @@ class InterviewSessionOrchestrator:
             interview_repo = self.container.interview_repository_port(session)
             question_repo = self.container.question_repository_port(session)
             answer_repo = self.container.answer_repository_port(session)
-            follow_up_repo = self.container.follow_up_question_repository()
+            follow_up_repo = self.container.follow_up_question_repository(session)
 
             # Load fresh interview state
             interview = await self._get_interview_or_raise(interview_repo)
+            interview.mark_evaluating()
+            await interview_repo.update(interview)
 
             # Get parent question ID and last follow-up ID from interview
             parent_question_id = interview.current_parent_question_id
@@ -377,9 +381,8 @@ class InterviewSessionOrchestrator:
 
         # Use domain method to track follow-up (triggers EVALUATING → FOLLOW_UP)
         interview = await self._get_interview_or_raise(interview_repo)
-        if interview:
-            interview.ask_followup(follow_up.id, parent_question_id)
-            await interview_repo.update(interview)
+        interview.ask_followup(follow_up.id, parent_question_id)
+        await interview_repo.update(interview)
 
         # Send follow-up question with audio
         tts = self.container.text_to_speech_port()

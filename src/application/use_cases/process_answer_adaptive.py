@@ -163,6 +163,7 @@ class ProcessAnswerAdaptiveUseCase:
             logger.warning(f"Question {question_id} has no ideal_answer, skipping similarity")
 
         # Step 6: Detect gaps using hybrid approach
+        # TODO: Optimize: combine llm.evaluate_answer() + llm.detect_concept_gaps()
         gaps = await self._detect_gaps_hybrid(
             answer_text=answer_text,
             ideal_answer=question.ideal_answer or "",
