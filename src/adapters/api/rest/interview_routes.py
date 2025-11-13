@@ -1,8 +1,9 @@
 """Interview REST API endpoints."""
 
+import os
 from uuid import UUID
-
-from fastapi import APIRouter, Depends, HTTPException, status
+import uuid
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....application.dto.interview_dto import (
@@ -17,9 +18,58 @@ from ....domain.models.interview import InterviewStatus
 from ....infrastructure.config.settings import get_settings
 from ....infrastructure.database.session import get_async_session
 from ....infrastructure.dependency_injection.container import get_container
+from ....infrastructure.config.settings import get_settings
 
 router = APIRouter(prefix="/interviews", tags=["Interviews"])
 
+@router.post(
+    "/cv/upload",
+    summary="Upload CV for further analyze"
+)
+async def upload_cv(
+    file: UploadFile = File(..., description="PDF CV file"),
+    session: AsyncSession = Depends(get_async_session),
+    ):
+    """
+    Upload a CV file to the server.
+    
+    This endpoint accepts a PDF file and saves it to the server.
+    Returns the file path where the CV is stored.
+    """
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="File must be a PDF")
+
+    try:
+        # Generate a unique filename
+        setting = get_settings()
+        UPLOAD_DIR = setting.upload_dir
+        file_extension = os.path.splitext(file.filename)[1]
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        file_path = os.path.join(UPLOAD_DIR, unique_filename)
+
+        # Save the uploaded file
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+
+        candidate_id = uuid.uuid4()
+        container = get_container()
+        cv_analyzer = container.cv_analyzer_port()
+        cv_analysis = await cv_analyzer.analyze_cv(file_path, candidate_id)
+
+        return cv_analysis
+
+    except Exception as e:
+        # Clean up the file if there was an error
+        if 'file_path' in locals() and os.path.exists(file_path):
+            os.remove(file_path)
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error uploading file: {str(e)}"
+        )
 
 @router.get(
     "/{interview_id}",

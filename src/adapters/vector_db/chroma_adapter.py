@@ -19,8 +19,8 @@ QUESTION_COLLECTION_NAME = "question_embedding"
 
 
 chromaDB_client = chromadb.PersistentClient(path=CHROMA_PATH)
-cv_collection = chromaDB_client.get_or_create_collection(name=CV_COLLECTION_NAME, namespace="cv_process")
-question_collection = chromaDB_client.get_or_create_collection(name=QUESTION_COLLECTION_NAME, namespace="question_process")
+cv_collection = chromaDB_client.get_or_create_collection(name=CV_COLLECTION_NAME)
+question_collection = chromaDB_client.get_or_create_collection(name=QUESTION_COLLECTION_NAME)
 settings = Settings()
 embedding_client = OpenAIEmbeddings(
     model=settings.openai_embedding_model,
@@ -131,3 +131,6 @@ class ChromaAdapter(VectorSearchPort):
             )
         except Exception as e:
             print(f"Error storing question embedding: {e}")
+
+    async def find_similar_answers(self, answer_embedding: list[float], reference_embeddings: list[list[float]]) -> float:
+        return await super().find_similar_answers(answer_embedding, reference_embeddings)
