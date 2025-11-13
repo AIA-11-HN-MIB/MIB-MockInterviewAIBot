@@ -1,9 +1,9 @@
 # Project Overview & Product Development Requirements (PDR)
 
 **Project Name**: Elios AI Interview Service
-**Version**: 0.1.0
-**Last Updated**: 2025-11-02
-**Status**: Active Development
+**Version**: 0.2.1
+**Last Updated**: 2025-11-14
+**Status**: Active Development (Phase 1 Complete)
 **Repository**: https://github.com/elios/elios-ai-service
 
 ## Executive Summary
@@ -105,16 +105,18 @@ Empower candidates to confidently prepare for real interviews by:
 - OpenAI Embeddings (1536 dimensions) for semantic matching
 - Pinecone for vector storage and similarity search
 
-### 2. Adaptive Question Generation
+### 2. Adaptive Question Generation & Follow-Up System
 
 **Core Functionality**:
 - Exemplar-based question generation using vector search
 - Dynamic question creation with similar question inspiration
 - Difficulty progression throughout interview
 - Coverage of multiple skills and topics
-- Follow-up questions based on previous answers
+- **Context-aware follow-up questions** based on detected knowledge gaps
+- **Adaptive evaluation** with parent-child relationship tracking
+- **Break conditions** for follow-up loops (max 3, similarity ≥0.8, no gaps)
 
-**Implementation Status**: ✅ Domain models complete, ✅ Use cases implemented, ✅ Vector search integrated
+**Implementation Status**: ✅ Complete (Phase 1 + Phase 4 Adaptive Answers)
 
 **Technical Approach**:
 - PostgreSQL question bank with metadata
@@ -123,6 +125,9 @@ Empower candidates to confidently prepare for real interviews by:
 - LLM generates NEW questions inspired by exemplars
 - Questions stored with embeddings for future exemplar searches
 - Graceful fallback: Generate without exemplars if search fails
+- **NEW**: Evaluation entity with parent-child relationships (PARENT_QUESTION, FOLLOW_UP, COMBINED)
+- **NEW**: FollowUpDecisionUseCase implements break conditions and gap accumulation
+- **NEW**: CombineEvaluationUseCase merges parent + follow-up evaluations
 
 ### 3. Real-Time Answer Evaluation
 
@@ -349,17 +354,19 @@ Empower candidates to confidently prepare for real interviews by:
 
 **LLM Providers**:
 - OpenAI GPT-4 (primary) ✅
+- Azure OpenAI (enterprise alternative) ✅
 - Anthropic Claude (planned) ⏳
 - Meta Llama 3 (planned) ⏳
 
 **Vector Databases**:
-- Pinecone (primary) ✅
+- Pinecone (primary, serverless) ✅
+- ChromaDB (local dev, in-memory) ✅
 - Weaviate (alternative) ⏳
-- ChromaDB (local dev) ⏳
 
 **Speech Services**:
-- Azure Speech-to-Text ⏳
-- Microsoft Edge TTS ⏳
+- Azure Speech-to-Text ✅
+- Azure Text-to-Speech ✅
+- Microsoft Edge TTS (fallback) ⏳
 - Google Speech (alternative) ⏳
 
 **Database**:
@@ -426,36 +433,44 @@ Empower candidates to confidently prepare for real interviews by:
 
 ## Project Roadmap
 
-### Phase 1: Foundation (Current - v0.1.0)
-**Status**: ✅ Near Complete (95%)
-**Timeline**: 2 months
+### Phase 1: Foundation (v0.1.0 - v0.2.1) - ✅ COMPLETE
+**Status**: ✅ Complete (100%)
+**Timeline**: 2 months (2025-10-01 → 2025-11-14)
 
 **Completed**:
-- ✅ Domain models (Candidate, Interview, Question, Answer, CVAnalysis)
-- ✅ Repository ports (5 interfaces)
-- ✅ PostgreSQL persistence layer (5 repositories)
-- ✅ OpenAI LLM adapter
-- ✅ Pinecone vector database adapter
-- ✅ Mock adapters (LLM, STT, TTS for development)
+- ✅ Domain models (8 entities: Candidate, Interview, Question, Answer, CVAnalysis, Evaluation, ErrorCodes, FollowUpQuestion)
+- ✅ Repository ports (13 interfaces including EvaluationRepositoryPort, FollowUpQuestionRepositoryPort)
+- ✅ PostgreSQL persistence layer (7 repositories)
+- ✅ OpenAI & Azure OpenAI LLM adapters
+- ✅ Pinecone & ChromaDB vector database adapters
+- ✅ Azure Speech services (STT, TTS adapters)
+- ✅ Mock adapters (6 total: LLM, STT, TTS, VectorSearch, CVAnalyzer, Analytics)
 - ✅ Database migrations with Alembic
-- ✅ Use cases (AnalyzeCV, StartInterview, GetNextQuestion, ProcessAnswer, CompleteInterview)
-- ✅ DTOs (interview, answer, websocket)
+- ✅ Use cases (8 total: AnalyzeCV, PlanInterview, GetNextQuestion, ProcessAnswerAdaptive, FollowUpDecision, CombineEvaluation, GenerateSummary, CompleteInterview)
+- ✅ DTOs (interview, answer, websocket, audio)
 - ✅ Configuration management
 - ✅ Dependency injection container
-- ✅ REST API (health + interview endpoints)
-- ✅ WebSocket handler (real-time interview sessions)
+- ✅ REST API (5 interview endpoints)
+- ✅ WebSocket handler with session orchestrator (state machine pattern)
+- ✅ Domain-driven state management (Interview state machine)
+- ✅ Context-aware evaluation with follow-up questions
+- ✅ Comprehensive interview summary generation
+
+**Architectural Improvements**:
+- ✅ Evaluation refactoring: parent-child relationships (PARENT_QUESTION, FOLLOW_UP, COMBINED types)
+- ✅ State management migration: WebSocket orchestrator → Domain-driven state machine (5 states)
+- ✅ Session orchestrator pattern: 584 lines, 36 unit tests, 85% coverage
+- ✅ JSON extraction from markdown LLM responses
 
 **In Progress**:
 - 🔄 CV processing adapters (spaCy, document parsing)
-- 🔄 Analytics service
-- 🔄 Feedback generation use case
 
-**Remaining**:
+**Deferred to Phase 2**:
 - ⏳ Authentication & authorization
 - ⏳ Rate limiting
-- ⏳ Comprehensive testing
-- ⏳ API documentation (Swagger)
-- ⏳ Deployment scripts
+- ⏳ Comprehensive integration testing
+- ⏳ Enhanced API documentation (Swagger)
+- ⏳ Docker deployment scripts
 
 ### Phase 2: Core Features (v0.2.0 - v0.5.0)
 **Timeline**: 3-4 months

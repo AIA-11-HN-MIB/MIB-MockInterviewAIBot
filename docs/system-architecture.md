@@ -1,7 +1,7 @@
 # System Architecture
 
-**Last Updated**: 2025-11-12
-**Version**: 0.2.0
+**Last Updated**: 2025-11-14
+**Version**: 0.2.1
 **Project**: Elios AI Interview Service
 **Repository**: https://github.com/elios/elios-ai-service
 
@@ -326,15 +326,24 @@ class Candidate(BaseModel):
         self.cv_file_path = cv_file_path
         self.updated_at = datetime.utcnow()
 
-# Interview.py - 137 lines (Aggregate Root)
+# Interview.py - 137 lines (Aggregate Root with Domain-Driven State Management)
 class Interview(BaseModel):
-    # 5 states: PREPARING, READY, IN_PROGRESS, COMPLETED, CANCELLED
+    # 5 states: IDLE, QUESTIONING, EVALUATING, REVIEWING, COMPLETED
+    # IMPORTANT: State machine moved to domain layer (Phase 1 improvement)
+
     def start(self) -> None:
         """Business rule: Can only start if READY."""
         if self.status != InterviewStatus.READY:
             raise ValueError("Cannot start interview")
         self.status = InterviewStatus.IN_PROGRESS
         self.started_at = datetime.utcnow()
+
+    def transition_to_questioning(self) -> None:
+        """Transition to questioning state."""
+        valid_from = [InterviewStatus.IDLE, InterviewStatus.EVALUATING]
+        if self.status not in valid_from:
+            raise ValueError(f"Cannot transition to QUESTIONING from {self.status}")
+        self.status = InterviewStatus.QUESTIONING
 
 # Question.py - 84 lines
 class Question(BaseModel):
@@ -350,6 +359,30 @@ class CVAnalysis(BaseModel):
     def get_technical_skills(self) -> List[ExtractedSkill]:
         """Business logic for filtering skills."""
         return [s for s in self.skills if s.is_technical()]
+
+# Evaluation.py - NEW in v0.2.1 (Phase 4 - Context-Aware Evaluation)
+class Evaluation(BaseModel):
+    """Evaluation entity with parent-child relationships for follow-ups.
+
+    Evaluation Types:
+    - PARENT_QUESTION: Initial answer evaluation
+    - FOLLOW_UP: Follow-up answer evaluation (references parent_evaluation_id)
+    - COMBINED: Merged evaluation of parent + all follow-ups
+    """
+    id: UUID
+    evaluation_type: EvaluationType  # PARENT_QUESTION, FOLLOW_UP, COMBINED
+    parent_evaluation_id: Optional[UUID]  # For FOLLOW_UP and COMBINED types
+    similarity_score: float
+    gaps: Optional[GapsAnalysis]  # Detected knowledge gaps
+
+    def is_adaptive_complete(self) -> bool:
+        """Check if answer quality is sufficient (no follow-up needed).
+
+        Break conditions:
+        - similarity_score >= 0.8 (high quality)
+        - gaps.confirmed == False (no gaps detected)
+        """
+        return self.similarity_score >= 0.8 or (self.gaps and not self.gaps.confirmed)
 ```
 
 #### Ports (`domain/ports/`)
@@ -369,12 +402,14 @@ class VectorSearchPort(ABC):
     @abstractmethod
     async def find_similar_questions(embedding: List[float]) -> List[Question]: ...
 
-# Repository Ports (5 total)
+# Repository Ports (7 total in v0.2.1)
 class CandidateRepositoryPort(ABC): ...
 class InterviewRepositoryPort(ABC): ...
 class QuestionRepositoryPort(ABC): ...
 class AnswerRepositoryPort(ABC): ...
 class CVAnalysisRepositoryPort(ABC): ...
+class EvaluationRepositoryPort(ABC): ...  # NEW in v0.2.1
+class FollowUpQuestionRepositoryPort(ABC): ...  # NEW in v0.2.1
 ```
 
 **Dependencies**: Python stdlib, Pydantic only (no frameworks)
