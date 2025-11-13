@@ -1,24 +1,30 @@
+from uuid import uuid4
 import spacy
 import os
 import json
 import pdfplumber
+from uuid import UUID
 from langchain_openai import OpenAIEmbeddings
 import re
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from typing import Dict, Any, List
 from datetime import datetime, timezone
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from ...domain.ports.cv_analyzer_port import CVAnalyzerPort
-from ...domain.models.cv_analysis import CVAnalysis
 from ...domain.ports.vector_search_port import VectorSearchPort
-from ...infrastructure.config import Settings
+from ...domain.ports.candidate_repository_port import CandidateRepositoryPort
+
+from ...domain.models.cv_analysis import CVAnalysis
 from ...domain.models.cv_analysis import ExtractedSkill
+from ...domain.models.candidate import Candidate
+
+from ...infrastructure.config import Settings
 _nlp_models = {}
 
 splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
 setting = Settings()
-load_dotenv()
 
 openai_client = AsyncOpenAI(base_url=setting.azure_openai_endpoint, api_key=setting.azure_openai_api_key)
 
@@ -83,13 +89,15 @@ class CVProcessingAdapter(CVAnalyzerPort):
             self,
             embedding_model:str="text-embedding-3-small",
             model:str="gpt-4o-mini",
-            vector_db: VectorSearchPort = None):
+            vector_db: VectorSearchPort = None,
+            candidate_repository_port: CandidateRepositoryPort = None):
 
         self.settings  = Settings()
         self.embedding_model = embedding_model or self.settings.openai_embedding_model or "text-embedding-3-small"
         self.preprocessing = CVEmbeddingPreprocessor()
         self.model = model
         self.vector_db = vector_db
+        self.candidate_repository_port = candidate_repository_port
 
     SKILL_PATTERNS = load_skill_patterns()
     
@@ -180,7 +188,6 @@ class CVProcessingAdapter(CVAnalyzerPort):
             )
             content = response.choices[0].message.content.strip()
             json_content = json.loads(clean_json_string(content))
-            print(json_content)
             for topic in json_content.get("interview_topics", []):
                 topics.add(topic)
         except Exception as e:
@@ -198,6 +205,75 @@ class CVProcessingAdapter(CVAnalyzerPort):
         else:
             return "beginner"
 
+    async def generate_candidate_from_summary(
+        self,
+        summary_info: str,
+        cv_file_path: str,
+        candidate_id: UUID
+    ) -> Candidate:
+        """
+        Generate a Candidate object from CV summary information using GPT-4o-mini.
+
+        Args:
+        summary_info: JSON string containing CV summary information
+        cv_file_path: Path to the candidate's CV file
+        
+        Returns:
+            Candidate: Populated Candidate object
+        """
+        try:
+            # Parse the summary info
+            summary = json.loads(summary_info)
+            
+            # Prepare the prompt for GPT-4o-mini
+            prompt = f"""
+            Extract candidate information from the following CV summary:
+            {summary}
+            
+            Return a JSON object with the following structure:
+            {{
+                "name": "Full Name",
+                "email": "email@example.com"
+                // Only include these two fields
+            }}
+        
+            Rules:
+            - If name is not found, use "Unknown Candidate"
+            - If email is not found, use "no-email@example.com"
+            - Only include the JSON object in your response
+            """
+        
+            # Call GPT-4o-mini
+            response = await openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that extracts candidate information from CV summaries."},
+                    {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.2  # Keep it deterministic
+        )
+        
+            # Parse the response
+            candidate_data = json.loads(response.choices[0].message.content)
+            # Create and return the Candidate object
+            return Candidate(
+                id=candidate_id,
+                name=candidate_data.get("name", "Unknown Candidate"),
+                email=candidate_data.get("email", "no-email@example.com"),
+                cv_file_path=cv_file_path
+            )
+        
+        except Exception as e:
+            print(f"Error generating candidate from summary: {e}")
+            # Return a default candidate with the CV file path
+
+        return Candidate(
+            id=uuid4(),
+            name="Unknown Candidate",
+            email="no-email@example.com",
+            cv_file_path=cv_file_path
+        )
     
     async def analyze_cv(self, cv_file_path: str, candidate_id: str) -> CVAnalysis:
         cv_text = self.read_cv(cv_file_path)
@@ -219,7 +295,7 @@ class CVProcessingAdapter(CVAnalyzerPort):
 
         try:
             suggested_topics = await self.generate_interview_topics(skills_name, job_rank, experience_years)
-            print("suggested_topics: ", suggested_topics)
+            # print("suggested_topics: ", suggested_topics)
         except Exception as e:
             print("Error generating topics: ", e)
         
@@ -235,9 +311,15 @@ class CVProcessingAdapter(CVAnalyzerPort):
         except Exception as e:
             print("Error creating metadata: ", e)
         
+        candidate = await self.generate_candidate_from_summary(summary_info, cv_file_path, candidate_id)
+        try:
+            saved_candidate = await self.candidate_repository_port.save(self, candidate)
+            print("Candidate saved:", saved_candidate.id)
+        except Exception as e:
+            print("Error saving candidate: ", e)
 
         return CVAnalysis(
-            candidate_id=candidate_id,
+            candidate_id=candidate.id,
             cv_file_path=cv_file_path,
             extracted_text=cv_text,
             skills=skills,

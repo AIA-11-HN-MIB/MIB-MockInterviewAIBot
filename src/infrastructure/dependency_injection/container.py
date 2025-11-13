@@ -32,6 +32,8 @@ from ...adapters.persistence import (
     PostgreSQLQuestionRepository,
 )
 from ...adapters.vector_db.pinecone_adapter import PineconeAdapter
+from ...adapters.vector_db.chroma_adapter import ChromaAdapter
+from ...adapters.cv_processing.cv_processing_adapter import CVProcessingAdapter
 from ...domain.ports import (
     AnalyticsPort,
     AnswerRepositoryPort,
@@ -156,10 +158,8 @@ class Container:
                 # self._vector_search_port = WeaviateAdapter(...)
                 raise NotImplementedError("Weaviate adapter not yet implemented")
             elif self.settings.vector_db_provider == "chroma":
-                # Import ChromaDB adapter when implemented
-                # from ...adapters.vector_db.chroma_adapter import ChromaAdapter
-                # self._vector_search_port = ChromaAdapter(...)
-                raise NotImplementedError("ChromaDB adapter not yet implemented")
+                self._vector_search_port = ChromaAdapter()
+                # raise NotImplementedError("ChromaDB adapter not yet implemented")
             else:
                 raise ValueError(
                     f"Unsupported vector DB provider: {self.settings.vector_db_provider}"
@@ -191,7 +191,7 @@ class Container:
         """
         return PostgreSQLFollowUpQuestionRepository(session)
 
-    def candidate_repository_port(self, session: AsyncSession) -> CandidateRepositoryPort:
+    def contcandidate_repository_port(self, session: AsyncSession) -> CandidateRepositoryPort:
         """Get candidate repository port implementation.
 
         Args:
@@ -249,10 +249,8 @@ class Container:
         if self.settings.use_mock_cv_analyzer:
             return MockCVAnalyzerAdapter()
         else:
-            # TODO: Implement real CV analyzer
-            # from ...adapters.cv_processing.spacy_cv_analyzer import SpacyCVAnalyzer
-            # return SpacyCVAnalyzer(llm_port=self.llm_port())
-            raise NotImplementedError("Real CV analyzer not yet implemented")
+            return CVProcessingAdapter()
+            
 
     def speech_to_text_port(self) -> SpeechToTextPort:
         """Get speech-to-text port implementation.
