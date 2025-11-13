@@ -14,6 +14,9 @@ Save plans in `./plans` directory with timestamp and descriptive name.
 ```
 plans/
 ├── 20251101-1505-authentication-and-profile-implementation/
+    ├── research/
+    │   ├── researcher-XX-report.md
+    │   └── ...
 │   ├── reports/
 │   │   ├── scout-report.md
 │   │   ├── researcher-report.md
