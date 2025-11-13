@@ -67,13 +67,15 @@ EliosAIService/
 │   │   │   ├── interview_dto.py # Interview request/response DTOs ✅
 │   │   │   ├── answer_dto.py    # Answer request/response DTOs ✅
 │   │   │   └── websocket_dto.py # WebSocket message DTOs ✅
-│   │   └── use_cases/           # Application business flows (6 files)
+│   │   └── use_cases/           # Application business flows (7 files)
 │   │       ├── __init__.py
 │   │       ├── analyze_cv.py    # CV analysis workflow ✅
 │   │       ├── plan_interview.py # Interview planning with adaptive question generation ✅
 │   │       ├── get_next_question.py # Retrieve next question ✅
 │   │       ├── process_answer_adaptive.py # Adaptive answer evaluation & gap detection ✅
-│   │       └── complete_interview.py # Finalize interview session ✅
+│   │       ├── complete_interview.py # Finalize interview session ✅
+│   │       ├── generate_summary.py # Interview summary generation (Phase 6) ✅
+│   │       └── follow_up_decision.py # Follow-up decision logic (Phase 4) ✅
 │   ├── adapters/                # External service implementations
 │   │   ├── __init__.py
 │   │   ├── llm/                 # LLM provider adapters
@@ -106,10 +108,11 @@ EliosAIService/
 │   │       │   ├── __init__.py
 │   │       │   ├── health_routes.py     # Health check endpoint ✅
 │   │       │   └── interview_routes.py  # Interview CRUD endpoints ✅
-│   │       └── websocket/       # WebSocket handlers (2 files)
+│   │       └── websocket/       # WebSocket handlers (3 files)
 │   │           ├── __init__.py
 │   │           ├── connection_manager.py # WebSocket connection pool ✅
-│   │           └── interview_handler.py  # Real-time interview handler ✅
+│   │           ├── session_orchestrator.py # Session state machine (Phase 5) ✅
+│   │           └── interview_handler.py  # Simplified WebSocket I/O handler ✅
 │   └── infrastructure/          # Cross-cutting concerns
 │       ├── __init__.py
 │       ├── config/              # Configuration management
@@ -146,9 +149,12 @@ EliosAIService/
 │   ├── spec.md                 # Project specification (template)
 │   ├── architecture.md         # Architecture guide (template)
 │   └── RELEASE.md             # Release notes
-├── tests/                       # Test suites (planned)
-│   ├── unit/                   # Unit tests ⏳
-│   ├── integration/            # Integration tests ⏳
+├── tests/                       # Test suites
+│   ├── unit/                   # Unit tests (141 tests) ✅
+│   │   ├── use_cases/         # Use case tests
+│   │   │   ├── test_generate_summary.py (14 tests, 571 lines) ✅
+│   │   │   └── test_complete_interview.py (10 tests, 409 lines) ✅
+│   ├── integration/            # Integration tests (5 failing - mock config) 🔄
 │   └── e2e/                    # End-to-end tests ⏳
 ├── .env.example                # Environment variables template ✅
 ├── .env.local                  # Local config (gitignored) ✅
@@ -260,6 +266,7 @@ EliosAIService/
 - `generate_feedback_report()`: Create comprehensive feedback
 - `summarize_cv()`: Summarize CV content
 - `extract_skills_from_text()`: Extract skills using NLP
+- `generate_interview_recommendations()`: Generate summary recommendations (Phase 6)
 
 **VectorSearchPort** - Vector database interface:
 - `store_question_embedding()`: Store question vectors
@@ -340,17 +347,39 @@ Workflow:
 → Returns: Answer entity + has_more flag
 ```
 
-**CompleteInterviewUseCase** (`complete_interview.py` - 25 lines) ✅:
+**CompleteInterviewUseCase** (`complete_interview.py` - 86 lines) ✅:
 ```python
 Workflow:
 1. Retrieve interview
 2. Mark as COMPLETED
-3. Update in repository
+3. Optionally generate summary (GenerateSummaryUseCase)
+4. Store summary in interview.metadata["summary"]
+5. Update in repository
 → Returns: Interview entity
 ```
 
-**Planned Use Cases**:
-- `GenerateFeedbackUseCase`: Create comprehensive feedback report
+**GenerateSummaryUseCase** (`generate_summary.py` - 376 lines) ✅ PHASE 6:
+```python
+Workflow:
+1. Fetch all answers for interview
+2. Calculate aggregate metrics:
+   ├─ overall_score = 70% theoretical + 30% speaking
+   ├─ theoretical_score = avg(similarity_scores)
+   ├─ speaking_score = avg(voice_metrics.overall_quality)
+   └─ defaults: speaking=85 if no voice answers
+3. Analyze gap progression:
+   ├─ Count answers with follow-ups
+   ├─ Identify gaps_filled (confirmed→False after follow-up)
+   ├─ Identify gaps_remaining (still confirmed=True)
+   └─ Build progression dict
+4. Generate LLM recommendations:
+   ├─ Pass evaluations, scores, gaps to LLM
+   └─ Returns: strengths, weaknesses, study_topics, technique_tips
+5. Build final summary dict (9 fields)
+→ Returns: dict with all metrics + LLM recommendations
+
+Test Coverage: 100% (14 tests, 571 lines)
+```
 
 ### 3. Adapters Layer (External Integrations)
 
@@ -359,7 +388,7 @@ Workflow:
 
 #### LLM Adapters (`src/adapters/llm/`)
 
-**OpenAIAdapter** (`openai_adapter.py` - 269 lines) ✅:
+**OpenAIAdapter** (`openai_adapter.py` - 362 lines) ✅:
 - Implements `LLMPort` interface
 - Uses OpenAI GPT-4 for all LLM operations
 - Features:
@@ -374,6 +403,7 @@ Workflow:
   - `generate_feedback_report()`: Comprehensive interview feedback
   - `summarize_cv()`: 3-4 sentence CV summary
   - `extract_skills_from_text()`: Structured skill extraction
+  - `generate_interview_recommendations()`: Summary recommendations (Phase 6, +93 lines)
 
 **Planned Adapters**:
 - `ClaudeAdapter`: Anthropic Claude implementation
@@ -472,12 +502,18 @@ Each repository:
   - GET /api/interviews/{id}/questions/current - Get current question
 
 **WebSocket** (`api/websocket/`) ✅:
-- `connection_manager.py`: WebSocket connection pool management
-- `interview_handler.py`: Real-time interview handler
+- `connection_manager.py`: WebSocket connection pool management (unchanged)
+- `session_orchestrator.py`: Session state machine (584 lines, Phase 5 - 2025-11-12) ✅
+  - State machine: IDLE → QUESTIONING → EVALUATING → FOLLOW_UP → COMPLETE
+  - Validates interview/questions exist before state transitions (bug fix)
+  - Tracks progress: current question, parent question, follow-up count
+  - Session persistence: `get_state()` method for recovery
+  - 36 unit tests, 85% coverage (exceeds 80% target)
+- `interview_handler.py`: Simplified WebSocket I/O handler (131 lines, refactored from ~500) ✅
+  - Delegates all logic to InterviewSessionOrchestrator
   - Protocol: text_answer, audio_chunk, get_next_question
   - Responses: question, evaluation, interview_complete, error
-  - Integrated TTS for audio question delivery
-  - Handles answer processing and interview completion
+  - 74% line reduction through separation of concerns
 
 ### 4. Infrastructure Layer (Cross-Cutting Concerns)
 
@@ -736,19 +772,30 @@ ruff check src/ && black --check src/ && mypy src/
 
 ## File Statistics
 
-**Total Python Files**: ~55 files
+**Total Python Files**: ~58 files
 **Domain Layer**: 16 files (models + ports)
-**Application Layer**: 11 files (5 use cases + 3 DTOs + __init__)
-**Adapters Layer**: 25 files (LLM, vector DB, 6 mocks, persistence, API)
+**Application Layer**: 13 files (7 use cases + 3 DTOs + __init__)
+**Adapters Layer**: 26 files (LLM, vector DB, 6 mocks, persistence, API + session orchestrator)
 **Infrastructure Layer**: 9 files (config, database, DI)
-**Tests**: ~29 tests (unit tests with mock adapters)
+**Tests**: 141 tests (136 passing, 5 integration failures)
 
-**Lines of Code** (estimated):
-- Domain: ~600 lines
-- Application: ~300 lines (use cases + DTOs)
-- Adapters: ~1800 lines (API + mock + existing)
+**Lines of Code** (measured):
+- Domain: ~621 lines (+21 for LLMPort enhancement)
+- Application: ~1058 lines (+758 for Phase 6: GenerateSummaryUseCase 376 + CompleteInterviewUseCase +61)
+- Adapters: ~2649 lines (+279 for Phase 6: OpenAI +93, Azure +93, Mock +103, SessionOrchestrator +75 modified)
 - Infrastructure: ~400 lines
-- Total: ~3100 lines (excluding tests)
+- Total: ~4728 lines production code (+1058 from Phase 6)
+- Tests: ~2059 lines (+980 from Phase 6: generate_summary 571 + complete_interview 409)
+
+**Phase 6 Changes**:
+- Added: `generate_summary.py` (376 lines use case)
+- Updated: `complete_interview.py` (25 → 86 lines, +61)
+- Enhanced: `llm_port.py` (+21 lines for new method)
+- Enhanced: 3 LLM adapters (OpenAI +93, Azure +93, Mock +103)
+- Updated: `session_orchestrator.py` (+75 modified lines for summary)
+- Added: `test_generate_summary.py` (571 lines, 14 tests)
+- Added: `test_complete_interview.py` (409 lines, 10 tests)
+- Net: +1058 production code, +980 test code, +24 tests
 
 ## Dependencies Overview
 

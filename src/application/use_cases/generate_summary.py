@@ -1,0 +1,340 @@
+"""Generate comprehensive interview summary use case."""
+
+from datetime import datetime, timezone
+from typing import Any
+from uuid import UUID
+
+from ...domain.models.answer import Answer
+from ...domain.models.interview import Interview
+from ...domain.models.question import Question
+from ...domain.ports.answer_repository_port import AnswerRepositoryPort
+from ...domain.ports.follow_up_question_repository_port import (
+    FollowUpQuestionRepositoryPort,
+)
+from ...domain.ports.interview_repository_port import InterviewRepositoryPort
+from ...domain.ports.llm_port import LLMPort
+from ...domain.ports.question_repository_port import QuestionRepositoryPort
+
+
+class GenerateSummaryUseCase:
+    """Generate comprehensive interview summary.
+
+    Aggregates all evaluations (main questions + follow-ups), analyzes gap
+    progression, and generates personalized recommendations using LLM.
+    """
+
+    def __init__(
+        self,
+        interview_repository: InterviewRepositoryPort,
+        answer_repository: AnswerRepositoryPort,
+        question_repository: QuestionRepositoryPort,
+        follow_up_question_repository: FollowUpQuestionRepositoryPort,
+        llm: LLMPort,
+    ):
+        self.interview_repo = interview_repository
+        self.answer_repo = answer_repository
+        self.question_repo = question_repository
+        self.follow_up_repo = follow_up_question_repository
+        self.llm = llm
+
+    async def execute(self, interview_id: UUID) -> dict[str, Any]:
+        """Generate comprehensive summary.
+
+        Args:
+            interview_id: Interview UUID
+
+        Returns:
+            dict containing:
+                - interview_id: UUID
+                - overall_score: float (weighted avg of all evaluations)
+                - theoretical_score_avg: float
+                - speaking_score_avg: float
+                - total_questions: int (main questions only)
+                - total_follow_ups: int
+                - question_summaries: list[dict] (per-question analysis)
+                - gap_progression: dict (how gaps changed after follow-ups)
+                - strengths: list[str]
+                - weaknesses: list[str]
+                - study_recommendations: list[str]
+                - technique_tips: list[str]
+                - completion_time: datetime
+
+        Raises:
+            ValueError: If interview not found
+        """
+        # Fetch interview
+        interview = await self.interview_repo.get_by_id(interview_id)
+        if not interview:
+            raise ValueError(f"Interview {interview_id} not found")
+
+        # Fetch all answers (main + follow-ups)
+        all_answers = await self.answer_repo.get_by_interview_id(interview_id)
+
+        # Group answers by main question
+        question_groups = await self._group_answers_by_main_question(interview, all_answers)
+
+        # Calculate aggregate metrics
+        metrics = self._calculate_aggregate_metrics(all_answers)
+
+        # Analyze gap progression
+        gap_progression = await self._analyze_gap_progression(question_groups)
+
+        # Generate LLM-powered recommendations
+        recommendations = await self._generate_recommendations(
+            interview, all_answers, gap_progression
+        )
+
+        return {
+            "interview_id": str(interview_id),
+            "overall_score": metrics["overall_score"],
+            "theoretical_score_avg": metrics["theoretical_avg"],
+            "speaking_score_avg": metrics["speaking_avg"],
+            "total_questions": len(interview.question_ids),
+            "total_follow_ups": len(interview.adaptive_follow_ups),
+            "question_summaries": await self._create_question_summaries(question_groups),
+            "gap_progression": gap_progression,
+            "strengths": recommendations["strengths"],
+            "weaknesses": recommendations["weaknesses"],
+            "study_recommendations": recommendations["study_topics"],
+            "technique_tips": recommendations["technique_tips"],
+            "completion_time": datetime.now(timezone.utc).isoformat(),
+        }
+
+    async def _group_answers_by_main_question(
+        self,
+        interview: Interview,
+        all_answers: list[Answer],
+    ) -> dict[UUID, dict[str, Any]]:
+        """Group answers by main question with follow-ups.
+
+        Args:
+            interview: Interview entity
+            all_answers: All answers (main + follow-ups)
+
+        Returns:
+            Dict mapping main_question_id to:
+                - question: Main question entity
+                - main_answer: Answer to main question
+                - follow_ups: List of follow-up question entities
+                - follow_up_answers: List of answers to follow-ups
+        """
+        groups = {}
+
+        for main_question_id in interview.question_ids:
+            main_question = await self.question_repo.get_by_id(main_question_id)
+
+            # Find main answer
+            main_answer = next(
+                (a for a in all_answers if a.question_id == main_question_id),
+                None,
+            )
+
+            # Find follow-up answers
+            follow_ups = await self.follow_up_repo.get_by_parent_question_id(main_question_id)
+            follow_up_answers = [
+                next((a for a in all_answers if a.question_id == fu.id), None) for fu in follow_ups
+            ]
+
+            groups[main_question_id] = {
+                "question": main_question,
+                "main_answer": main_answer,
+                "follow_ups": follow_ups,
+                "follow_up_answers": [a for a in follow_up_answers if a is not None],
+            }
+
+        return groups
+
+    def _calculate_aggregate_metrics(self, all_answers: list[Answer]) -> dict[str, float]:
+        """Calculate aggregate scores.
+
+        Args:
+            all_answers: All answers (main + follow-ups)
+
+        Returns:
+            Dict with keys:
+                - overall_score: Weighted average (70% theoretical + 30% speaking)
+                - theoretical_avg: Average of theoretical scores
+                - speaking_avg: Average of speaking scores
+        """
+        evaluated_answers = [a for a in all_answers if a.is_evaluated()]
+
+        if not evaluated_answers:
+            return {
+                "overall_score": 0.0,
+                "theoretical_avg": 0.0,
+                "speaking_avg": 0.0,
+            }
+
+        # Theoretical score (from evaluation)
+        theoretical_scores = [
+            a.evaluation.score for a in evaluated_answers if a.evaluation is not None
+        ]
+
+        # Speaking score (from voice metrics)
+        speaking_scores = [
+            a.voice_metrics.get("overall_score", 50.0) for a in evaluated_answers if a.voice_metrics
+        ]
+
+        # If no voice metrics, default to 50.0
+        speaking_avg = sum(speaking_scores) / len(speaking_scores) if speaking_scores else 50.0
+
+        theoretical_avg = sum(theoretical_scores) / len(theoretical_scores)
+
+        # Overall = 70% theoretical + 30% speaking
+        overall_score = (theoretical_avg * 0.7) + (speaking_avg * 0.3)
+
+        return {
+            "overall_score": round(overall_score, 2),
+            "theoretical_avg": round(theoretical_avg, 2),
+            "speaking_avg": round(speaking_avg, 2),
+        }
+
+    async def _analyze_gap_progression(
+        self, question_groups: dict[UUID, dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Analyze how gaps changed after follow-ups.
+
+        Args:
+            question_groups: Grouped answers by main question
+
+        Returns:
+            Dict with keys:
+                - questions_with_followups: int
+                - gaps_filled: int (concepts mastered after follow-ups)
+                - gaps_remaining: int (concepts still missing)
+                - avg_followups_per_question: float
+        """
+        progression = {
+            "questions_with_followups": 0,
+            "gaps_filled": 0,
+            "gaps_remaining": 0,
+            "avg_followups_per_question": 0.0,
+        }
+
+        questions_with_followups = 0
+        total_followups = 0
+        gaps_filled = 0
+        gaps_remaining = 0
+
+        for group in question_groups.values():
+            main_answer = group["main_answer"]
+            follow_up_answers = group["follow_up_answers"]
+
+            if not follow_up_answers or not main_answer:
+                continue
+
+            questions_with_followups += 1
+            total_followups += len(follow_up_answers)
+
+            # Compare initial gaps vs final gaps
+            initial_gaps = set(main_answer.gaps.get("concepts", []) if main_answer.gaps else [])
+            final_answer = follow_up_answers[-1]
+            final_gaps = set(final_answer.gaps.get("concepts", []) if final_answer.gaps else [])
+
+            gaps_filled += len(initial_gaps - final_gaps)
+            gaps_remaining += len(final_gaps)
+
+        progression["questions_with_followups"] = questions_with_followups
+        progression["gaps_filled"] = gaps_filled
+        progression["gaps_remaining"] = gaps_remaining
+        progression["avg_followups_per_question"] = (
+            round(total_followups / questions_with_followups, 2)
+            if questions_with_followups > 0
+            else 0.0
+        )
+
+        return progression
+
+    async def _generate_recommendations(
+        self,
+        interview: Interview,
+        all_answers: list[Answer],
+        gap_progression: dict[str, Any],
+    ) -> dict[str, list[str]]:
+        """Use LLM to generate personalized recommendations.
+
+        Args:
+            interview: Interview entity
+            all_answers: All answers
+            gap_progression: Gap progression analysis
+
+        Returns:
+            Dict with keys:
+                - strengths: list[str] (top 3-5 strengths)
+                - weaknesses: list[str] (top 3-5 weaknesses)
+                - study_topics: list[str] (topic-specific recommendations)
+                - technique_tips: list[str] (voice, pacing, structure tips)
+        """
+        context = {
+            "interview_id": str(interview.id),
+            "total_answers": len(all_answers),
+            "gap_progression": gap_progression,
+            "evaluations": [
+                {
+                    "question_id": str(a.question_id),
+                    "score": a.evaluation.score,
+                    "strengths": a.evaluation.strengths,
+                    "weaknesses": a.evaluation.weaknesses,
+                }
+                for a in all_answers
+                if a.is_evaluated() and a.evaluation is not None
+            ],
+        }
+
+        return await self.llm.generate_interview_recommendations(context)
+
+    async def _create_question_summaries(
+        self, question_groups: dict[UUID, dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Create per-question analysis.
+
+        Args:
+            question_groups: Grouped answers by main question
+
+        Returns:
+            List of dicts with keys:
+                - question_id: UUID
+                - question_text: str
+                - main_answer_score: float
+                - follow_up_count: int
+                - initial_gaps: list[str]
+                - final_gaps: list[str]
+                - improvement: bool (whether gaps were filled)
+        """
+        summaries = []
+
+        for main_question_id, group in question_groups.items():
+            question = group["question"]
+            main_answer = group["main_answer"]
+            follow_up_answers = group["follow_up_answers"]
+
+            initial_gaps = (
+                main_answer.gaps.get("concepts", []) if main_answer and main_answer.gaps else []
+            )
+            final_gaps = initial_gaps
+
+            if follow_up_answers:
+                final_answer = follow_up_answers[-1]
+                final_gaps = (
+                    final_answer.gaps.get("concepts", [])
+                    if final_answer and final_answer.gaps
+                    else []
+                )
+
+            summaries.append(
+                {
+                    "question_id": str(main_question_id),
+                    "question_text": question.text if question else "Unknown",
+                    "main_answer_score": (
+                        main_answer.evaluation.score
+                        if main_answer and main_answer.is_evaluated()
+                        else 0.0
+                    ),
+                    "follow_up_count": len(follow_up_answers),
+                    "initial_gaps": initial_gaps,
+                    "final_gaps": final_gaps,
+                    "improvement": len(final_gaps) < len(initial_gaps),
+                }
+            )
+
+        return summaries

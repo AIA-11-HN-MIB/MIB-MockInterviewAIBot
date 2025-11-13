@@ -264,13 +264,11 @@ async def get_planning_status(
         )
 
     # Determine message based on status
-    if interview.status == InterviewStatus.PREPARING:
-        message = "Interview planning in progress..."
-    elif interview.status == InterviewStatus.READY:
+    if interview.status == InterviewStatus.IDLE:
         message = f"Interview ready with {interview.planned_question_count} questions"
-    elif interview.status == InterviewStatus.IN_PROGRESS:
+    elif interview.status == InterviewStatus.QUESTIONING or interview.status == InterviewStatus.EVALUATING:
         message = "Interview started"
-    elif interview.status == InterviewStatus.COMPLETED:
+    elif interview.status == InterviewStatus.COMPLETE:
         message = "Interview completed"
     else:
         message = f"Interview status: {interview.status.value}"

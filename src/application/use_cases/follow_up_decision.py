@@ -69,6 +69,7 @@ class FollowUpDecisionUseCase:
         logger.info(f"Found {follow_up_count} existing follow-ups")
 
         # Step 2: Check break condition - Max follow-ups reached
+        # TODO: use domain instead
         if follow_up_count >= 3:
             logger.info("Break condition: Max follow-ups (3) reached")
             return {

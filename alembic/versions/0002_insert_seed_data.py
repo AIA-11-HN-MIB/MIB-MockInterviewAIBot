@@ -536,8 +536,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440001'),
             'text': 'Explain the concept of dependency injection and its benefits in software design.',
-            'question_type': 'technical',
-            'difficulty': 'medium',
+            'question_type': 'TECHNICAL',
+            'difficulty': 'MEDIUM',
             'skills': ['Design Patterns', 'OOP', 'Software Architecture'],
             'tags': ['dependency-injection', 'design-patterns', 'architecture'],
             'evaluation_criteria': 'Assess understanding of DI principles, inversion of control, and practical benefits like testability and loose coupling.',
@@ -550,8 +550,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440002'),
             'text': 'What is the difference between microservices and monolithic architecture? When would you choose each?',
-            'question_type': 'technical',
-            'difficulty': 'hard',
+            'question_type': 'TECHNICAL',
+            'difficulty': 'HARD',
             'skills': ['System Design', 'Architecture', 'Microservices'],
             'tags': ['microservices', 'architecture', 'system-design'],
             'evaluation_criteria': 'Evaluate understanding of architectural patterns, trade-offs, and decision-making criteria.',
@@ -564,8 +564,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440003'),
             'text': 'How does a hash table work internally? Explain collision resolution strategies.',
-            'question_type': 'technical',
-            'difficulty': 'medium',
+            'question_type': 'TECHNICAL',
+            'difficulty': 'MEDIUM',
             'skills': ['Data Structures', 'Algorithms', 'Hash Tables'],
             'tags': ['data-structures', 'hash-tables', 'algorithms'],
             'evaluation_criteria': 'Check understanding of hash table internals, hash functions, and collision handling mechanisms.',
@@ -578,8 +578,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440004'),
             'text': 'Describe how you would implement authentication and authorization in a web application.',
-            'question_type': 'technical',
-            'difficulty': 'medium',
+            'question_type': 'TECHNICAL',
+            'difficulty': 'MEDIUM',
             'skills': ['Security', 'Authentication', 'Authorization', 'Web Development'],
             'tags': ['security', 'authentication', 'authorization', 'web'],
             'evaluation_criteria': 'Assess knowledge of security best practices, token-based authentication, and authorization patterns.',
@@ -592,8 +592,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440005'),
             'text': 'What is the CAP theorem? Explain each component and provide examples.',
-            'question_type': 'technical',
-            'difficulty': 'hard',
+            'question_type': 'TECHNICAL',
+            'difficulty': 'HARD',
             'skills': ['Distributed Systems', 'Database', 'System Design'],
             'tags': ['cap-theorem', 'distributed-systems', 'database'],
             'evaluation_criteria': 'Evaluate understanding of distributed system trade-offs and real-world system characteristics.',
@@ -606,8 +606,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440006'),
             'text': 'Explain the difference between SQL and NoSQL databases. When would you use each?',
-            'question_type': 'technical',
-            'difficulty': 'medium',
+            'question_type': 'TECHNICAL',
+            'difficulty': 'MEDIUM',
             'skills': ['Database', 'SQL', 'NoSQL', 'Data Modeling'],
             'tags': ['database', 'sql', 'nosql', 'data-modeling'],
             'evaluation_criteria': 'Assess understanding of database types, their characteristics, and appropriate use cases.',
@@ -620,8 +620,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440007'),
             'text': 'What is the difference between unit testing, integration testing, and end-to-end testing?',
-            'question_type': 'technical',
-            'difficulty': 'easy',
+            'question_type': 'TECHNICAL',
+            'difficulty': 'EASY',
             'skills': ['Testing', 'QA', 'Software Engineering'],
             'tags': ['testing', 'unit-testing', 'integration-testing', 'e2e'],
             'evaluation_criteria': 'Check understanding of testing pyramid and different testing levels.',
@@ -634,8 +634,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440008'),
             'text': 'How does garbage collection work in Python? Explain the reference counting and generational GC.',
-            'question_type': 'technical',
-            'difficulty': 'medium',
+            'question_type': 'TECHNICAL',
+            'difficulty': 'MEDIUM',
             'skills': ['Python', 'Memory Management', 'Garbage Collection'],
             'tags': ['python', 'memory-management', 'garbage-collection'],
             'evaluation_criteria': 'Evaluate understanding of Python internals and memory management.',
@@ -648,8 +648,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440009'),
             'text': 'What is the event loop in JavaScript? How does it handle asynchronous operations?',
-            'question_type': 'technical',
-            'difficulty': 'hard',
+            'question_type': 'TECHNICAL',
+            'difficulty': 'HARD',
             'skills': ['JavaScript', 'Event Loop', 'Asynchronous Programming'],
             'tags': ['javascript', 'event-loop', 'async', 'nodejs'],
             'evaluation_criteria': 'Assess deep understanding of JavaScript runtime and asynchronous execution model.',
@@ -662,8 +662,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440010'),
             'text': 'Explain the concept of database indexing. How does it improve query performance?',
-            'question_type': 'technical',
-            'difficulty': 'medium',
+            'question_type': 'TECHNICAL',
+            'difficulty': 'MEDIUM',
             'skills': ['Database', 'SQL', 'Performance Optimization'],
             'tags': ['database', 'indexing', 'performance', 'sql'],
             'evaluation_criteria': 'Check understanding of indexing mechanisms and their impact on database performance.',
@@ -676,8 +676,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440011'),
             'text': 'Tell me about a time when you had to learn a new technology or framework quickly for a project. How did you approach it?',
-            'question_type': 'behavioral',
-            'difficulty': 'easy',
+            'question_type': 'BEHAVIORAL',
+            'difficulty': 'EASY',
             'skills': ['Learning', 'Adaptability', 'Problem Solving'],
             'tags': ['behavioral', 'learning', 'adaptability'],
             'evaluation_criteria': 'Assess learning agility, resource utilization, and ability to apply new knowledge effectively.',
@@ -690,8 +690,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440012'),
             'text': 'Describe a situation where you had to work with a difficult team member. How did you handle it?',
-            'question_type': 'behavioral',
-            'difficulty': 'medium',
+            'question_type': 'BEHAVIORAL',
+            'difficulty': 'MEDIUM',
             'skills': ['Communication', 'Teamwork', 'Conflict Resolution'],
             'tags': ['behavioral', 'teamwork', 'conflict'],
             'evaluation_criteria': 'Evaluate emotional intelligence, communication skills, and collaborative problem-solving approach.',
@@ -704,8 +704,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440013'),
             'text': 'Give an example of a time when you made a mistake in your code that caused a production issue. How did you handle it?',
-            'question_type': 'behavioral',
-            'difficulty': 'medium',
+            'question_type': 'BEHAVIORAL',
+            'difficulty': 'MEDIUM',
             'skills': ['Accountability', 'Problem Solving', 'Learning from Mistakes'],
             'tags': ['behavioral', 'mistakes', 'accountability'],
             'evaluation_criteria': 'Check honesty, accountability, problem-solving under pressure, and learning from mistakes.',
@@ -718,8 +718,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440014'),
             'text': 'How do you prioritize tasks when you have multiple urgent deadlines?',
-            'question_type': 'situational',
-            'difficulty': 'easy',
+            'question_type': 'SITUATIONAL',
+            'difficulty': 'EASY',
             'skills': ['Prioritization', 'Time Management', 'Decision Making'],
             'tags': ['situational', 'prioritization', 'time-management'],
             'evaluation_criteria': 'Assess prioritization skills and ability to make trade-off decisions under pressure.',
@@ -732,8 +732,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440015'),
             'text': 'If you discovered a security vulnerability in production, what steps would you take?',
-            'question_type': 'situational',
-            'difficulty': 'medium',
+            'question_type': 'SITUATIONAL',
+            'difficulty': 'MEDIUM',
             'skills': ['Security', 'Risk Management', 'Incident Response'],
             'tags': ['situational', 'security', 'incident-response'],
             'evaluation_criteria': 'Check security awareness, incident response procedures, and risk assessment capabilities.',
@@ -746,8 +746,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440016'),
             'text': 'You need to refactor a large legacy codebase with no tests. How would you approach it?',
-            'question_type': 'situational',
-            'difficulty': 'hard',
+            'question_type': 'SITUATIONAL',
+            'difficulty': 'HARD',
             'skills': ['Refactoring', 'Legacy Code', 'Testing', 'Risk Management'],
             'tags': ['situational', 'refactoring', 'legacy-code'],
             'evaluation_criteria': 'Assess refactoring strategy, risk management, and systematic approach to technical debt.',
@@ -760,8 +760,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440017'),
             'text': 'Explain how you would design a caching strategy for a high-traffic web application.',
-            'question_type': 'technical',
-            'difficulty': 'hard',
+            'question_type': 'TECHNICAL',
+            'difficulty': 'HARD',
             'skills': ['System Design', 'Caching', 'Performance', 'Architecture'],
             'tags': ['system-design', 'caching', 'performance'],
             'evaluation_criteria': 'Evaluate system design thinking and understanding of caching patterns and trade-offs.',
@@ -774,8 +774,8 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('760e8400-e29b-41d4-a716-446655440018'),
             'text': 'What is the difference between horizontal and vertical scaling? When would you use each?',
-            'question_type': 'technical',
-            'difficulty': 'medium',
+            'question_type': 'TECHNICAL',
+            'difficulty': 'MEDIUM',
             'skills': ['System Design', 'Scalability', 'Infrastructure'],
             'tags': ['scalability', 'system-design', 'infrastructure'],
             'evaluation_criteria': 'Check understanding of scaling strategies and their trade-offs.',
@@ -865,7 +865,7 @@ def upgrade() -> None:
             'work_experience_years': 1.5,
             'education_level': "Bachelor's",
             'suggested_topics': ['React Hooks', 'Async/Await', 'REST API Design', 'Database Basics', 'Testing'],
-            'suggested_difficulty': 'easy',
+            'suggested_difficulty': 'EASY',
             'summary': 'Junior full-stack developer with 1.5 years of experience. Strong in React and Node.js fundamentals. Good foundation but needs experience with advanced concepts and system design.',
             'metadata': {"keywords": ["React", "Node.js", "Junior", "Full Stack"]},
             'created_at': now - timedelta(days=13),
@@ -886,7 +886,7 @@ def upgrade() -> None:
             'work_experience_years': 4.0,
             'education_level': "Bachelor's",
             'suggested_topics': ['System Design', 'Database Optimization', 'Microservices', 'API Design', 'SOLID Principles'],
-            'suggested_difficulty': 'medium',
+            'suggested_difficulty': 'MEDIUM',
             'summary': 'Mid-level backend engineer with 4 years of Python and Django experience. Strong in API design and database optimization. Ready for system design and architecture discussions.',
             'metadata': {"keywords": ["Python", "Backend", "Django", "API"]},
             'created_at': now - timedelta(days=11),
@@ -908,7 +908,7 @@ def upgrade() -> None:
             'work_experience_years': 8.0,
             'education_level': "Master's",
             'suggested_topics': ['System Design', 'Event Loop', 'Microservices Architecture', 'Performance Optimization', 'Scalability Patterns'],
-            'suggested_difficulty': 'hard',
+            'suggested_difficulty': 'HARD',
             'summary': 'Senior full-stack developer with 8 years of experience. Expert in JavaScript ecosystem and system design. Strong leadership experience and ability to architect scalable solutions.',
             'metadata': {"keywords": ["Senior", "Full Stack", "System Design", "JavaScript"]},
             'created_at': now - timedelta(days=9),
@@ -929,7 +929,7 @@ def upgrade() -> None:
             'work_experience_years': 3.0,
             'education_level': "Bachelor's",
             'suggested_topics': ['React Hooks', 'State Management', 'Performance Optimization', 'Frontend Architecture', 'Testing'],
-            'suggested_difficulty': 'medium',
+            'suggested_difficulty': 'MEDIUM',
             'summary': 'Frontend specialist with 3 years of React and Vue.js experience. Strong focus on UI/UX and frontend performance. Good understanding of modern frontend patterns.',
             'metadata': {"keywords": ["Frontend", "React", "Vue.js", "UI/UX"]},
             'created_at': now - timedelta(days=7),
@@ -951,7 +951,7 @@ def upgrade() -> None:
             'work_experience_years': 5.0,
             'education_level': "Bachelor's",
             'suggested_topics': ['System Design', 'Scalability', 'Infrastructure', 'Cloud Architecture', 'Container Orchestration'],
-            'suggested_difficulty': 'hard',
+            'suggested_difficulty': 'HARD',
             'summary': 'DevOps engineer with 5 years of experience in cloud infrastructure and automation. Expert in Kubernetes, Docker, and AWS. Strong in infrastructure as code and CI/CD pipelines.',
             'metadata': {"keywords": ["DevOps", "Kubernetes", "AWS", "Infrastructure"]},
             'created_at': now - timedelta(days=5),
@@ -971,7 +971,7 @@ def upgrade() -> None:
             'work_experience_years': 2.5,
             'education_level': "Bachelor's",
             'suggested_topics': ['Java Fundamentals', 'Spring Framework', 'Database Design', 'API Design', 'Testing'],
-            'suggested_difficulty': 'easy',
+            'suggested_difficulty': 'EASY',
             'summary': 'Full-stack developer with 2.5 years of Java and Spring Boot experience. Good foundation in enterprise development. Still learning advanced concepts.',
             'metadata': {"keywords": ["Java", "Spring Boot", "Full Stack"]},
             'created_at': now - timedelta(days=3),
@@ -992,7 +992,7 @@ def upgrade() -> None:
             'work_experience_years': 6.0,
             'education_level': "Master's",
             'suggested_topics': ['System Design', 'Microservices', 'Database Optimization', 'Caching Strategies', 'API Performance'],
-            'suggested_difficulty': 'hard',
+            'suggested_difficulty': 'HARD',
             'summary': 'Senior backend engineer with 6 years of Python experience. Expert in FastAPI and building scalable microservices. Strong in database optimization and caching strategies.',
             'metadata': {"keywords": ["Python", "Backend", "Microservices", "FastAPI"]},
             'created_at': now - timedelta(days=1),
@@ -1008,7 +1008,7 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('850e8400-e29b-41d4-a716-446655440001'),
             'candidate_id': uuid.UUID('550e8400-e29b-41d4-a716-446655440001'),
-            'status': 'COMPLETED',
+            'status': 'COMPLETE',
             'cv_analysis_id': uuid.UUID('750e8400-e29b-41d4-a716-446655440001'),
             'question_ids': [
                 uuid.UUID('650e8400-e29b-41d4-a716-446655440001'),
@@ -1029,7 +1029,7 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('850e8400-e29b-41d4-a716-446655440002'),
             'candidate_id': uuid.UUID('550e8400-e29b-41d4-a716-446655440002'),
-            'status': 'COMPLETED',
+            'status': 'COMPLETE',
             'cv_analysis_id': uuid.UUID('750e8400-e29b-41d4-a716-446655440002'),
             'question_ids': [
                 uuid.UUID('650e8400-e29b-41d4-a716-446655440004'),
@@ -1054,7 +1054,7 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('850e8400-e29b-41d4-a716-446655440003'),
             'candidate_id': uuid.UUID('550e8400-e29b-41d4-a716-446655440003'),
-            'status': 'IN_PROGRESS',
+            'status': 'QUESTIONING',
             'cv_analysis_id': uuid.UUID('750e8400-e29b-41d4-a716-446655440003'),
             'question_ids': [
                 uuid.UUID('650e8400-e29b-41d4-a716-446655440008'),
@@ -1075,7 +1075,7 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('850e8400-e29b-41d4-a716-446655440004'),
             'candidate_id': uuid.UUID('550e8400-e29b-41d4-a716-446655440002'),
-            'status': 'READY',
+            'status': 'IDLE',
             'cv_analysis_id': uuid.UUID('750e8400-e29b-41d4-a716-446655440002'),
             'question_ids': [
                 uuid.UUID('650e8400-e29b-41d4-a716-446655440005'),
@@ -1094,7 +1094,7 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('960e8400-e29b-41d4-a716-446655440001'),
             'candidate_id': uuid.UUID('660e8400-e29b-41d4-a716-446655440001'),
-            'status': 'completed',
+            'status': 'COMPLETE',
             'cv_analysis_id': uuid.UUID('860e8400-e29b-41d4-a716-446655440001'),
             'question_ids': [
                 uuid.UUID('650e8400-e29b-41d4-a716-446655440001'),
@@ -1128,7 +1128,7 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('960e8400-e29b-41d4-a716-446655440002'),
             'candidate_id': uuid.UUID('660e8400-e29b-41d4-a716-446655440002'),
-            'status': 'completed',
+            'status': 'COMPLETE',
             'cv_analysis_id': uuid.UUID('860e8400-e29b-41d4-a716-446655440002'),
             'question_ids': [
                 uuid.UUID('760e8400-e29b-41d4-a716-446655440001'),
@@ -1160,7 +1160,7 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('960e8400-e29b-41d4-a716-446655440003'),
             'candidate_id': uuid.UUID('660e8400-e29b-41d4-a716-446655440003'),
-            'status': 'completed',
+            'status': 'COMPLETE',
             'cv_analysis_id': uuid.UUID('860e8400-e29b-41d4-a716-446655440003'),
             'question_ids': [
                 uuid.UUID('760e8400-e29b-41d4-a716-446655440002'),
@@ -1192,7 +1192,7 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('960e8400-e29b-41d4-a716-446655440004'),
             'candidate_id': uuid.UUID('660e8400-e29b-41d4-a716-446655440004'),
-            'status': 'completed',
+            'status': 'COMPLETE',
             'cv_analysis_id': uuid.UUID('860e8400-e29b-41d4-a716-446655440004'),
             'question_ids': [
                 uuid.UUID('650e8400-e29b-41d4-a716-446655440007'),
@@ -1225,7 +1225,7 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('960e8400-e29b-41d4-a716-446655440005'),
             'candidate_id': uuid.UUID('660e8400-e29b-41d4-a716-446655440005'),
-            'status': 'in_progress',
+            'status': 'FOLLOW_UP',
             'cv_analysis_id': uuid.UUID('860e8400-e29b-41d4-a716-446655440005'),
             'question_ids': [
                 uuid.UUID('760e8400-e29b-41d4-a716-446655440002'),
@@ -1256,7 +1256,7 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('960e8400-e29b-41d4-a716-446655440006'),
             'candidate_id': uuid.UUID('660e8400-e29b-41d4-a716-446655440006'),
-            'status': 'in_progress',
+            'status': 'FOLLOW_UP',
             'cv_analysis_id': uuid.UUID('860e8400-e29b-41d4-a716-446655440006'),
             'question_ids': [
                 uuid.UUID('650e8400-e29b-41d4-a716-446655440023'),
@@ -1286,7 +1286,7 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('960e8400-e29b-41d4-a716-446655440007'),
             'candidate_id': uuid.UUID('660e8400-e29b-41d4-a716-446655440007'),
-            'status': 'in_progress',
+            'status': 'FOLLOW_UP',
             'cv_analysis_id': uuid.UUID('860e8400-e29b-41d4-a716-446655440007'),
             'question_ids': [
                 uuid.UUID('760e8400-e29b-41d4-a716-446655440005'),
@@ -1320,7 +1320,7 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('960e8400-e29b-41d4-a716-446655440008'),
             'candidate_id': uuid.UUID('660e8400-e29b-41d4-a716-446655440001'),
-            'status': 'ready',
+            'status': 'IDLE',
             'cv_analysis_id': uuid.UUID('860e8400-e29b-41d4-a716-446655440001'),
             'question_ids': [
                 uuid.UUID('650e8400-e29b-41d4-a716-446655440002'),
@@ -1344,7 +1344,7 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('960e8400-e29b-41d4-a716-446655440009'),
             'candidate_id': uuid.UUID('660e8400-e29b-41d4-a716-446655440002'),
-            'status': 'ready',
+            'status': 'IDLE',
             'cv_analysis_id': uuid.UUID('860e8400-e29b-41d4-a716-446655440002'),
             'question_ids': [
                 uuid.UUID('760e8400-e29b-41d4-a716-446655440006'),
@@ -1368,7 +1368,7 @@ def upgrade() -> None:
         {
             'id': uuid.UUID('960e8400-e29b-41d4-a716-446655440010'),
             'candidate_id': uuid.UUID('660e8400-e29b-41d4-a716-446655440004'),
-            'status': 'preparing',
+            'status': 'IDLE',
             'cv_analysis_id': None,
             'question_ids': [],
             'answer_ids': [],

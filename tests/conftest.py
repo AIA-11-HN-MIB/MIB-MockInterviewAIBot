@@ -68,7 +68,7 @@ def sample_interview_adaptive(sample_cv_analysis: CVAnalysis) -> Interview:
     """Sample adaptive interview with plan_metadata."""
     interview = Interview(
         candidate_id=sample_cv_analysis.candidate_id,
-        status=InterviewStatus.READY,
+        status=InterviewStatus.IDLE,
         cv_analysis_id=sample_cv_analysis.id,
     )
     interview.plan_metadata = {
@@ -88,7 +88,7 @@ def sample_interview_legacy() -> Interview:
     """Sample legacy interview without plan_metadata."""
     return Interview(
         candidate_id=uuid4(),
-        status=InterviewStatus.IN_PROGRESS,
+        status=InterviewStatus.QUESTIONING,
     )
 
 
@@ -370,6 +370,18 @@ class MockLLM:
         """Mock follow-up question generation."""
         concepts_str = ', '.join(missing_concepts[:2]) if missing_concepts else "that concept"
         return f"Can you elaborate more on {concepts_str}? Please provide specific examples."
+
+    async def generate_interview_recommendations(
+        self,
+        context: dict[str, Any],
+    ) -> dict[str, list[str]]:
+        """Mock interview recommendations generation."""
+        return {
+            "strengths": ["Clear communication", "Good problem-solving", "Strong technical knowledge"],
+            "weaknesses": ["Could provide more examples", "Needs to elaborate on concepts"],
+            "study_topics": ["Advanced algorithms", "System design patterns", "Best practices"],
+            "technique_tips": ["Speak more slowly", "Use concrete examples", "Structure answers better"],
+        }
 
 
 @pytest.fixture

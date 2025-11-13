@@ -22,12 +22,10 @@ Think harder to start working on the following plan follow the Orchestration Pro
 ## Your Approach
 
 1. **Absorb the Plan**: Read every step of the plan, map dependencies, and list ambiguities.
-
-2. **Execution Strategy**: Break the plan into incremental delivery milestones, selecting the simplest approach that satisfies requirements.
-
-3. **Implement Relentlessly**: Code, validate, and test each milestone in sequence, handling errors proactively and keeping the workflow unblocked.
-
-4. **Course-Correct**: Reassess risks, propose adjustments, and keep stakeholders informed until the implementation is complete.
+2. **Execution Strategy**: Only read the general plan (`plan.md`) and start implementing phases one by one, continue from where you left off. Do not read all phases at once.
+3. **Implement Relentlessly**: Code, validate, and test each milestone in sequence, handling errors proactively and keeping the workflow unblocked until one phase is completed.
+4. **Regular Progress Updates**: Regularly update the progress and status of the plan and phases to keep stakeholders informed, before moving to the next phase.
+5. **Course-Correct**: Reassess risks, propose adjustments, and keep stakeholders informed until the implementation is complete.
 
 ---
 
@@ -41,6 +39,7 @@ Think harder to start working on the following plan follow the Orchestration Pro
 ### Implementation
 
 * Use `general agent (main agent)` to implement the plan step by step, follow the implementation plan in `./plans` directory.
+* Use `project-manager` to regularly update the progress and status of the plan and phases to keep stakeholders informed.
 * Use `ui-ux-designer` subagent to implement the frontend part follow the design guidelines at `./docs/design-guidelines.md` file.
   * Use `ai-multimodal` skill to generate image assets.
   * Use `ai-multimodal` skill to analyze and verify generated assets.
@@ -53,12 +52,14 @@ Think harder to start working on the following plan follow the Orchestration Pro
 * Use `tester` subagent to run the tests, make sure it works, then report back to main agent.
 * If there are issues or failed tests, use `debugger` subagent to find the root cause of the issues, then ask main agent to fix all of them and 
 * Repeat the process until all tests pass or no more issues are reported. Again, do not ignore failed tests or use fake data just to pass the build or github actions.
+* Use `project-manager` to regularly update the progress and status of the plan and phases to keep stakeholders informed.
 
 ### Code Review
 
 * After finishing, delegate to `code-reviewer` subagent to review code. If there are critical issues, ask main agent to improve the code and tell `tester` agent to run the tests again. 
 * Repeat the "Testing" process until all tests pass.
 * When all tests pass, code is reviewed, the tasks are completed, continue to the next step.
+* Use `project-manager` to regularly update the progress and status of the plan and phases to keep stakeholders informed.
 * **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
 ### Project Management & Documentation
@@ -72,6 +73,7 @@ Think harder to start working on the following plan follow the Orchestration Pro
 
 **If user rejects the changes:**
 * Ask user to explain the issues and ask main agent to fix all of them and repeat the process.
+* Use `project-manager` to regularly update the progress and status of the plan and phases to keep stakeholders informed.
 
 ### Onboarding
 
@@ -82,6 +84,7 @@ Think harder to start working on the following plan follow the Orchestration Pro
 ### Final Report
 * Report back to user with a summary of the changes and explain everything briefly, guide user to get started and suggest the next steps.
 * Ask the user if they want to commit and push to git repository, if yes, use `git-manager` subagent to commit and push to git repository.
+* Use `project-manager` to regularly update the progress and status of the plan and phases to keep stakeholders informed.
 
 **REMEMBER**:
 - You can always generate images with `ai-multimodal` skill on the fly for visual assets.
