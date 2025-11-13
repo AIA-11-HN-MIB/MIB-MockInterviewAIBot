@@ -7,6 +7,7 @@ from uuid import UUID
 from openai import AsyncOpenAI
 
 from ...domain.models.answer import AnswerEvaluation
+from ...domain.models.evaluation import FollowUpEvaluationContext
 from ...domain.models.question import Question
 from ...domain.ports.llm_port import LLMPort
 
@@ -91,6 +92,7 @@ class OpenAIAdapter(LLMPort):
         question: Question,
         answer_text: str,
         context: dict[str, Any],
+        followup_context: FollowUpEvaluationContext | None = None,
     ) -> AnswerEvaluation:
         """Evaluate an answer using OpenAI.
 
@@ -98,6 +100,7 @@ class OpenAIAdapter(LLMPort):
             question: The question that was asked
             answer_text: Candidate's answer
             context: Additional context
+            followup_context: Optional context for follow-up evaluation with previous attempts
 
         Returns:
             Evaluation results
@@ -114,6 +117,29 @@ class OpenAIAdapter(LLMPort):
         Candidate's Answer: {answer_text}
 
         {"Ideal Answer: " + question.ideal_answer if question.ideal_answer else ""}
+        """
+
+        # Add follow-up context if this is a follow-up question
+        if followup_context:
+            user_prompt += f"""
+
+        **FOLLOW-UP CONTEXT** (Attempt #{followup_context.attempt_number}):
+        This is a follow-up question after {followup_context.attempt_number - 1} previous attempt(s).
+
+        Previous Scores: {', '.join(f'{score:.1f}' for score in followup_context.previous_scores)}
+        Average Previous Score: {followup_context.average_previous_score:.1f}
+
+        Persistent Gaps from Previous Attempts:
+        {chr(10).join(f'  - {concept}' for concept in followup_context.get_persistent_gap_concepts())}
+
+        When evaluating this follow-up answer:
+        1. Focus on whether the candidate addressed the persistent gaps above
+        2. Check if they demonstrate learning from previous feedback
+        3. Evaluate both new content AND correction of previous gaps
+        4. Be stricter if they repeat the same mistakes (this is attempt #{followup_context.attempt_number})
+        """
+
+        user_prompt += """
 
         Evaluate this answer and provide:
         1. Overall score (0-100)

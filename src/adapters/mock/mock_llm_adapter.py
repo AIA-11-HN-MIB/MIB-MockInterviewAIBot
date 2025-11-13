@@ -5,6 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from ...domain.models.answer import AnswerEvaluation
+from ...domain.models.evaluation import FollowUpEvaluationContext
 from ...domain.models.question import Question
 from ...domain.ports.llm_port import LLMPort
 
@@ -47,10 +48,18 @@ class MockLLMAdapter(LLMPort):
         question: Question,
         answer_text: str,
         context: dict[str, Any],
+        followup_context: FollowUpEvaluationContext | None = None,
     ) -> AnswerEvaluation:
         """Generate mock evaluation with realistic scores."""
-        # Random score between 70-95 for realistic feel
-        score = random.uniform(70.0, 95.0)
+        # Adjust score based on follow-up context (if provided)
+        if followup_context:
+            # Mock: Lower scores for later attempts (simulate declining patience)
+            base_score = random.uniform(65.0, 85.0)
+            attempt_penalty = (followup_context.attempt_number - 1) * 5
+            score = max(50.0, base_score - attempt_penalty)
+        else:
+            # Random score between 70-95 for realistic feel
+            score = random.uniform(70.0, 95.0)
 
         # Simulate different evaluation patterns based on score
         if score >= 85:

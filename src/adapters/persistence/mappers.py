@@ -201,11 +201,6 @@ class AnswerMapper:
     @staticmethod
     def to_domain(db_model: AnswerModel) -> Answer:
         """Convert database model to domain model."""
-        # Convert evaluation JSONB to AnswerEvaluation if present
-        evaluation = None
-        if db_model.evaluation:
-            evaluation = AnswerEvaluation(**db_model.evaluation)
-
         return Answer(
             id=db_model.id,
             interview_id=db_model.interview_id,
@@ -215,23 +210,16 @@ class AnswerMapper:
             is_voice=db_model.is_voice,
             audio_file_path=db_model.audio_file_path,
             duration_seconds=db_model.duration_seconds,
-            evaluation=evaluation,
             embedding=list(db_model.embedding) if db_model.embedding else None,
             metadata=dict(db_model.answer_metadata) if db_model.answer_metadata else {},
-            similarity_score=db_model.similarity_score,
-            gaps=dict(db_model.gaps) if db_model.gaps else None,
+            evaluation_id=db_model.evaluation_id,  # NEW: Link to Evaluation entity
+            voice_metrics=None,  # Not persisted yet
             created_at=db_model.created_at,
-            evaluated_at=db_model.evaluated_at,
         )
 
     @staticmethod
     def to_db_model(domain_model: Answer) -> AnswerModel:
         """Convert domain model to database model."""
-        # Convert AnswerEvaluation to dict for JSONB storage
-        evaluation_dict = None
-        if domain_model.evaluation:
-            evaluation_dict = domain_model.evaluation.model_dump()
-
         return AnswerModel(
             id=domain_model.id,
             interview_id=domain_model.interview_id,
@@ -241,13 +229,10 @@ class AnswerMapper:
             is_voice=domain_model.is_voice,
             audio_file_path=domain_model.audio_file_path,
             duration_seconds=domain_model.duration_seconds,
-            evaluation=evaluation_dict,
             embedding=domain_model.embedding,
             answer_metadata=domain_model.metadata,
-            similarity_score=domain_model.similarity_score,
-            gaps=domain_model.gaps,
+            evaluation_id=domain_model.evaluation_id,  # NEW
             created_at=domain_model.created_at,
-            evaluated_at=domain_model.evaluated_at,
         )
 
     @staticmethod

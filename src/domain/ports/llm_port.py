@@ -5,6 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from ..models.answer import AnswerEvaluation
+from ..models.evaluation import FollowUpEvaluationContext
 from ..models.question import Question
 
 
@@ -45,6 +46,7 @@ class LLMPort(ABC):
         question: Question,
         answer_text: str,
         context: dict[str, Any],
+        followup_context: FollowUpEvaluationContext | None = None,
     ) -> AnswerEvaluation:
         """Evaluate a candidate's answer.
 
@@ -52,6 +54,9 @@ class LLMPort(ABC):
             question: The question that was asked
             answer_text: Candidate's answer
             context: Additional context for evaluation
+            followup_context: Optional context for follow-up question evaluation.
+                Includes previous evaluations, cumulative gaps, attempt number.
+                Used to provide LLM with history and apply attempt-based penalties.
 
         Returns:
             Evaluation results with score and feedback
