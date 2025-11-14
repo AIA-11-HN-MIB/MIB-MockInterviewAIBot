@@ -5,7 +5,8 @@ from uuid import UUID
 from ...domain.models.cv_analysis import CVAnalysis
 from ...domain.ports.cv_analyzer_port import CVAnalyzerPort
 from ...domain.ports.vector_search_port import VectorSearchPort
-
+from ...domain.ports.candidate_repository_port import CandidateRepositoryPort
+from ...domain.ports.cv_analysis_repository_port import CVAnalysisRepositoryPort
 
 class AnalyzeCVUseCase:
     """Use case for analyzing a candidate's CV.
@@ -21,6 +22,8 @@ class AnalyzeCVUseCase:
         self,
         cv_analyzer: CVAnalyzerPort,
         vector_search: VectorSearchPort,
+        candidate_repository_port: CandidateRepositoryPort,
+        cv_analysis_repository_port: CVAnalysisRepositoryPort,
     ):
         """Initialize use case with required ports.
 
@@ -30,7 +33,9 @@ class AnalyzeCVUseCase:
         """
         self.cv_analyzer = cv_analyzer
         self.vector_search = vector_search
-
+        self.candidate_repository_port = candidate_repository_port
+        self.cv_analysis_repository_port = cv_analysis_repository_port
+    
     async def execute(
         self,
         cv_file_path: str,
@@ -54,32 +59,23 @@ class AnalyzeCVUseCase:
             candidate_id=str(candidate_id),
         )
 
-        # Step 2: Generate embedding for the CV
-        # Combine key information for embedding
-        cv_text_for_embedding = f"""
-        Summary: {cv_analysis.summary}
-        Skills: {', '.join([skill.name for skill in cv_analysis.skills])}
-        Experience: {cv_analysis.work_experience_years} years
-        Education: {cv_analysis.education_level}
-        Difficulty: {cv_analysis.suggested_difficulty}
-        """.strip()
+        extracted_text = cv_analysis.extracted_text
+        # print(extracted_text)
 
-        embedding = await self.vector_search.get_embedding(cv_text_for_embedding)
-        cv_analysis.embedding = embedding
-        metadata = cv_analysis.metadata
-
-        # Step 3: Store embedding in vector database for future question matching
-        await self.vector_search.store_cv_embedding(
-            cv_analysis_id=cv_analysis.id,
-            embedding=embedding,
-            # metadata={
-            #     "candidate_id": str(candidate_id),
-            #     "skills": [skill.name for skill in cv_analysis.skills],
-            #     "experience_years": cv_analysis.work_experience_years,
-            #     "education": cv_analysis.education_level,
-            #     "suggested_difficulty": cv_analysis.suggested_difficulty,
-            # },
-            metadata = metadata
+        candidate = await self.cv_analyzer.generate_candidate_from_summary(
+            extracted_info = extracted_text,
+            cv_file_path = cv_file_path,
+            candidate_id = str(candidate_id)
         )
+
+        # print(candidate)
+
+        try:
+            saved_candidate = await self.candidate_repository_port.save(candidate)
+            print("Candidate saved:", saved_candidate.id)
+            saved_cv_info = await self.cv_analysis_repository_port.save(cv_analysis)
+            print("CV analysis saved:", saved_cv_info.id)
+        except Exception as e:
+            print("Error saving candidate: ", e)
 
         return cv_analysis

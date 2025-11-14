@@ -9,6 +9,7 @@ import json
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings
 from ...domain.ports.vector_search_port import VectorSearchPort
+from ...infrastructure.config import Settings
 
 load_dotenv()
 
@@ -18,12 +19,12 @@ QUESTION_COLLECTION_NAME = "question_embedding"
 
 
 chromaDB_client = chromadb.PersistentClient(path=CHROMA_PATH)
-cv_collection = chromaDB_client.get_or_create_collection(name=CV_COLLECTION_NAME, namespace="cv_process")
-question_collection = chromaDB_client.get_or_create_collection(name=QUESTION_COLLECTION_NAME, namespace="question_process")
-
+cv_collection = chromaDB_client.get_or_create_collection(name=CV_COLLECTION_NAME)
+question_collection = chromaDB_client.get_or_create_collection(name=QUESTION_COLLECTION_NAME)
+settings = Settings()
 embedding_client = OpenAIEmbeddings(
-    model="text-embedding-3-small",
-    api_key = os.getenv("TEXT_EMBEDDING_API_KEY"),
+    model=settings.openai_embedding_model,
+    api_key = settings.openai_embedding_api_key,
     dimensions=1536,
     max_retries=3,
     request_timeout=30
@@ -121,39 +122,6 @@ class ChromaAdapter(VectorSearchPort):
             print(f"Error finding similar questions: {e}")
             return None
         
-    """
-    This method calculate similarity between answer and given answer
-    """
-    async def find_similar_answers(self, answer_embedding: list[float], reference_embeddings: list[list[float]]):
-        results = question_collection.query(
-        query_embeddings=reference_embeddings,
-        n_results=1,                            
-        where={"answer": {"$exists": True}},    
-        include=["embeddings", "metadatas"]
-        )
-
-        embeddings_nested = results["embeddings"]
-        embeddings = [
-            embedding
-            for embedding_list in embeddings_nested
-            for embedding in embedding_list
-        ]
-
-        ref_array = np.array(embeddings, dtype=np.float32)
-        ans_array = np.array(answer_embedding, dtype=np.float32).reshape(1, -1)
-        ref_norms = np.linalg.norm(ref_array, axis=1, keepdims=True)
-        ans_norm = np.linalg.norm(ans_array)
-
-        if ans_norm == 0 or np.any(ref_norms == 0):
-            return 0.0
-
-        ref_normalized = ref_array / ref_norms
-        ans_normalized = ans_array / ans_norm
-
-        similarities = np.dot(ref_normalized, ans_normalized.T).flatten()
-
-        return float(np.max(similarities))
-        
     async def store_question_embedding(self, question_id: UUID, embedding: list[float], metadatas: dict[str, Any]):
         try:
             question_collection.add(
@@ -163,3 +131,6 @@ class ChromaAdapter(VectorSearchPort):
             )
         except Exception as e:
             print(f"Error storing question embedding: {e}")
+
+    async def find_similar_answers(self, answer_embedding: list[float], reference_embeddings: list[list[float]]) -> float:
+        return await super().find_similar_answers(answer_embedding, reference_embeddings)
