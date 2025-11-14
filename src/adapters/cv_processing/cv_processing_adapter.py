@@ -89,18 +89,15 @@ class CVProcessingAdapter(CVAnalyzerPort):
             self,
             embedding_model:str="text-embedding-3-small",
             model:str="gpt-4o-mini",
-            vector_db: VectorSearchPort = None,
             candidate_repository_port: CandidateRepositoryPort = None):
 
         self.settings  = Settings()
         self.embedding_model = embedding_model or self.settings.openai_embedding_model or "text-embedding-3-small"
         self.preprocessing = CVEmbeddingPreprocessor()
         self.model = model
-        self.vector_db = vector_db
         self.candidate_repository_port = candidate_repository_port
 
     SKILL_PATTERNS = load_skill_patterns()
-    
     @staticmethod
     def read_cv(file_path: str) -> str:
         if file_path.lower().endswith('.pdf'):
@@ -127,6 +124,7 @@ class CVProcessingAdapter(CVAnalyzerPort):
             Response format (as a valid JSON object with these exact keys):
             {{
             "candidate_name": "string",
+            "email": "string",
             "summary": "string",
             "job_level": "string",
             "experience": "experience (total worked year (form start to {date}))" (float number only),
@@ -207,28 +205,25 @@ class CVProcessingAdapter(CVAnalyzerPort):
 
     async def generate_candidate_from_summary(
         self,
-        summary_info: str,
+        extracted_info: str,
         cv_file_path: str,
         candidate_id: UUID
     ) -> Candidate:
         """
-        Generate a Candidate object from CV summary information using GPT-4o-mini.
+        Generate a Candidate object from CV extracted information using GPT-4o-mini.
 
         Args:
-        summary_info: JSON string containing CV summary information
+        extracted_info: JSON string containing CV extracted information
         cv_file_path: Path to the candidate's CV file
         
         Returns:
             Candidate: Populated Candidate object
         """
         try:
-            # Parse the summary info
-            summary = json.loads(summary_info)
-            
             # Prepare the prompt for GPT-4o-mini
             prompt = f"""
-            Extract candidate information from the following CV summary:
-            {summary}
+            Extract candidate information from the following CV extracted_info:
+            {extracted_info}
             
             Return a JSON object with the following structure:
             {{
@@ -252,10 +247,9 @@ class CVProcessingAdapter(CVAnalyzerPort):
             ],
             response_format={"type": "json_object"},
             temperature=0.2  # Keep it deterministic
-        )
-        
+            )
             # Parse the response
-            candidate_data = json.loads(response.choices[0].message.content)
+            candidate_data = json.loads(response.choices[0].message.content.strip())
             # Create and return the Candidate object
             return Candidate(
                 id=candidate_id,
@@ -275,7 +269,7 @@ class CVProcessingAdapter(CVAnalyzerPort):
             cv_file_path=cv_file_path
         )
     
-    async def analyze_cv(self, cv_file_path: str, candidate_id: str) -> CVAnalysis:
+    async def analyze_cv(self, cv_file_path: str, candidate_id: UUID) -> CVAnalysis:
         cv_text = self.read_cv(cv_file_path)
         try:
             summary_info = await self.generate_cv_info_from_text(cv_text)
@@ -286,7 +280,11 @@ class CVProcessingAdapter(CVAnalyzerPort):
         job_rank = json.loads(summary_info).get("job_level", "N/A")
         # print(job_rank)
         skills_name = json.loads(summary_info).get("skills", [])
-        skills = [ExtractedSkill(skill=skill, category="technical") for skill in skills_name]
+        print("Extracted skills:", skills_name)
+        skills = [
+            ExtractedSkill(skill=skill, category="technical")
+            for skill in skills_name
+        ]
         # print(skills)
         experience_years = json.loads(summary_info).get("experience")
         # print(experience_years)
@@ -294,7 +292,10 @@ class CVProcessingAdapter(CVAnalyzerPort):
         # print(education_level)
 
         try:
-            suggested_topics = await self.generate_interview_topics(skills_name, job_rank, experience_years)
+            suggested_topics = await self.generate_interview_topics(
+                skills_name, 
+                job_rank, 
+                experience_years)
             # print("suggested_topics: ", suggested_topics)
         except Exception as e:
             print("Error generating topics: ", e)
@@ -306,20 +307,15 @@ class CVProcessingAdapter(CVAnalyzerPort):
             print("Error generating difficulty: ", e)
 
         try:
-            metadata = self.preprocessing.create_metadata_from_summary(summary=summary_info, difficulty=suggested_difficulty)
+            metadata = self.preprocessing.create_metadata_from_summary(
+                summary=summary_info, 
+                difficulty=suggested_difficulty)
             # print(metadata)
         except Exception as e:
             print("Error creating metadata: ", e)
         
-        candidate = await self.generate_candidate_from_summary(summary_info, cv_file_path, candidate_id)
-        try:
-            saved_candidate = await self.candidate_repository_port.save(self, candidate)
-            print("Candidate saved:", saved_candidate.id)
-        except Exception as e:
-            print("Error saving candidate: ", e)
-
         return CVAnalysis(
-            candidate_id=candidate.id,
+            candidate_id=candidate_id,
             cv_file_path=cv_file_path,
             extracted_text=cv_text,
             skills=skills,

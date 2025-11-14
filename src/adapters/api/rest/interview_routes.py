@@ -14,6 +14,7 @@ from ....application.dto.interview_dto import (
 )
 from ....application.use_cases.get_next_question import GetNextQuestionUseCase
 from ....application.use_cases.plan_interview import PlanInterviewUseCase
+from ....application.use_cases.analyze_cv import AnalyzeCVUseCase
 from ....domain.models.interview import InterviewStatus
 from ....infrastructure.config.settings import get_settings
 from ....infrastructure.database.session import get_async_session
@@ -57,8 +58,14 @@ async def upload_cv(
         candidate_id = uuid.uuid4()
         container = get_container()
         cv_analyzer = container.cv_analyzer_port()
-        cv_analysis = await cv_analyzer.analyze_cv(file_path, candidate_id)
 
+        cv_analysis_use_case = AnalyzeCVUseCase(
+            cv_analyzer=cv_analyzer,
+            vector_search=container.vector_search_port(),
+            candidate_repository_port=container.contcandidate_repository_port(session),
+            cv_analysis_repository_port=container.cv_analysis_repository_port(session),
+        )
+        cv_analysis = await cv_analysis_use_case.execute(file_path, candidate_id)
         return cv_analysis
 
     except Exception as e:
