@@ -143,7 +143,6 @@ class Interview(BaseModel):
             answer_id: ID of the answer to add
         """
         self.answer_ids.append(answer_id)
-        self.current_question_index += 1
         self.updated_at = datetime.utcnow()
 
     def has_more_questions(self) -> bool:
@@ -269,6 +268,7 @@ class Interview(BaseModel):
 
         # Reset follow-up tracking
         self.current_parent_question_id = None
+        self.current_question_index += 1
         self.current_followup_count = 0
         now = datetime.utcnow()
 

@@ -243,17 +243,11 @@ class AnswerMapper:
         db_model.audio_file_path = domain_model.audio_file_path
         db_model.duration_seconds = domain_model.duration_seconds
 
-        # Convert evaluation to dict if present
-        if domain_model.evaluation:
-            db_model.evaluation = domain_model.evaluation.model_dump()
-        else:
-            db_model.evaluation = None
+        # Link to evaluation entity (FK reference only)
+        db_model.evaluation_id = domain_model.evaluation_id
 
         db_model.embedding = domain_model.embedding
         db_model.answer_metadata = domain_model.metadata
-        db_model.similarity_score = domain_model.similarity_score
-        db_model.gaps = domain_model.gaps
-        db_model.evaluated_at = domain_model.evaluated_at
 
 
 class CVAnalysisMapper:

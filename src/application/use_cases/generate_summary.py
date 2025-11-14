@@ -5,9 +5,11 @@ from typing import Any
 from uuid import UUID
 
 from ...domain.models.answer import Answer
+from ...domain.models.evaluation import Evaluation
 from ...domain.models.interview import Interview
 from ...domain.models.question import Question
 from ...domain.ports.answer_repository_port import AnswerRepositoryPort
+from ...domain.ports.evaluation_repository_port import EvaluationRepositoryPort
 from ...domain.ports.follow_up_question_repository_port import (
     FollowUpQuestionRepositoryPort,
 )
@@ -29,12 +31,14 @@ class GenerateSummaryUseCase:
         answer_repository: AnswerRepositoryPort,
         question_repository: QuestionRepositoryPort,
         follow_up_question_repository: FollowUpQuestionRepositoryPort,
+        evaluation_repository: EvaluationRepositoryPort,
         llm: LLMPort,
     ):
         self.interview_repo = interview_repository
         self.answer_repo = answer_repository
         self.question_repo = question_repository
         self.follow_up_repo = follow_up_question_repository
+        self.evaluation_repo = evaluation_repository
         self.llm = llm
 
     async def execute(self, interview_id: UUID) -> dict[str, Any]:
@@ -70,18 +74,21 @@ class GenerateSummaryUseCase:
         # Fetch all answers (main + follow-ups)
         all_answers = await self.answer_repo.get_by_interview_id(interview_id)
 
+        # Load evaluations for all answers from evaluations table
+        evaluations_map = await self._load_evaluations(all_answers)
+
         # Group answers by main question
         question_groups = await self._group_answers_by_main_question(interview, all_answers)
 
-        # Calculate aggregate metrics
-        metrics = self._calculate_aggregate_metrics(all_answers)
+        # Calculate aggregate metrics using evaluations
+        metrics = self._calculate_aggregate_metrics(all_answers, evaluations_map)
 
-        # Analyze gap progression
-        gap_progression = await self._analyze_gap_progression(question_groups)
+        # Analyze gap progression using evaluations
+        gap_progression = await self._analyze_gap_progression(question_groups, evaluations_map)
 
-        # Generate LLM-powered recommendations
+        # Generate LLM-powered recommendations using evaluations
         recommendations = await self._generate_recommendations(
-            interview, all_answers, gap_progression
+            interview, all_answers, gap_progression, evaluations_map
         )
 
         return {
@@ -91,7 +98,7 @@ class GenerateSummaryUseCase:
             "speaking_score_avg": metrics["speaking_avg"],
             "total_questions": len(interview.question_ids),
             "total_follow_ups": len(interview.adaptive_follow_ups),
-            "question_summaries": await self._create_question_summaries(question_groups),
+            "question_summaries": await self._create_question_summaries(question_groups, evaluations_map),
             "gap_progression": gap_progression,
             "strengths": recommendations["strengths"],
             "weaknesses": recommendations["weaknesses"],
@@ -144,11 +151,33 @@ class GenerateSummaryUseCase:
 
         return groups
 
-    def _calculate_aggregate_metrics(self, all_answers: list[Answer]) -> dict[str, float]:
-        """Calculate aggregate scores.
+    async def _load_evaluations(self, answers: list[Answer]) -> dict[UUID, Evaluation]:
+        """Load evaluations for all answers from evaluations table.
+
+        Args:
+            answers: List of answers
+
+        Returns:
+            Dict mapping answer_id to Evaluation
+        """
+        evaluations_map = {}
+        for answer in answers:
+            if answer.evaluation_id:
+                evaluation = await self.evaluation_repo.get_by_id(answer.evaluation_id)
+                if evaluation:
+                    evaluations_map[answer.id] = evaluation
+        return evaluations_map
+
+    def _calculate_aggregate_metrics(
+        self,
+        all_answers: list[Answer],
+        evaluations_map: dict[UUID, Evaluation]
+    ) -> dict[str, float]:
+        """Calculate aggregate scores using evaluations from evaluations table.
 
         Args:
             all_answers: All answers (main + follow-ups)
+            evaluations_map: Dict mapping answer_id to Evaluation
 
         Returns:
             Dict with keys:
@@ -156,7 +185,10 @@ class GenerateSummaryUseCase:
                 - theoretical_avg: Average of theoretical scores
                 - speaking_avg: Average of speaking scores
         """
-        evaluated_answers = [a for a in all_answers if a.is_evaluated()]
+        evaluated_answers = [
+            a for a in all_answers
+            if a.is_evaluated() and a.id in evaluations_map
+        ]
 
         if not evaluated_answers:
             return {
@@ -165,9 +197,11 @@ class GenerateSummaryUseCase:
                 "speaking_avg": 0.0,
             }
 
-        # Theoretical score (from evaluation)
+        # Theoretical score (from evaluation in evaluations table)
         theoretical_scores = [
-            a.evaluation.score for a in evaluated_answers if a.evaluation is not None
+            evaluations_map[a.id].final_score
+            for a in evaluated_answers
+            if a.id in evaluations_map
         ]
 
         # Speaking score (from voice metrics)
@@ -190,12 +224,15 @@ class GenerateSummaryUseCase:
         }
 
     async def _analyze_gap_progression(
-        self, question_groups: dict[UUID, dict[str, Any]]
+        self,
+        question_groups: dict[UUID, dict[str, Any]],
+        evaluations_map: dict[UUID, Evaluation]
     ) -> dict[str, Any]:
-        """Analyze how gaps changed after follow-ups.
+        """Analyze how gaps changed after follow-ups using evaluations table.
 
         Args:
             question_groups: Grouped answers by main question
+            evaluations_map: Dict mapping answer_id to Evaluation
 
         Returns:
             Dict with keys:
@@ -226,10 +263,18 @@ class GenerateSummaryUseCase:
             questions_with_followups += 1
             total_followups += len(follow_up_answers)
 
-            # Compare initial gaps vs final gaps
-            initial_gaps = set(main_answer.gaps.get("concepts", []) if main_answer.gaps else [])
+            # Get initial gaps from main answer's evaluation in evaluations table
+            initial_gaps = set()
+            if main_answer.id in evaluations_map:
+                main_evaluation = evaluations_map[main_answer.id]
+                initial_gaps = {gap.concept for gap in main_evaluation.gaps if not gap.resolved}
+
+            # Get final gaps from last follow-up answer's evaluation in evaluations table
             final_answer = follow_up_answers[-1]
-            final_gaps = set(final_answer.gaps.get("concepts", []) if final_answer.gaps else [])
+            final_gaps = set()
+            if final_answer.id in evaluations_map:
+                final_evaluation = evaluations_map[final_answer.id]
+                final_gaps = {gap.concept for gap in final_evaluation.gaps if not gap.resolved}
 
             gaps_filled += len(initial_gaps - final_gaps)
             gaps_remaining += len(final_gaps)
@@ -250,13 +295,15 @@ class GenerateSummaryUseCase:
         interview: Interview,
         all_answers: list[Answer],
         gap_progression: dict[str, Any],
+        evaluations_map: dict[UUID, Evaluation],
     ) -> dict[str, list[str]]:
-        """Use LLM to generate personalized recommendations.
+        """Use LLM to generate personalized recommendations using evaluations table.
 
         Args:
             interview: Interview entity
             all_answers: All answers
             gap_progression: Gap progression analysis
+            evaluations_map: Dict mapping answer_id to Evaluation
 
         Returns:
             Dict with keys:
@@ -272,24 +319,27 @@ class GenerateSummaryUseCase:
             "evaluations": [
                 {
                     "question_id": str(a.question_id),
-                    "score": a.evaluation.score,
-                    "strengths": a.evaluation.strengths,
-                    "weaknesses": a.evaluation.weaknesses,
+                    "score": evaluations_map[a.id].final_score,
+                    "strengths": evaluations_map[a.id].strengths,
+                    "weaknesses": evaluations_map[a.id].weaknesses,
                 }
                 for a in all_answers
-                if a.is_evaluated() and a.evaluation is not None
+                if a.is_evaluated() and a.id in evaluations_map
             ],
         }
 
         return await self.llm.generate_interview_recommendations(context)
 
     async def _create_question_summaries(
-        self, question_groups: dict[UUID, dict[str, Any]]
+        self,
+        question_groups: dict[UUID, dict[str, Any]],
+        evaluations_map: dict[UUID, Evaluation]
     ) -> list[dict[str, Any]]:
-        """Create per-question analysis.
+        """Create per-question analysis using evaluations table.
 
         Args:
             question_groups: Grouped answers by main question
+            evaluations_map: Dict mapping answer_id to Evaluation
 
         Returns:
             List of dicts with keys:
@@ -308,28 +358,29 @@ class GenerateSummaryUseCase:
             main_answer = group["main_answer"]
             follow_up_answers = group["follow_up_answers"]
 
-            initial_gaps = (
-                main_answer.gaps.get("concepts", []) if main_answer and main_answer.gaps else []
-            )
+            # Get initial gaps from main answer's evaluation in evaluations table
+            initial_gaps = []
+            if main_answer and main_answer.id in evaluations_map:
+                main_evaluation = evaluations_map[main_answer.id]
+                initial_gaps = [gap.concept for gap in main_evaluation.gaps if not gap.resolved]
+
             final_gaps = initial_gaps
 
             if follow_up_answers:
                 final_answer = follow_up_answers[-1]
-                final_gaps = (
-                    final_answer.gaps.get("concepts", [])
-                    if final_answer and final_answer.gaps
-                    else []
-                )
+                if final_answer.id in evaluations_map:
+                    final_evaluation = evaluations_map[final_answer.id]
+                    final_gaps = [gap.concept for gap in final_evaluation.gaps if not gap.resolved]
+
+            main_answer_score = 0.0
+            if main_answer and main_answer.id in evaluations_map:
+                main_answer_score = evaluations_map[main_answer.id].final_score
 
             summaries.append(
                 {
                     "question_id": str(main_question_id),
                     "question_text": question.text if question else "Unknown",
-                    "main_answer_score": (
-                        main_answer.evaluation.score
-                        if main_answer and main_answer.is_evaluated()
-                        else 0.0
-                    ),
+                    "main_answer_score": main_answer_score,
                     "follow_up_count": len(follow_up_answers),
                     "initial_gaps": initial_gaps,
                     "final_gaps": final_gaps,

@@ -20,6 +20,7 @@ from ....application.use_cases.process_answer_adaptive import (
     ProcessAnswerAdaptiveUseCase,
 )
 from ....domain.models.answer import Answer
+from ....domain.models.evaluation import Evaluation
 from ....domain.models.follow_up_question import FollowUpQuestion
 from ....domain.ports.answer_repository_port import AnswerRepositoryPort
 from ....domain.ports.follow_up_question_repository_port import (
@@ -27,6 +28,7 @@ from ....domain.ports.follow_up_question_repository_port import (
 )
 from ....domain.ports.interview_repository_port import InterviewRepositoryPort
 from ....domain.ports.question_repository_port import QuestionRepositoryPort
+from ....domain.ports.evaluation_repository_port import EvaluationRepositoryPort
 from ....infrastructure.database.session import get_async_session
 
 logger = logging.getLogger(__name__)
@@ -181,6 +183,7 @@ class InterviewSessionOrchestrator:
             question_repo = self.container.question_repository_port(session)
             answer_repo = self.container.answer_repository_port(session)
             follow_up_repo = self.container.follow_up_question_repository(session)
+            evaluation_repo = self.container.evaluation_repository_port(session)
 
             # Load fresh interview state
             interview = await self._get_interview_or_raise(interview_repo)
@@ -195,6 +198,7 @@ class InterviewSessionOrchestrator:
             # Process answer with adaptive evaluation (triggers state transition inside use case)
             use_case = ProcessAnswerAdaptiveUseCase(
                 answer_repository=answer_repo,
+                evaluation_repository=evaluation_repo,
                 interview_repository=interview_repo,
                 question_repository=question_repo,
                 follow_up_question_repository=follow_up_repo,
@@ -202,14 +206,14 @@ class InterviewSessionOrchestrator:
                 vector_search=self.container.vector_search_port(),
             )
 
-            answer, has_more = await use_case.execute(
+            answer, evaluation, has_more = await use_case.execute(
                 interview_id=self.interview_id,
                 question_id=current_question_id,
                 answer_text=answer_text,
             )
 
             # Send evaluation
-            await self._send_evaluation(answer)
+            await self._send_evaluation(answer, evaluation)
 
             # Reload interview (state may have changed in use case)
             interview = await self._get_interview_or_raise(interview_repo)
@@ -217,6 +221,7 @@ class InterviewSessionOrchestrator:
             # Make follow-up decision
             decision_use_case = FollowUpDecisionUseCase(
                 answer_repository=answer_repo,
+                evaluation_repository=evaluation_repo,
                 follow_up_question_repository=follow_up_repo,
             )
 
@@ -224,6 +229,7 @@ class InterviewSessionOrchestrator:
                 interview_id=self.interview_id,
                 parent_question_id=current_question_id,  # Current question is the parent
                 latest_answer=answer,
+                latest_evaluation=evaluation,
             )
 
             logger.info(
@@ -234,7 +240,7 @@ class InterviewSessionOrchestrator:
             # If follow-up needed, generate and send
             if decision["needs_followup"]:
                 await self._generate_and_send_followup(
-                    answer, decision, question_repo, follow_up_repo, interview_repo, current_question_id
+                    answer, evaluation, decision, question_repo, follow_up_repo, interview_repo, current_question_id
                 )
                 break
 
@@ -243,7 +249,7 @@ class InterviewSessionOrchestrator:
                 await self._send_next_main_question(interview_repo, question_repo)
             else:
                 await self._complete_interview(
-                    interview_repo, answer_repo, question_repo, follow_up_repo
+                    interview_repo, answer_repo, question_repo, follow_up_repo, evaluation_repo
                 )
 
             break
@@ -265,6 +271,7 @@ class InterviewSessionOrchestrator:
             question_repo = self.container.question_repository_port(session)
             answer_repo = self.container.answer_repository_port(session)
             follow_up_repo = self.container.follow_up_question_repository(session)
+            evaluation_repo = self.container.evaluation_repository_port(session)
 
             # Load fresh interview state
             interview = await self._get_interview_or_raise(interview_repo)
@@ -284,6 +291,7 @@ class InterviewSessionOrchestrator:
             # Process answer (triggers state transition inside use case)
             use_case = ProcessAnswerAdaptiveUseCase(
                 answer_repository=answer_repo,
+                evaluation_repository=evaluation_repo,
                 interview_repository=interview_repo,
                 question_repository=question_repo,
                 follow_up_question_repository=follow_up_repo,
@@ -291,14 +299,14 @@ class InterviewSessionOrchestrator:
                 vector_search=self.container.vector_search_port(),
             )
 
-            answer, has_more = await use_case.execute(
+            answer, evaluation, has_more = await use_case.execute(
                 interview_id=self.interview_id,
                 question_id=current_followup_id,
                 answer_text=answer_text,
             )
 
             # Send evaluation
-            await self._send_evaluation(answer)
+            await self._send_evaluation(answer, evaluation)
 
             # Reload interview
             interview = await self._get_interview_or_raise(interview_repo)
@@ -306,6 +314,7 @@ class InterviewSessionOrchestrator:
             # Make follow-up decision (using parent question ID)
             decision_use_case = FollowUpDecisionUseCase(
                 answer_repository=answer_repo,
+                evaluation_repository=evaluation_repo,
                 follow_up_question_repository=follow_up_repo,
             )
 
@@ -313,6 +322,7 @@ class InterviewSessionOrchestrator:
                 interview_id=self.interview_id,
                 parent_question_id=parent_question_id,
                 latest_answer=answer,
+                latest_evaluation=evaluation,
             )
 
             logger.info(
@@ -323,7 +333,7 @@ class InterviewSessionOrchestrator:
             # If another follow-up needed, generate and send
             if decision["needs_followup"]:
                 await self._generate_and_send_followup(
-                    answer, decision, question_repo, follow_up_repo, interview_repo, parent_question_id
+                    answer, evaluation, decision, question_repo, follow_up_repo, interview_repo, parent_question_id
                 )
                 break
 
@@ -332,7 +342,7 @@ class InterviewSessionOrchestrator:
                 await self._send_next_main_question(interview_repo, question_repo)
             else:
                 await self._complete_interview(
-                    interview_repo, answer_repo, question_repo, follow_up_repo
+                    interview_repo, answer_repo, question_repo, follow_up_repo, evaluation_repo
                 )
 
             break
@@ -340,6 +350,7 @@ class InterviewSessionOrchestrator:
     async def _generate_and_send_followup(
         self,
         answer: Answer,
+        evaluation: Evaluation,
         decision: dict[str, Any],
         question_repo: QuestionRepositoryPort,
         follow_up_repo: FollowUpQuestionRepositoryPort,
@@ -350,6 +361,7 @@ class InterviewSessionOrchestrator:
 
         Args:
             answer: Latest answer entity
+            evaluation: Latest evaluation entity
             decision: Follow-up decision dict
             question_repo: Question repository
             follow_up_repo: Follow-up question repository
@@ -359,12 +371,27 @@ class InterviewSessionOrchestrator:
         # Get parent question for context
         parent_question = await question_repo.get_by_id(parent_question_id)
 
+        # Determine severity from evaluation gaps (use highest severity, default to moderate)
+        severity = "moderate"
+        if evaluation.gaps:
+            # Find highest severity from unresolved gaps
+            # Use string comparison to avoid import issues (GapSeverity is a str Enum)
+            severity_order = {"major": 3, "moderate": 2, "minor": 1}
+            unresolved_gaps = [gap for gap in evaluation.gaps if not gap.resolved]
+            if unresolved_gaps:
+                # GapSeverity is a str Enum, so str(g.severity) gives the value
+                highest_severity = max(
+                    unresolved_gaps,
+                    key=lambda g: severity_order.get(str(g.severity).lower(), 0)
+                )
+                severity = str(highest_severity.severity)
+
         # Generate follow-up question with cumulative context
         follow_up_text = await self.container.llm_port().generate_followup_question(
             parent_question=parent_question.text if parent_question else "Unknown",
             answer_text=answer.text,
             missing_concepts=decision["cumulative_gaps"],
-            severity=answer.gaps.get("severity", "moderate") if answer.gaps else "moderate",
+            severity=severity,
             order=decision["follow_up_count"] + 1,
             cumulative_gaps=decision["cumulative_gaps"],
         )
@@ -436,7 +463,7 @@ class InterviewSessionOrchestrator:
 
         if not question:
             logger.warning(f"No more questions for interview {self.interview_id}")
-            await self._complete_interview(interview_repo, None)
+            await self._complete_interview(interview_repo, None, None, None, None)
             return
 
         # Reload interview for updated index
@@ -476,6 +503,7 @@ class InterviewSessionOrchestrator:
         answer_repo: AnswerRepositoryPort | None,
         question_repo: QuestionRepositoryPort | None = None,
         follow_up_repo: FollowUpQuestionRepositoryPort | None = None,
+        evaluation_repo: EvaluationRepositoryPort | None = None,
     ) -> None:
         """Complete interview using domain methods, generate summary, send results.
 
@@ -486,6 +514,7 @@ class InterviewSessionOrchestrator:
             answer_repo: Answer repository (optional)
             question_repo: Question repository (optional, for summary generation)
             follow_up_repo: Follow-up question repository (optional, for summary)
+            evaluation_repo: Evaluation repository (optional, for summary)
         """
 
         # Get LLM for summary generation
@@ -497,6 +526,7 @@ class InterviewSessionOrchestrator:
             answer_repository=answer_repo,
             question_repository=question_repo,
             follow_up_question_repository=follow_up_repo,
+            evaluation_repository=evaluation_repo,
             llm=llm,
         )
         interview, summary = await complete_use_case.execute(
@@ -529,10 +559,16 @@ class InterviewSessionOrchestrator:
             if answer_repo:
                 answers = await answer_repo.get_by_interview_id(self.interview_id)
                 if answers:
-                    overall_score = (
-                        sum(a.evaluation.score for a in answers if a.evaluation)
-                        / len(answers)
-                    )
+                    # Get evaluation repository to fetch evaluation entities
+                    evaluation_repo = self.container.evaluation_repository()
+                    scores = []
+                    for answer in answers:
+                        if answer.evaluation_id:
+                            evaluation = await evaluation_repo.get_by_id(answer.evaluation_id)
+                            if evaluation:
+                                scores.append(evaluation.final_score)
+
+                    overall_score = sum(scores) / len(scores) if scores else 0.0
 
             await self._send_message(
                 {
@@ -546,21 +582,21 @@ class InterviewSessionOrchestrator:
 
         logger.info(f"Interview {self.interview_id} completed with summary")
 
-    async def _send_evaluation(self, answer: Answer) -> None:
+    async def _send_evaluation(self, answer: Answer, evaluation: Evaluation) -> None:
         """Send evaluation message.
 
         Args:
-            answer: Answer entity with evaluation
+            answer: Answer entity
+            evaluation: Evaluation entity with scoring data
         """
         eval_message = {
             "type": "evaluation",
             "answer_id": str(answer.id),
-            "score": answer.evaluation.score,
-            "feedback": answer.evaluation.reasoning,
-            "strengths": answer.evaluation.strengths,
-            "weaknesses": answer.evaluation.weaknesses,
-            "similarity_score": answer.similarity_score,
-            "gaps": answer.gaps,
+            "score": evaluation.final_score,
+            "feedback": evaluation.reasoning,
+            "strengths": evaluation.strengths,
+            "weaknesses": evaluation.weaknesses,
+            "gaps": [gap.model_dump(mode="json") for gap in evaluation.gaps],
         }
 
         await self._send_message(eval_message)

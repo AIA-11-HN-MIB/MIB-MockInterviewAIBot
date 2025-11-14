@@ -128,9 +128,13 @@ class ProcessAnswerAdaptiveUseCase:
             )
 
         # Step 5: Create answer (simplified - no embedded evaluation)
+        # For follow-up questions, use parent_question_id to satisfy foreign key constraint
+        # The follow-up question ID will be tracked in the Evaluation instead
+        answer_question_id = parent_question_id if is_followup else question_id
+
         answer = Answer(
             interview_id=interview_id,
-            question_id=question_id,
+            question_id=answer_question_id,  # Use parent question ID for follow-ups
             candidate_id=interview.candidate_id,
             text=answer_text,
             is_voice=bool(audio_file_path),
@@ -176,7 +180,7 @@ class ProcessAnswerAdaptiveUseCase:
         # Step 10: Create Evaluation entity
         evaluation = Evaluation(
             answer_id=answer.id,  # Will link after saving answer
-            question_id=question_id,
+            question_id=question_id,  # Keep follow-up question ID here (no FK constraint)
             interview_id=interview_id,
             raw_score=llm_eval.score,
             penalty=0.0,  # Will be set by apply_penalty()
@@ -228,7 +232,7 @@ class ProcessAnswerAdaptiveUseCase:
 
         # Step 11: Link answer to evaluation
         saved_answer.evaluation_id = saved_evaluation.id
-        saved_answer = await self.answer_repo.save(saved_answer)
+        saved_answer = await self.answer_repo.update(saved_answer)
 
         # Step 12: Update interview
         interview.add_answer(saved_answer.id)
@@ -239,7 +243,7 @@ class ProcessAnswerAdaptiveUseCase:
 
         logger.info(
             f"Answer processed: score={evaluation.final_score:.1f}, "
-            f"similarity={similarity_score:.2f if similarity_score else 'N/A'}, "
+            f"similarity={f'{similarity_score:.2f}' if similarity_score is not None else 'N/A'}, "
             f"gaps={len(evaluation.gaps)}, has_more={has_more}"
         )
 

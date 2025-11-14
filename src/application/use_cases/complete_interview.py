@@ -5,6 +5,7 @@ from uuid import UUID
 
 from ...domain.models.interview import Interview, InterviewStatus
 from ...domain.ports.answer_repository_port import AnswerRepositoryPort
+from ...domain.ports.evaluation_repository_port import EvaluationRepositoryPort
 from ...domain.ports.follow_up_question_repository_port import (
     FollowUpQuestionRepositoryPort,
 )
@@ -23,12 +24,14 @@ class CompleteInterviewUseCase:
         answer_repository: AnswerRepositoryPort | None = None,
         question_repository: QuestionRepositoryPort | None = None,
         follow_up_question_repository: FollowUpQuestionRepositoryPort | None = None,
+        evaluation_repository: EvaluationRepositoryPort | None = None,
         llm: LLMPort | None = None,
     ):
         self.interview_repo = interview_repository
         self.answer_repo = answer_repository
         self.question_repo = question_repository
         self.follow_up_repo = follow_up_question_repository
+        self.evaluation_repo = evaluation_repository
         self.llm = llm
 
     async def execute(
@@ -60,6 +63,7 @@ class CompleteInterviewUseCase:
             and self.answer_repo
             and self.question_repo
             and self.follow_up_repo
+            and self.evaluation_repo
             and self.llm
         ):
             summary_use_case = GenerateSummaryUseCase(
@@ -67,6 +71,7 @@ class CompleteInterviewUseCase:
                 answer_repository=self.answer_repo,
                 question_repository=self.question_repo,
                 follow_up_question_repository=self.follow_up_repo,
+                evaluation_repository=self.evaluation_repo,
                 llm=self.llm,
             )
             summary = await summary_use_case.execute(interview_id)

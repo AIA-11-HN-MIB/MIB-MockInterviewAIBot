@@ -140,6 +140,20 @@ class Evaluation(BaseModel):
             or self.attempt_number == 3
         )
 
+    def is_adaptive_complete(self) -> bool:
+        """Check if answer meets adaptive completion criteria.
+
+        Completion criteria:
+        - similarity_score >= 0.8 OR
+        - no unresolved gaps (has_gaps() returns False)
+
+        Returns:
+            True if answer meets completion criteria, False otherwise
+        """
+        if self.similarity_score is not None and self.similarity_score >= 0.8:
+            return True
+        return not self.has_gaps()
+
 
 @dataclass(frozen=True)
 class FollowUpEvaluationContext:
