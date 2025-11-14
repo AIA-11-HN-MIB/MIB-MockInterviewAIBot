@@ -3,8 +3,9 @@ description: Optimize an existing agent skill
 argument-hint: [skill-name] [prompt]
 ---
 
-Ultrathink. 
+Think harder.
 Use `skill-creator` and `claude-code` skills.
+Use `docs-seeker` skills to search for documentation if needed.
 
 ## Arguments
 SKILL: $1 (default: `*`)

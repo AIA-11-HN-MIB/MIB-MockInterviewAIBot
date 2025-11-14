@@ -85,6 +85,7 @@ Think harder to start working on the following plan follow the Orchestration Pro
 * Report back to user with a summary of the changes and explain everything briefly, guide user to get started and suggest the next steps.
 * Ask the user if they want to commit and push to git repository, if yes, use `git-manager` subagent to commit and push to git repository.
 * Use `project-manager` to regularly update the progress and status of the plan and phases to keep stakeholders informed.
+- **IMPORTANT:** In reports, list any unresolved questions at the end, if any.
 
 **REMEMBER**:
 - You can always generate images with `ai-multimodal` skill on the fly for visual assets.
