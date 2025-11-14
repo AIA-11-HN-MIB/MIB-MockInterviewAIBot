@@ -202,3 +202,7 @@ uploads/
 
 # MyPy cache
 .mypy_cache/
+
+.opencode/
+
+.cursor/

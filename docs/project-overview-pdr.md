@@ -1,9 +1,9 @@
 # Project Overview & Product Development Requirements (PDR)
 
 **Project Name**: Elios AI Interview Service
-**Version**: 0.1.0
-**Last Updated**: 2025-10-31
-**Status**: Active Development
+**Version**: 0.2.1
+**Last Updated**: 2025-11-14
+**Status**: Active Development (Phase 1 Complete)
 **Repository**: https://github.com/elios/elios-ai-service
 
 ## Executive Summary
@@ -105,22 +105,29 @@ Empower candidates to confidently prepare for real interviews by:
 - OpenAI Embeddings (1536 dimensions) for semantic matching
 - Pinecone for vector storage and similarity search
 
-### 2. Adaptive Question Generation
+### 2. Adaptive Question Generation & Follow-Up System
 
 **Core Functionality**:
-- Semantic matching between CV and question bank
-- Dynamic question generation based on context
+- Exemplar-based question generation using vector search
+- Dynamic question creation with similar question inspiration
 - Difficulty progression throughout interview
 - Coverage of multiple skills and topics
-- Follow-up questions based on previous answers
+- **Context-aware follow-up questions** based on detected knowledge gaps
+- **Adaptive evaluation** with parent-child relationship tracking
+- **Break conditions** for follow-up loops (max 3, similarity ≥0.8, no gaps)
 
-**Implementation Status**: ✅ Domain models complete, ✅ Use cases implemented, 🔄 API pending
+**Implementation Status**: ✅ Complete (Phase 1 + Phase 4 Adaptive Answers)
 
 **Technical Approach**:
 - PostgreSQL question bank with metadata
-- Vector similarity search for question selection
-- LLM-powered question generation
-- Context-aware follow-up logic
+- Vector similarity search retrieves 3 exemplar questions
+- Exemplars filtered by question_type, difficulty (similarity >0.5)
+- LLM generates NEW questions inspired by exemplars
+- Questions stored with embeddings for future exemplar searches
+- Graceful fallback: Generate without exemplars if search fails
+- **NEW**: Evaluation entity with parent-child relationships (PARENT_QUESTION, FOLLOW_UP, COMBINED)
+- **NEW**: FollowUpDecisionUseCase implements break conditions and gap accumulation
+- **NEW**: CombineEvaluationUseCase merges parent + follow-up evaluations
 
 ### 3. Real-Time Answer Evaluation
 
@@ -347,17 +354,19 @@ Empower candidates to confidently prepare for real interviews by:
 
 **LLM Providers**:
 - OpenAI GPT-4 (primary) ✅
+- Azure OpenAI (enterprise alternative) ✅
 - Anthropic Claude (planned) ⏳
 - Meta Llama 3 (planned) ⏳
 
 **Vector Databases**:
-- Pinecone (primary) ✅
+- Pinecone (primary, serverless) ✅
+- ChromaDB (local dev, in-memory) ✅
 - Weaviate (alternative) ⏳
-- ChromaDB (local dev) ⏳
 
 **Speech Services**:
-- Azure Speech-to-Text ⏳
-- Microsoft Edge TTS ⏳
+- Azure Speech-to-Text ✅
+- Azure Text-to-Speech ✅
+- Microsoft Edge TTS (fallback) ⏳
 - Google Speech (alternative) ⏳
 
 **Database**:
@@ -424,33 +433,44 @@ Empower candidates to confidently prepare for real interviews by:
 
 ## Project Roadmap
 
-### Phase 1: Foundation (Current - v0.1.0)
-**Status**: 🔄 In Progress
-**Timeline**: 2 months
+### Phase 1: Foundation (v0.1.0 - v0.2.1) - ✅ COMPLETE
+**Status**: ✅ Complete (100%)
+**Timeline**: 2 months (2025-10-01 → 2025-11-14)
 
 **Completed**:
-- ✅ Domain models (Candidate, Interview, Question, Answer, CVAnalysis)
-- ✅ Repository ports (5 interfaces)
-- ✅ PostgreSQL persistence layer (5 repositories)
-- ✅ OpenAI LLM adapter
-- ✅ Pinecone vector database adapter
+- ✅ Domain models (8 entities: Candidate, Interview, Question, Answer, CVAnalysis, Evaluation, ErrorCodes, FollowUpQuestion)
+- ✅ Repository ports (13 interfaces including EvaluationRepositoryPort, FollowUpQuestionRepositoryPort)
+- ✅ PostgreSQL persistence layer (7 repositories)
+- ✅ OpenAI & Azure OpenAI LLM adapters
+- ✅ Pinecone & ChromaDB vector database adapters
+- ✅ Azure Speech services (STT, TTS adapters)
+- ✅ Mock adapters (6 total: LLM, STT, TTS, VectorSearch, CVAnalyzer, Analytics)
 - ✅ Database migrations with Alembic
-- ✅ Use cases (AnalyzeCV, StartInterview)
+- ✅ Use cases (8 total: AnalyzeCV, PlanInterview, GetNextQuestion, ProcessAnswerAdaptive, FollowUpDecision, CombineEvaluation, GenerateSummary, CompleteInterview)
+- ✅ DTOs (interview, answer, websocket, audio)
 - ✅ Configuration management
 - ✅ Dependency injection container
+- ✅ REST API (5 interview endpoints)
+- ✅ WebSocket handler with session orchestrator (state machine pattern)
+- ✅ Domain-driven state management (Interview state machine)
+- ✅ Context-aware evaluation with follow-up questions
+- ✅ Comprehensive interview summary generation
+
+**Architectural Improvements**:
+- ✅ Evaluation refactoring: parent-child relationships (PARENT_QUESTION, FOLLOW_UP, COMBINED types)
+- ✅ State management migration: WebSocket orchestrator → Domain-driven state machine (5 states)
+- ✅ Session orchestrator pattern: 584 lines, 36 unit tests, 85% coverage
+- ✅ JSON extraction from markdown LLM responses
 
 **In Progress**:
-- 🔄 CV processing adapters (spaCy, LangChain)
-- 🔄 Complete REST API implementation
-- 🔄 WebSocket chat handler
-- 🔄 Analytics service
+- 🔄 CV processing adapters (spaCy, document parsing)
 
-**Remaining**:
+**Deferred to Phase 2**:
 - ⏳ Authentication & authorization
 - ⏳ Rate limiting
-- ⏳ Comprehensive testing
-- ⏳ API documentation
-- ⏳ Deployment scripts
+- ⏳ Comprehensive integration testing
+- ⏳ Enhanced API documentation (Swagger)
+- ⏳ Docker deployment scripts
 
 ### Phase 2: Core Features (v0.2.0 - v0.5.0)
 **Timeline**: 3-4 months
@@ -603,7 +623,7 @@ Empower candidates to confidently prepare for real interviews by:
 - [System Architecture](./system-architecture.md)
 - [Codebase Summary](./codebase-summary.md)
 - [Code Standards](./code-standards.md)
-- [API Documentation](./api.md)
+- [API Documentation](./system-architecture.md#api-architecture)
 - [Database Setup Guide](../DATABASE_SETUP.md)
 
 ### External Resources
@@ -624,10 +644,10 @@ Empower candidates to confidently prepare for real interviews by:
 
 ### Appendix B: API Endpoint Summary
 - `/health` - Health check
-- `/api/v1/cv/upload` - Upload and analyze CV
-- `/api/v1/interviews` - Interview CRUD
-- `/api/v1/questions` - Question management
-- `/api/v1/ws/interviews/{id}` - WebSocket chat
+- `/api/cv/upload` - Upload and analyze CV
+- `/api/interviews` - Interview CRUD
+- `/api/questions` - Question management
+- `/api/ws/interviews/{id}` - WebSocket chat
 
 ### Appendix C: Development Setup Summary
 1. Install Python 3.11+

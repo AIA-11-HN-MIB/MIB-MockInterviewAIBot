@@ -1,8 +1,9 @@
 """CV Analysis domain model."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from uuid import UUID, uuid4
+
 from pydantic import BaseModel, Field
 
 
@@ -12,10 +13,10 @@ class ExtractedSkill(BaseModel):
     This is a value object within CV analysis.
     """
 
-    name: str
-    category: str  # e.g., "technical", "soft", "language"
-    proficiency_level: Optional[str] = None  # e.g., "beginner", "intermediate", "expert"
-    years_of_experience: Optional[float] = None
+    name: str = Field(alias="skill")
+    category: str = "technical"  # e.g., "technical", "soft", "language"
+    proficiency_level: str | None = Field(default=None, alias="proficiency")  # e.g., "beginner", "intermediate", "expert"
+    years_of_experience: float | None = Field(default=None, alias="years")
     mentioned_count: int = 1  # How many times mentioned in CV
 
     def is_technical(self) -> bool:
@@ -37,21 +38,22 @@ class CVAnalysis(BaseModel):
     candidate_id: UUID
     cv_file_path: str
     extracted_text: str
-    skills: List[ExtractedSkill] = Field(default_factory=list)
-    work_experience_years: Optional[float] = None
-    education_level: Optional[str] = None  # e.g., "Bachelor's", "Master's"
-    suggested_topics: List[str] = Field(default_factory=list)  # Topics to cover
+    skills: list[ExtractedSkill] = Field(default_factory=list)
+    work_experience_years: float | None = None
+    education_level: str | None = None  # e.g., "Bachelor's", "Master's"
+    suggested_topics: list[str] = Field(default_factory=list)  # Topics to cover
     suggested_difficulty: str = "medium"  # Overall difficulty level
     embedding: Optional[List[float]] = None  # Vector embedding of CV
     summary: Optional[str] = None  # AI-generated summary
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 
     class Config:
         """Pydantic configuration."""
         frozen = False
 
-    def get_technical_skills(self) -> List[ExtractedSkill]:
+    def get_technical_skills(self) -> list[ExtractedSkill]:
         """Get only technical skills.
 
         Returns:
@@ -73,7 +75,7 @@ class CVAnalysis(BaseModel):
             for skill in self.skills
         )
 
-    def get_skill_by_name(self, skill_name: str) -> Optional[ExtractedSkill]:
+    def get_skill_by_name(self, skill_name: str) -> ExtractedSkill | None:
         """Get a skill by name.
 
         Args:
@@ -87,7 +89,7 @@ class CVAnalysis(BaseModel):
                 return skill
         return None
 
-    def get_top_skills(self, limit: int = 5) -> List[ExtractedSkill]:
+    def get_top_skills(self, limit: int = 5) -> list[ExtractedSkill]:
         """Get top skills by mention count.
 
         Args:

@@ -2,18 +2,20 @@
   "includeCoAuthoredBy": false,
   "statusLine": {
     "type": "command",
-    "command": ".claude/statusline.sh",
+    "command": "node .claude/statusline.js",
     "padding": 0
   },
   "hooks": {
     "PreToolUse": [
-      { 
-        "matcher": "Bash", 
+      {
+        "matcher": "Bash",
         "hooks": [
-          { "command":"bash .claude/hooks/scout-block.sh" }
+          {
+            "type": "command",
+            "command":"node .claude/hooks/scout-block.js"
+          }
         ]
       }
     ]
   }
-
 }

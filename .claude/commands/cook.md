@@ -1,5 +1,5 @@
 ---
-description: Implement a feature [step by step]
+description: ⚡⚡⚡ Implement a feature [step by step]
 argument-hint: [tasks]
 ---
 
@@ -37,27 +37,33 @@ Think harder to plan & start working on these tasks follow the Orchestration Pro
 * Ask 1 question at a time, wait for the user to answer before moving to the next question.
 * If you don't have any questions, start the next step.
 
+**IMPORTANT:** Analyze the list of skills  at `.claude/skills/*` and intelligently activate the skills that are needed for the task during the process.
+
 ### Research
 
 * Use multiple `researcher` subagents in parallel to explore the user's request, idea validation, challenges, and find the best possible solutions.
-* Use multiple `scout` subagents in parallel to find related resources, documents, and code snippets in the current codebase.
+* Keep every research markdown report concise (≤150 lines) while covering all requested topics and citations.
+* Use `/scout:ext` (preferred) or `/scout` (fallback) slash command to search the codebase for files needed to complete the task
 
 ### Plan
 
-*. Use `planner` subagent to analyze reports from `researcher` and `scout` subagents to create a implementation plan with TODO tasks in `./plans` directory.
+*. Use `planner` subagent to analyze reports from `researcher` and `scout` subagents to create an implementation plan using the progressive disclosure structure:
+  - Create a directory `plans/YYYYMMDD-HHmm-plan-name` (example: `plans/20251101-1505-authentication-and-profile-implementation`).
+  - Save the overview access point at `plan.md`, keep it generic, under 80 lines, and list each phase with status/progress and links.
+  - For each phase, add `phase-XX-phase-name.md` files containing sections (Context links, Overview with date/priority/statuses, Key Insights, Requirements, Architecture, Related code files, Implementation Steps, Todo list, Success Criteria, Risk Assessment, Security Considerations, Next steps).
 
 ### Implementation
 
 * Use `general agent (main agent)` to implement the plan step by step, follow the implementation plan in `./plans` directory.
 * Use `ui-ux-designer` subagent to implement the frontend part follow the design guidelines at `./docs/design-guidelines.md` file.
-  * Use `gemini-image-gen` skill to generate image assets.
-  * Use `gemini-vision` skill to analyze and verify generated assets.
+  * Use `ai-multimodal` skill to generate image assets.
+  * Use `ai-multimodal` skill to analyze and verify generated assets.
   * Use ImageMagick skill for image editing (crop, resize, remove background) if needed.
 * Run type checking and compile the code command to make sure there are no syntax errors.
 
 ### Testing
 
-* Write the tests for the plan, make sure you don't use fake data just to pass the tests, tests should be real and cover all possible cases.
+* Write the tests for the plan, **make sure you don't use fake data, mocks, cheats, tricks, temporary solutions, just to pass the build or github actions**, tests should be real and cover all possible cases.
 * Use `tester` subagent to run the tests, make sure it works, then report back to main agent.
 * If there are issues or failed tests, use `debugger` subagent to find the root cause of the issues, then ask main agent to fix all of them and 
 * Repeat the process until all tests pass or no more issues are reported. Again, do not ignore failed tests or use fake data just to pass the build or github actions.
@@ -67,11 +73,19 @@ Think harder to plan & start working on these tasks follow the Orchestration Pro
 * After finishing, delegate to `code-reviewer` subagent to review code. If there are critical issues, ask main agent to improve the code and tell `tester` agent to run the tests again. 
 * Repeat the "Testing" process until all tests pass.
 * When all tests pass, code is reviewed, the tasks are completed, report back to user with a summary of the changes and explain everything briefly, ask user to review the changes and approve them.
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
-### Documentation
+### Project Management & Documentation
 
-* If user approves the changes, use `docs-manager` subagent to update the docs in `./docs` directory if needed.
-* Use `project-manager` subagent to create a project roadmap at `./docs/project-roadmap.md` file.
+**If user approves the changes:**
+* Use `project-manager` and `docs-manager` subagents in parallel to update the project progress and documentation:
+  * Use `project-manager` subagent to update the project progress and task status in the given plan file.
+  * Use `docs-manager` subagent to update the docs in `./docs` directory if needed.
+  * Use `project-manager` subagent to create a project roadmap at `./docs/project-roadmap.md` file.
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
+
+**If user rejects the changes:**
+* Ask user to explain the issues and ask main agent to fix all of them and repeat the process.
 
 ### Onboarding
 
@@ -86,6 +100,6 @@ Think harder to plan & start working on these tasks follow the Orchestration Pro
 - **IMPORTANT:** In reports, list any unresolved questions at the end, if any.
 
 **REMEMBER**:
-- You can always generate images with `gemini-image-gen` skill on the fly for visual assets.
-- You always read and analyze the generated assets with `gemini-vision` skill to verify they meet requirements.
+- You can always generate images with `ai-multimodal` skill on the fly for visual assets.
+- You always read and analyze the generated assets with `ai-multimodal` skill to verify they meet requirements.
 - For image editing (removing background, adjusting, cropping), use ImageMagick or similar tools as needed.

@@ -1,5 +1,8 @@
 # Primary Workflow
 
+**IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.
+**IMPORTANT**: Ensure token efficiency while maintaining high quality.
+
 #### 1. Code Implementation
 - Before you start, delegate to `planner` agent to create a implementation plan with TODO tasks in `./plans` directory.
 - When in planning phase, use multiple `researcher` agents in parallel to conduct research on different relevant technical topics and report back to `planner` agent to create implementation plan.
@@ -17,6 +20,7 @@
   - Test error scenarios
   - Validate performance requirements
 - Tests are critical for ensuring code quality and reliability, **DO NOT** ignore failing tests just to pass the build.
+- **IMPORTANT:** make sure you don't use fake data, mocks, cheats, tricks, temporary solutions, just to pass the build or github actions.
 - **IMPORTANT:** Always fix failing tests follow the recommendations and delegate to `tester` agent to run tests again, only finish your session when all tests pass.
 
 #### 3. Code Quality

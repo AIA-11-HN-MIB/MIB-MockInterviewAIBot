@@ -44,128 +44,35 @@ We keep all important docs in `./docs` folder and keep updating them, structure 
 
 ## Architecture
 
-This project follows **Clean Architecture / Ports & Adapters (Hexagonal Architecture)** pattern for maximum flexibility and loose coupling.
+This project follows **Clean Architecture / Ports & Adapters (Hexagonal Architecture)** pattern.
 
-### Architecture Layers
+📚 **See [System Architecture](./docs/system-architecture.md) for complete details**
 
-```
-Domain (Core) -> Application -> Adapters -> Infrastructure
-```
-
-1. **Domain Layer** (`src/domain/`): Pure business logic with zero external dependencies
-   - Models: Core entities (Interview, Question, Answer, Candidate)
-   - Services: Domain services containing business rules
-   - Ports: Interfaces/contracts for external dependencies
-
-2. **Application Layer** (`src/application/`): Use case orchestration
-   - Use Cases: Application-specific business flows
-   - DTOs: Data transfer objects for cross-layer communication
-
-3. **Adapters Layer** (`src/adapters/`): External service implementations
-   - LLM adapters (OpenAI, Claude, Llama)
-   - Vector DB adapters (Pinecone, Weaviate, ChromaDB)
-   - Speech adapters (Azure STT, Edge TTS)
-   - Persistence adapters (PostgreSQL)
-   - API adapters (REST, WebSocket)
-
-4. **Infrastructure Layer** (`src/infrastructure/`): Cross-cutting concerns
-   - Configuration management
-   - Dependency injection
-   - Logging
-
-### Key Architectural Principles
-
-- **Dependency Rule**: Dependencies point inward. Domain has no dependencies on outer layers.
-- **Port Interfaces**: All external dependencies are accessed through abstract interfaces (ports).
-- **Adapter Swappability**: Change external services (e.g., OpenAI -> Claude) by swapping adapters without touching business logic.
-- **Testability**: Domain logic can be unit tested in isolation with mock implementations.
+### Key Principles
+- **Dependency Rule**: Dependencies point inward toward domain
+- **Port Interfaces**: All external dependencies accessed through abstract interfaces
+- **Adapter Swappability**: Change services without touching business logic
+- **Testability**: Domain logic tested in isolation with mock implementations
 
 ## Project Structure
 
-```
-src/
-├── domain/              # Core business logic (no external dependencies)
-│   ├── models/          # Domain entities
-│   ├── services/        # Domain services
-│   └── ports/           # Interfaces for external dependencies
-├── application/         # Use cases and DTOs
-│   ├── use_cases/       # Application business flows
-│   └── dto/             # Data transfer objects
-├── adapters/            # External service implementations
-│   ├── llm/             # LLM provider adapters
-│   ├── vector_db/       # Vector database adapters
-│   ├── speech/          # Speech service adapters
-│   ├── cv_processing/   # CV analysis adapters
-│   ├── persistence/     # Database adapters
-│   └── api/             # API layer (REST/WebSocket)
-├── infrastructure/      # Cross-cutting concerns
-│   ├── config/          # Configuration
-│   ├── logging/         # Logging setup
-│   └── dependency_injection/  # DI container
-└── main.py              # Application entry point
-```
+📚 **See [Codebase Summary](./docs/codebase-summary.md) for complete structure**
+
+Quick reference:
+- `src/domain/` - Core business logic (5 models, 11 ports)
+- `src/application/` - Use cases and DTOs
+- `src/adapters/` - External service implementations
+- `src/infrastructure/` - Config, DI, logging
 
 ## Development Commands
 
-### Testing
-```bash
-# Unit tests (domain layer - fast, no external dependencies)
-python -m pytest tests/unit
+📚 **See [README.md](./README.md#-development) for all development commands**
 
-# Integration tests (adapters with real services)
-python -m pytest tests/integration
-
-# End-to-end tests (full interview flows)
-python -m pytest tests/e2e
-
-# Run all tests with coverage
-python -m pytest --cov=src --cov-report=html
-```
-
-### Running the Application
-```bash
-# Development mode
-python src/main.py
-
-# With specific config
-python src/main.py --config dev
-
-# Production mode
-python src/main.py --config prod
-```
-
-### Database Operations
-```bash
-# Initialize database
-python scripts/setup_db.py
-
-# Run migrations
-alembic upgrade head
-
-# Create new migration
-alembic revision --autogenerate -m "description"
-
-# Rollback migration
-alembic downgrade -1
-```
-
-### Code Quality
-```bash
-# Linting
-ruff check src/
-
-# Auto-fix linting issues
-ruff check --fix src/
-
-# Formatting
-black src/
-
-# Type checking
-mypy src/
-
-# Run all quality checks
-ruff check src/ && black --check src/ && mypy src/
-```
+Quick reference:
+- **Run app**: `python -m src.main`
+- **Migrations**: `alembic upgrade head`
+- **Tests**: `pytest --cov=src`
+- **Code quality**: `ruff check src/ && black src/ && mypy src/`
 
 ## Working with the Codebase
 
@@ -225,6 +132,30 @@ When integrating a new external service (e.g., new LLM provider, vector database
 - **Unit Tests**: Test domain services and use cases with mocked ports
 - **Integration Tests**: Test adapters with real external services (use test environments)
 - **E2E Tests**: Test complete interview flows through API layer
+
+### Mock Adapters
+
+**Available Mocks** (6 total):
+- `MockLLMAdapter` - Simulates LLM responses (no OpenAI API calls)
+- `MockVectorSearchAdapter` - In-memory vector search (no Pinecone)
+- `MockSTTAdapter` - Simulates speech-to-text
+- `MockTTSAdapter` - Simulates text-to-speech
+- `MockCVAnalyzerAdapter` - Filename-based CV parsing (e.g., "python-developer.pdf" → ["Python", "FastAPI"])
+- `MockAnalyticsAdapter` - In-memory performance tracking
+
+**When to Use Mocks**:
+- ✅ Development without API keys
+- ✅ Fast unit tests (10x faster)
+- ✅ CI/CD pipelines (no external dependencies)
+- ✅ Deterministic test results
+- ❌ Integration tests (use real adapters)
+- ❌ Production deployment
+
+**Configuration**: Set `USE_MOCK_ADAPTERS=true` in `.env.local` (default).
+
+**DI Container**: Automatically swaps implementations based on `settings.use_mock_adapters` flag.
+
+**Note**: Repositories (PostgreSQL) NOT mocked - use real database for data integrity.
 
 ## Technology Stack
 

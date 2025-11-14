@@ -104,7 +104,7 @@ DEBUG=true
 ```bash
 API_HOST="0.0.0.0"
 API_PORT=8000
-API_PREFIX="/api/v1"
+API_PREFIX="/api"
 ```
 
 ### Database Settings
@@ -156,6 +156,22 @@ PINECONE_INDEX_NAME="elios-interviews"
 AZURE_SPEECH_KEY="..."
 AZURE_SPEECH_REGION="eastus"
 ```
+
+### Mock Adapter Settings
+
+Control which adapters use mock implementations vs real implementations. Set to `false` to use real adapters (requires API keys).
+
+```bash
+# Individual adapter flags - set to false to use real implementations
+USE_MOCK_LLM=true
+USE_MOCK_VECTOR_SEARCH=true
+USE_MOCK_CV_ANALYZER=true
+USE_MOCK_STT=true
+USE_MOCK_TTS=true
+USE_MOCK_ANALYTICS=true
+```
+
+**Note:** All flags default to `true` (use mocks) for development. Set individual flags to `false` when you want to use real implementations for specific adapters.
 
 ### File Storage Settings
 

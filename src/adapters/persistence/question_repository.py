@@ -1,14 +1,14 @@
 """PostgreSQL implementation of QuestionRepositoryPort."""
 
-from typing import List, Optional
 from uuid import UUID
-from sqlalchemy import select, or_, and_
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...domain.models.question import Question, QuestionType, DifficultyLevel
+from ...domain.models.question import DifficultyLevel, Question, QuestionType
 from ...domain.ports.question_repository_port import QuestionRepositoryPort
-from .models import QuestionModel
 from .mappers import QuestionMapper
+from .models import QuestionModel
 
 
 class PostgreSQLQuestionRepository(QuestionRepositoryPort):
@@ -34,7 +34,7 @@ class PostgreSQLQuestionRepository(QuestionRepositoryPort):
         await self.session.refresh(db_model)
         return QuestionMapper.to_domain(db_model)
 
-    async def get_by_id(self, question_id: UUID) -> Optional[Question]:
+    async def get_by_id(self, question_id: UUID) -> Question | None:
         """Retrieve a question by ID."""
         result = await self.session.execute(
             select(QuestionModel).where(QuestionModel.id == question_id)
@@ -42,7 +42,7 @@ class PostgreSQLQuestionRepository(QuestionRepositoryPort):
         db_model = result.scalar_one_or_none()
         return QuestionMapper.to_domain(db_model) if db_model else None
 
-    async def get_by_ids(self, question_ids: List[UUID]) -> List[Question]:
+    async def get_by_ids(self, question_ids: list[UUID]) -> list[Question]:
         """Retrieve multiple questions by IDs."""
         result = await self.session.execute(
             select(QuestionModel).where(QuestionModel.id.in_(question_ids))
@@ -53,9 +53,9 @@ class PostgreSQLQuestionRepository(QuestionRepositoryPort):
     async def find_by_skill(
         self,
         skill: str,
-        difficulty: Optional[DifficultyLevel] = None,
+        difficulty: DifficultyLevel | None = None,
         limit: int = 10,
-    ) -> List[Question]:
+    ) -> list[Question]:
         """Find questions by skill with optional difficulty filter."""
         query = select(QuestionModel).where(
             QuestionModel.skills.contains([skill])  # PostgreSQL array contains
@@ -73,9 +73,9 @@ class PostgreSQLQuestionRepository(QuestionRepositoryPort):
     async def find_by_type(
         self,
         question_type: QuestionType,
-        difficulty: Optional[DifficultyLevel] = None,
+        difficulty: DifficultyLevel | None = None,
         limit: int = 10,
-    ) -> List[Question]:
+    ) -> list[Question]:
         """Find questions by type with optional difficulty filter."""
         query = select(QuestionModel).where(
             QuestionModel.question_type == question_type.value
@@ -92,10 +92,10 @@ class PostgreSQLQuestionRepository(QuestionRepositoryPort):
 
     async def find_by_tags(
         self,
-        tags: List[str],
+        tags: list[str],
         match_all: bool = False,
         limit: int = 10,
-    ) -> List[Question]:
+    ) -> list[Question]:
         """Find questions by tags.
 
         Args:
@@ -149,7 +149,7 @@ class PostgreSQLQuestionRepository(QuestionRepositoryPort):
         await self.session.commit()
         return True
 
-    async def list_all(self, skip: int = 0, limit: int = 100) -> List[Question]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[Question]:
         """List all questions with pagination."""
         result = await self.session.execute(
             select(QuestionModel)

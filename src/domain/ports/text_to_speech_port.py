@@ -1,32 +1,31 @@
 """Text-to-Speech port interface."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 
 class TextToSpeechPort(ABC):
     """Interface for text-to-speech operations.
 
     This port abstracts TTS services, allowing switching between
-    Edge TTS, Google TTS, etc.
+    Azure Speech, Edge TTS, Google TTS, etc.
     """
 
     @abstractmethod
     async def synthesize_speech(
         self,
         text: str,
-        language: str = "en-US",
-        voice: Optional[str] = None,
+        voice: str = "en-US-AriaNeural",
+        speed: float = 1.0,
     ) -> bytes:
         """Convert text to speech audio.
 
         Args:
             text: Text to synthesize
-            language: Language code (e.g., "en-US", "vi-VN")
-            voice: Optional specific voice name
+            voice: Voice name (e.g., "en-US-AriaNeural", "en-GB-SoniaNeural")
+            speed: Speaking rate multiplier (0.5-2.0, default 1.0)
 
         Returns:
-            Audio data as bytes
+            WAV audio bytes (16kHz mono)
         """
         pass
 
@@ -35,16 +34,16 @@ class TextToSpeechPort(ABC):
         self,
         text: str,
         output_path: str,
-        language: str = "en-US",
-        voice: Optional[str] = None,
+        voice: str = "en-US-AriaNeural",
+        speed: float = 1.0,
     ) -> str:
         """Convert text to speech and save to file.
 
         Args:
             text: Text to synthesize
             output_path: Path where audio file should be saved
-            language: Language code
-            voice: Optional specific voice name
+            voice: Voice name
+            speed: Speaking rate multiplier (0.5-2.0)
 
         Returns:
             Path to saved audio file
@@ -52,16 +51,10 @@ class TextToSpeechPort(ABC):
         pass
 
     @abstractmethod
-    async def list_available_voices(
-        self,
-        language: Optional[str] = None,
-    ) -> list[dict]:
-        """List available voices.
-
-        Args:
-            language: Optional language filter
+    async def get_available_voices(self) -> list[str]:
+        """Get list of available voice names.
 
         Returns:
-            List of available voices with metadata
+            List of voice name strings (e.g., ["en-US-AriaNeural", "en-GB-SoniaNeural"])
         """
         pass

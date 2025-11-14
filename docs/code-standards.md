@@ -1,7 +1,7 @@
 # Code Standards & Development Guidelines
 
-**Last Updated**: 2025-10-31
-**Version**: 0.1.0
+**Last Updated**: 2025-11-14
+**Version**: 0.2.1
 **Applies To**: Elios AI Interview Service
 **Project**: https://github.com/elios/elios-ai-service
 
@@ -155,6 +155,255 @@ class CandidateMapper:
 - Implement features when needed, not speculatively
 - Don't build infrastructure for hypothetical requirements
 - Start simple, refactor when necessary
+
+## Common Coding Patterns
+
+### Exemplar-Based Generation Pattern
+
+**When to Use**: Generate content (questions, code, responses) inspired by similar examples from a database.
+
+**Pattern Structure**:
+```python
+async def generate_with_exemplars(
+    self,
+    target_attributes: dict[str, Any],
+    context: dict[str, Any],
+) -> Result:
+    """Generate content using exemplar-based approach.
+
+    Steps:
+    1. Build search query from target attributes
+    2. Find similar examples (exemplars) via vector search
+    3. Filter exemplars by relevance threshold
+    4. Pass exemplars to generation service
+    5. Store generated result with embedding for future searches
+    """
+
+    # Step 1: Build search query
+    query = self._build_search_query(target_attributes)
+
+    # Step 2: Find exemplars (with fallback)
+    try:
+        exemplars = await self._find_exemplars(
+            query=query,
+            filters=target_attributes,
+            top_k=3,
+            threshold=0.5,
+        )
+    except Exception as e:
+        logger.warning(f"Exemplar search failed: {e}. Continuing without exemplars.")
+        exemplars = []  # Fallback
+
+    # Step 3: Generate with exemplars
+    result = await self.generator.generate(
+        context=context,
+        exemplars=exemplars,  # Optional parameter
+    )
+
+    # Step 4: Store result embedding (non-blocking)
+    try:
+        await self._store_result_embedding(result)
+    except Exception as e:
+        logger.error(f"Failed to store embedding: {e}")
+        # Continue - embedding storage is non-critical
+
+    return result
+```
+
+**Example: Question Generation**
+```python
+# In PlanInterviewUseCase
+async def _generate_question_with_ideal_answer(self, cv_analysis, index, total):
+    # 1. Determine target attributes
+    question_type, difficulty = self._get_question_distribution(index, total)
+    skill = self._select_skill(cv_analysis, index)
+
+    # 2. Find exemplar questions (vector search)
+    exemplars = await self._find_exemplar_questions(
+        skill=skill,
+        question_type=question_type,
+        difficulty=difficulty,
+        cv_analysis=cv_analysis,
+    )
+
+    # 3. Generate with exemplars
+    question_text = await self.llm.generate_question(
+        context=context,
+        skill=skill,
+        difficulty=difficulty.value,
+        exemplars=exemplars,  # Inspiration, not templates
+    )
+
+    # 4. Store embedding for future searches
+    await self._store_question_embedding(question)
+
+    return question
+```
+
+**Key Principles**:
+- ✅ Exemplars are inspiration, not templates (LLM generates NEW content)
+- ✅ Fallback: Generate without exemplars if search fails
+- ✅ Non-blocking: Embedding storage failures don't fail generation
+- ✅ Filters: Use metadata filters (type, difficulty, category) for relevance
+- ✅ Threshold: Require minimum similarity (e.g., >0.5)
+- ✅ Top-k: Limit exemplars (3-5) to avoid prompt bloat
+
+**Helper Methods Pattern**:
+```python
+def _build_search_query(self, attributes: dict) -> str:
+    """Build semantic search query from attributes."""
+    pass
+
+async def _find_exemplars(self, query: str, filters: dict) -> list[dict]:
+    """Find similar examples via vector search with fallback."""
+    pass
+
+async def _store_result_embedding(self, result: Entity) -> None:
+    """Store result embedding for future searches (non-blocking)."""
+    pass
+```
+
+### Domain-Driven State Management Pattern
+
+**Added**: v0.2.1 (Phase 1 Architectural Improvement)
+
+**When to Use**: Manage complex entity lifecycle with state transitions and business rules.
+
+**Pattern Structure**:
+```python
+class Interview(BaseModel):
+    """Aggregate root with domain-driven state machine.
+
+    State Transitions (enforced in domain layer):
+    - IDLE → QUESTIONING (start interview)
+    - QUESTIONING → EVALUATING (answer received)
+    - EVALUATING → QUESTIONING (next question)
+    - EVALUATING → REVIEWING (interview complete)
+    - REVIEWING → COMPLETED (summary generated)
+    """
+
+    status: InterviewStatus
+
+    def transition_to_questioning(self) -> None:
+        """Transition to questioning state with validation."""
+        valid_from = [InterviewStatus.IDLE, InterviewStatus.EVALUATING]
+        if self.status not in valid_from:
+            raise InvalidStateTransitionError(
+                f"Cannot transition to QUESTIONING from {self.status}"
+            )
+        self.status = InterviewStatus.QUESTIONING
+
+    def transition_to_evaluating(self) -> None:
+        """Transition to evaluating state with validation."""
+        if self.status != InterviewStatus.QUESTIONING:
+            raise InvalidStateTransitionError(
+                f"Cannot transition to EVALUATING from {self.status}"
+            )
+        self.status = InterviewStatus.EVALUATING
+```
+
+**Key Principles**:
+- ✅ State machine logic lives in domain layer (not adapters)
+- ✅ Explicit transition methods with validation
+- ✅ Raise domain exceptions for invalid transitions
+- ✅ Adapters delegate to domain methods (don't manage state directly)
+- ✅ Business rules enforced at domain level
+
+**Migration Path**: Moved from adapter-level state management (WebSocket orchestrator) to domain-driven approach in v0.2.1.
+
+### Context-Aware Evaluation Pattern
+
+**Added**: v0.2.1 (Phase 4 - Adaptive Answers)
+
+**When to Use**: Evaluate answers with follow-up question support and parent-child relationships.
+
+**Pattern Structure**:
+```python
+# 1. Evaluation Entity with Parent-Child Relationships
+class Evaluation(BaseModel):
+    """Evaluation with parent-child tracking for follow-ups."""
+
+    evaluation_type: EvaluationType  # PARENT_QUESTION, FOLLOW_UP, COMBINED
+    parent_evaluation_id: Optional[UUID]
+    similarity_score: float
+    gaps: Optional[GapsAnalysis]
+
+    def is_adaptive_complete(self) -> bool:
+        """Check if answer quality is sufficient (no follow-up needed).
+
+        Break conditions:
+        - similarity_score >= 0.8 (high quality)
+        - gaps.confirmed == False (no gaps detected)
+        """
+        return self.similarity_score >= 0.8 or (
+            self.gaps and not self.gaps.confirmed
+        )
+
+# 2. Follow-Up Decision Use Case
+class FollowUpDecisionUseCase:
+    """Decide if follow-up needed based on break conditions.
+
+    Break Conditions (exit if ANY met):
+    1. follow_up_count >= 3 (max reached)
+    2. similarity_score >= 0.8 (quality sufficient)
+    3. gaps.confirmed == False (no gaps detected)
+    """
+
+    async def execute(
+        self,
+        parent_question_id: UUID,
+        latest_answer: Answer,
+    ) -> dict[str, Any]:
+        # Count existing follow-ups
+        follow_ups = await self.follow_up_repo.get_by_parent_question_id(
+            parent_question_id
+        )
+        follow_up_count = len(follow_ups)
+
+        # Break condition 1: Max reached
+        if follow_up_count >= 3:
+            return {"needs_followup": False, "reason": "Max follow-ups reached"}
+
+        # Break condition 2 & 3: Quality sufficient or no gaps
+        if latest_answer.evaluation.is_adaptive_complete():
+            return {"needs_followup": False, "reason": "Answer complete"}
+
+        # Accumulate gaps from all previous follow-ups
+        cumulative_gaps = await self._accumulate_gaps(follow_ups, latest_answer)
+
+        return {
+            "needs_followup": True,
+            "reason": f"Detected {len(cumulative_gaps)} gaps",
+            "cumulative_gaps": cumulative_gaps,
+        }
+
+# 3. Combine Evaluation Use Case
+class CombineEvaluationUseCase:
+    """Merge parent + follow-up evaluations into COMBINED evaluation."""
+
+    async def execute(self, parent_evaluation_id: UUID) -> Evaluation:
+        # Fetch parent + all follow-ups
+        parent = await self.repo.get_by_id(parent_evaluation_id)
+        follow_ups = await self.repo.get_follow_ups(parent_evaluation_id)
+
+        # Merge evaluations (weighted: 70% parent + 30% avg follow-ups)
+        combined_score = self._calculate_combined_score(parent, follow_ups)
+
+        # Create COMBINED evaluation
+        return Evaluation(
+            evaluation_type=EvaluationType.COMBINED,
+            parent_evaluation_id=parent_evaluation_id,
+            similarity_score=combined_score,
+            ...
+        )
+```
+
+**Key Principles**:
+- ✅ Evaluation entity tracks parent-child relationships
+- ✅ Break conditions prevent infinite follow-up loops
+- ✅ Gap accumulation across follow-ups (not just latest)
+- ✅ Combined evaluation merges parent + follow-ups
+- ✅ Decision logic isolated in use case (testable)
 
 ## Architecture Standards
 

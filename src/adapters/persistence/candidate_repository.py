@@ -1,14 +1,14 @@
 """PostgreSQL implementation of CandidateRepositoryPort."""
 
-from typing import List, Optional
 from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...domain.models.candidate import Candidate
 from ...domain.ports.candidate_repository_port import CandidateRepositoryPort
-from .models import CandidateModel
 from .mappers import CandidateMapper
+from .models import CandidateModel
 
 
 class PostgreSQLCandidateRepository(CandidateRepositoryPort):
@@ -34,7 +34,7 @@ class PostgreSQLCandidateRepository(CandidateRepositoryPort):
         await self.session.refresh(db_model)
         return CandidateMapper.to_domain(db_model)
 
-    async def get_by_id(self, candidate_id: UUID) -> Optional[Candidate]:
+    async def get_by_id(self, candidate_id: UUID) -> Candidate | None:
         """Retrieve a candidate by ID."""
         result = await self.session.execute(
             select(CandidateModel).where(CandidateModel.id == candidate_id)
@@ -42,7 +42,7 @@ class PostgreSQLCandidateRepository(CandidateRepositoryPort):
         db_model = result.scalar_one_or_none()
         return CandidateMapper.to_domain(db_model) if db_model else None
 
-    async def get_by_email(self, email: str) -> Optional[Candidate]:
+    async def get_by_email(self, email: str) -> Candidate | None:
         """Retrieve a candidate by email address."""
         result = await self.session.execute(
             select(CandidateModel).where(CandidateModel.email == email)
@@ -79,7 +79,7 @@ class PostgreSQLCandidateRepository(CandidateRepositoryPort):
         await self.session.commit()
         return True
 
-    async def list_all(self, skip: int = 0, limit: int = 100) -> List[Candidate]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[Candidate]:
         """List all candidates with pagination."""
         result = await self.session.execute(
             select(CandidateModel)

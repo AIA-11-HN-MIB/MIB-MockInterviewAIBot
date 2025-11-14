@@ -1,7 +1,7 @@
 # System Architecture
 
-**Last Updated**: 2025-10-31
-**Version**: 0.1.0
+**Last Updated**: 2025-11-14
+**Version**: 0.2.1
 **Project**: Elios AI Interview Service
 **Repository**: https://github.com/elios/elios-ai-service
 
@@ -49,36 +49,36 @@ Elios AI Interview Service implements **Clean Architecture** (also known as Hexa
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│                         Users / Clients                         │
-│                  (Web, Mobile, API Consumers)                   │
+│                         Users / Clients                        │
+│                  (Web, Mobile, API Consumers)                  │
 └────────────────────────┬───────────────────────────────────────┘
                          │
                          ↓
 ┌────────────────────────────────────────────────────────────────┐
-│                      API Layer (FastAPI)                        │
-│              REST Endpoints + WebSocket Handlers                │
-│                    (src/adapters/api/)                          │
+│                      API Layer (FastAPI)                       │
+│              REST Endpoints + WebSocket Handlers               │
+│                    (src/adapters/api/)                         │
 └────────────────────────┬───────────────────────────────────────┘
                          │
                          ↓
 ┌────────────────────────────────────────────────────────────────┐
-│                    Application Layer                            │
+│                    Application Layer                           │
 │           Use Cases (Business Flow Orchestration)              │
-│                 (src/application/use_cases/)                    │
+│                 (src/application/use_cases/)                   │
 └────────────────────────┬───────────────────────────────────────┘
                          │
                          ↓
 ┌────────────────────────────────────────────────────────────────┐
-│                     Domain Layer                                │
+│                     Domain Layer                               │
 │          Pure Business Logic (Models + Services + Ports)       │
-│                    (src/domain/)                                │
+│                    (src/domain/)                               │
 └────────────────────────┬───────────────────────────────────────┘
                          │
                          ↓
 ┌────────────────────────────────────────────────────────────────┐
-│                    Adapters Layer                               │
+│                    Adapters Layer                              │
 │         External Service Implementations (Ports → Adapters)    │
-│                   (src/adapters/)                               │
+│                   (src/adapters/)                              │
 │  ┌──────────────┬──────────────┬──────────────┬──────────────┐ │
 │  │   LLM        │  Vector DB   │  Database    │  Speech      │ │
 │  │  (OpenAI)    │  (Pinecone)  │ (PostgreSQL) │  (Azure)     │ │
@@ -87,9 +87,9 @@ Elios AI Interview Service implements **Clean Architecture** (also known as Hexa
                          │
                          ↓
 ┌────────────────────────────────────────────────────────────────┐
-│                  Infrastructure Layer                           │
+│                  Infrastructure Layer                          │
 │       Config, Database Setup, DI Container, Logging            │
-│                 (src/infrastructure/)                           │
+│                 (src/infrastructure/)                          │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -101,23 +101,23 @@ Elios AI Interview Service implements **Clean Architecture** (also known as Hexa
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  Infrastructure                          │
+│                     Infrastructure                      │
 │  ┌───────────────────────────────────────────────────┐  │
-│  │                Adapters                            │  │
+│  │                     Adapters                      │  │
 │  │  ┌─────────────────────────────────────────────┐  │  │
-│  │  │          Application                         │  │  │
+│  │  │                 Application                 │  │  │
 │  │  │  ┌───────────────────────────────────────┐  │  │  │
-│  │  │  │         Domain                        │  │  │  │
-│  │  │  │  • Models (Entities)                 │  │  │  │
-│  │  │  │  • Business Rules                    │  │  │  │
-│  │  │  │  • Ports (Interfaces)                │  │  │  │
-│  │  │  │  • NO external dependencies          │  │  │  │
+│  │  │  │                Domain                 │  │  │  │
+│  │  │  │  • Models (Entities)                  │  │  │  │
+│  │  │  │  • Business Rules                     │  │  │  │
+│  │  │  │  • Ports (Interfaces)                 │  │  │  │
+│  │  │  │  • NO external dependencies           │  │  │  │
 │  │  │  └───────────────────────────────────────┘  │  │  │
-│  │  │       Use Cases (Orchestration)              │  │  │
+│  │  │          Use Cases (Orchestration)          │  │  │
 │  │  └─────────────────────────────────────────────┘  │  │
-│  │     Implementations (LLM, DB, API, Vector)        │  │
+│  │      Implementations (LLM, DB, API, Vector)       │  │
 │  └───────────────────────────────────────────────────┘  │
-│        Config, DI Container, Database Setup             │
+│          Config, DI Container, Database Setup           │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -230,6 +230,78 @@ class Interview(BaseModel):  # Aggregate Root
 - Clear ownership and boundaries
 - Transactional consistency
 
+### 5. Session Orchestrator Pattern (State Machine)
+
+**Purpose**: Manage WebSocket interview session lifecycle with state machine pattern
+
+**Added**: Phase 5 (2025-11-12)
+
+**Implementation**: `src/adapters/api/websocket/session_orchestrator.py` (584 lines, 173 statements)
+
+```python
+class SessionState(str, Enum):
+    """Interview session states."""
+    IDLE = "idle"
+    QUESTIONING = "questioning"
+    EVALUATING = "evaluating"
+    FOLLOW_UP = "follow_up"
+    COMPLETE = "complete"
+
+class InterviewSessionOrchestrator:
+    """Orchestrate interview session lifecycle with state machine pattern.
+
+    State Transition Rules:
+    - IDLE → QUESTIONING (start interview)
+    - QUESTIONING → EVALUATING (answer received)
+    - EVALUATING → FOLLOW_UP (follow-up needed)
+    - EVALUATING → QUESTIONING (next main question)
+    - EVALUATING → COMPLETE (no more questions)
+    - FOLLOW_UP → EVALUATING (follow-up answered)
+    """
+
+    def __init__(self, interview_id: UUID, websocket: WebSocket, container: Any):
+        self.state = SessionState.IDLE
+        self.current_question_id: UUID | None = None
+        self.parent_question_id: UUID | None = None
+        self.follow_up_count = 0
+
+    async def start_session(self) -> None:
+        """Start interview session - send first question."""
+        # Validates interview exists BEFORE state transition
+        interview = await self._get_interview()
+        if not interview:
+            raise ValueError(f"Interview {self.interview_id} not found")
+
+        self._transition(SessionState.QUESTIONING)
+        await self._send_next_main_question()
+
+    async def handle_text_answer(self, message: dict) -> None:
+        """Process text answer with state machine."""
+        self._transition(SessionState.EVALUATING)
+        # Process answer, evaluate, decide follow-up
+        # Transitions to FOLLOW_UP or QUESTIONING based on decision
+```
+
+**Key Features**:
+1. **State Validation**: Validates interview/question exists BEFORE state transitions (prevents NPE crashes)
+2. **Valid Transitions**: Enforces state machine rules, raises ValueError for invalid transitions
+3. **Progress Tracking**: Tracks current question, parent question (for follow-ups), follow-up count
+4. **Session Persistence**: `get_state()` method returns session snapshot for recovery
+5. **Error Recovery**: Timeout handling, graceful error reporting to client
+6. **Delegation Pattern**: Handler delegates all logic to orchestrator (~131 lines, 74% reduction)
+
+**Benefits**:
+- ✅ Clear separation: WebSocket I/O vs business logic
+- ✅ Testable: 36 unit tests with 85% coverage
+- ✅ Bug fix: Prevents null pointer crashes via validation before transition
+- ✅ Maintainable: State machine easier to reason about than imperative flow
+- ✅ Extensible: Easy to add new states (e.g., PAUSED, REVIEWING)
+
+**Refactoring Impact**:
+- `interview_handler.py`: 500 lines → 131 lines (74% reduction)
+- Logic extracted to orchestrator (584 lines)
+- Net increase: 215 lines (architectural investment for maintainability)
+
 ## Layer Architecture
 
 ### Domain Layer (`src/domain/`)
@@ -254,15 +326,24 @@ class Candidate(BaseModel):
         self.cv_file_path = cv_file_path
         self.updated_at = datetime.utcnow()
 
-# Interview.py - 137 lines (Aggregate Root)
+# Interview.py - 137 lines (Aggregate Root with Domain-Driven State Management)
 class Interview(BaseModel):
-    # 5 states: PREPARING, READY, IN_PROGRESS, COMPLETED, CANCELLED
+    # 5 states: IDLE, QUESTIONING, EVALUATING, REVIEWING, COMPLETED
+    # IMPORTANT: State machine moved to domain layer (Phase 1 improvement)
+
     def start(self) -> None:
         """Business rule: Can only start if READY."""
         if self.status != InterviewStatus.READY:
             raise ValueError("Cannot start interview")
         self.status = InterviewStatus.IN_PROGRESS
         self.started_at = datetime.utcnow()
+
+    def transition_to_questioning(self) -> None:
+        """Transition to questioning state."""
+        valid_from = [InterviewStatus.IDLE, InterviewStatus.EVALUATING]
+        if self.status not in valid_from:
+            raise ValueError(f"Cannot transition to QUESTIONING from {self.status}")
+        self.status = InterviewStatus.QUESTIONING
 
 # Question.py - 84 lines
 class Question(BaseModel):
@@ -278,6 +359,30 @@ class CVAnalysis(BaseModel):
     def get_technical_skills(self) -> List[ExtractedSkill]:
         """Business logic for filtering skills."""
         return [s for s in self.skills if s.is_technical()]
+
+# Evaluation.py - NEW in v0.2.1 (Phase 4 - Context-Aware Evaluation)
+class Evaluation(BaseModel):
+    """Evaluation entity with parent-child relationships for follow-ups.
+
+    Evaluation Types:
+    - PARENT_QUESTION: Initial answer evaluation
+    - FOLLOW_UP: Follow-up answer evaluation (references parent_evaluation_id)
+    - COMBINED: Merged evaluation of parent + all follow-ups
+    """
+    id: UUID
+    evaluation_type: EvaluationType  # PARENT_QUESTION, FOLLOW_UP, COMBINED
+    parent_evaluation_id: Optional[UUID]  # For FOLLOW_UP and COMBINED types
+    similarity_score: float
+    gaps: Optional[GapsAnalysis]  # Detected knowledge gaps
+
+    def is_adaptive_complete(self) -> bool:
+        """Check if answer quality is sufficient (no follow-up needed).
+
+        Break conditions:
+        - similarity_score >= 0.8 (high quality)
+        - gaps.confirmed == False (no gaps detected)
+        """
+        return self.similarity_score >= 0.8 or (self.gaps and not self.gaps.confirmed)
 ```
 
 #### Ports (`domain/ports/`)
@@ -297,12 +402,14 @@ class VectorSearchPort(ABC):
     @abstractmethod
     async def find_similar_questions(embedding: List[float]) -> List[Question]: ...
 
-# Repository Ports (5 total)
+# Repository Ports (7 total in v0.2.1)
 class CandidateRepositoryPort(ABC): ...
 class InterviewRepositoryPort(ABC): ...
 class QuestionRepositoryPort(ABC): ...
 class AnswerRepositoryPort(ABC): ...
 class CVAnalysisRepositoryPort(ABC): ...
+class EvaluationRepositoryPort(ABC): ...  # NEW in v0.2.1
+class FollowUpQuestionRepositoryPort(ABC): ...  # NEW in v0.2.1
 ```
 
 **Dependencies**: Python stdlib, Pydantic only (no frameworks)
@@ -364,6 +471,50 @@ class StartInterviewUseCase:
         interview.mark_ready(cv_analysis_id)
 
         return interview
+
+# FollowUpDecisionUseCase.py - 152 lines ✅
+class FollowUpDecisionUseCase:
+    """Decides if follow-up question should be generated based on gaps."""
+
+    def __init__(
+        self,
+        answer_repository: AnswerRepositoryPort,
+        follow_up_question_repository: FollowUpQuestionRepositoryPort,
+    ):
+        self.answer_repo = answer_repository
+        self.follow_up_repo = follow_up_question_repository
+
+    async def execute(
+        self,
+        interview_id: UUID,
+        parent_question_id: UUID,
+        latest_answer: Answer,
+    ) -> dict[str, Any]:
+        """Decide if follow-up needed based on break conditions.
+
+        Break Conditions (exit if ANY met):
+        1. follow_up_count >= 3 (max reached)
+        2. similarity_score >= 0.8 (quality sufficient)
+        3. gaps.confirmed == False (no gaps detected)
+
+        Returns decision dict with needs_followup, reason, count, cumulative_gaps
+        """
+        # Count existing follow-ups for this parent question
+        follow_ups = await self.follow_up_repo.get_by_parent_question_id(parent_question_id)
+        follow_up_count = len(follow_ups)
+
+        # Break condition 1: Max reached
+        if follow_up_count >= 3:
+            return {"needs_followup": False, "reason": "Max follow-ups (3) reached", ...}
+
+        # Break condition 2 & 3: Quality sufficient or no gaps
+        if latest_answer.is_adaptive_complete():
+            return {"needs_followup": False, "reason": "Answer complete", ...}
+
+        # Accumulate gaps from all previous follow-ups
+        cumulative_gaps = await self._accumulate_gaps(follow_ups, latest_answer)
+
+        return {"needs_followup": True, "reason": f"Detected {len(cumulative_gaps)} gaps", ...}
 ```
 
 **Dependencies**: Domain models and ports only
@@ -488,11 +639,27 @@ async def create_candidate(
     # Return response DTO
     return CandidateResponse.from_domain(candidate)
 
-# WebSocket (planned)
+# WebSocket (✅ implemented with session orchestrator)
 @router.websocket("/ws/interviews/{interview_id}")
 async def interview_chat(websocket: WebSocket, interview_id: UUID):
     await websocket.accept()
-    # Real-time interview handling
+    # Delegated to InterviewSessionOrchestrator (state machine)
+    orchestrator = InterviewSessionOrchestrator(interview_id, websocket, container)
+    await orchestrator.start_session()
+```
+
+**WebSocket Implementation** (`adapters/api/websocket/`) ✅:
+- **`session_orchestrator.py`** (584 lines, Phase 5 - 2025-11-12):
+  - State machine: IDLE → QUESTIONING → EVALUATING → FOLLOW_UP → COMPLETE
+  - Validates interview/questions exist before state transitions
+  - Tracks: current question, parent question, follow-up count
+  - Session recovery via `get_state()` method
+  - 36 unit tests, 85% coverage
+- **`interview_handler.py`** (131 lines, refactored from 500):
+  - Simplified WebSocket I/O handler
+  - Delegates all logic to session orchestrator
+  - 74% line reduction through separation of concerns
+- **`connection_manager.py`**: WebSocket connection pool (unchanged)
 ```
 
 **Dependencies**: All layers (can import everything)
@@ -622,7 +789,7 @@ def get_container() -> Container:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Client Request                            │
-│                  POST /api/v1/cv/upload                          │
+│                  POST /api/cv/upload                          │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ↓
@@ -656,12 +823,12 @@ def get_container() -> Container:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Question Generation Flow
+### Question Generation Flow (Exemplar-Based)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Start Interview                               │
-│              StartInterviewUseCase                               │
+│                    Plan Interview                                │
+│              PlanInterviewUseCase                                │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ↓
@@ -672,32 +839,68 @@ def get_container() -> Container:
                          │
                          ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│         Find Similar Questions (Semantic Search)                 │
-│  vector_search.find_similar_questions(cv_analysis.embedding)    │
-│    → Returns questions matching candidate's skills               │
+│         Calculate Question Count (n) based on CV                 │
+│  Skill-based calculation: 2-5 questions depending on diversity  │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ↓
+     FOR each question (n times):
+┌─────────────────────────────────────────────────────────────────┐
+│     Build Search Query for Exemplars                             │
+│  Query: "{skill} {difficulty} question for {experience} dev"    │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│              Filter & Rank Questions                             │
-│  Domain logic: difficulty, skill coverage, diversity            │
+│     Find Similar Questions (Vector Search)                       │
+│  vector_search.find_similar_questions(query_embedding, top_k=5) │
+│  Filters: question_type, difficulty                             │
+│  Returns: Top 3 exemplars (similarity > 0.5)                    │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│              Create Interview Entity                             │
-│  interview = Interview(candidate_id, status=PREPARING)          │
-│  interview.add_question(q1.id)                                  │
-│  interview.add_question(q2.id)                                  │
+│     Generate Question with Exemplars                             │
+│  llm.generate_question(context, skill, difficulty, exemplars)   │
+│  → LLM uses exemplars for inspiration, generates NEW question   │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ↓
+┌─────────────────────────────────────────────────────────────────┐
+│     Generate Ideal Answer & Rationale                            │
+│  llm.generate_ideal_answer(question_text, context)              │
+│  llm.generate_rationale(question_text, ideal_answer)            │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ↓
+┌─────────────────────────────────────────────────────────────────┐
+│     Store Question in Database                                   │
+│  question_repo.save(question)                                   │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ↓
+┌─────────────────────────────────────────────────────────────────┐
+│     Store Question Embedding (Non-Blocking)                      │
+│  vector_search.store_question_embedding(id, embedding, metadata)│
+│  → Enables future exemplar searches                             │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         └──→ REPEAT for next question
+                         │
+                         ↓
+┌─────────────────────────────────────────────────────────────────┐
+│              Mark Interview as READY                             │
 │  interview.mark_ready(cv_analysis_id)                           │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ↓
-┌─────────────────────────────────────────────────────────────────┐
-│              Persist Interview                                   │
-│  interview_repo.save(interview)                                 │
+│  interview_repo.update(interview)                               │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+**Key Enhancements**:
+- Vector search retrieves exemplar questions before generation
+- LLM generates questions inspired by exemplars (not copies)
+- Questions stored in vector DB for future exemplar searches
+- Fallback: Generate without exemplars if vector search fails
+- Non-blocking embedding storage (failures don't stop flow)
 
 ## Data Flow
 
@@ -705,7 +908,7 @@ def get_container() -> Container:
 
 ```
 1. User Uploads CV
-   ├─→ POST /api/v1/cv/upload
+   ├─→ POST /api/cv/upload
    │   ├─ file: CV document (PDF/DOC)
    │   └─ candidate_id: UUID
 
@@ -733,7 +936,7 @@ def get_container() -> Container:
    └─ Status 201 Created
 
 5. Start Interview Flow (separate request)
-   ├─→ POST /api/v1/interviews
+   ├─→ POST /api/interviews
    │   ├─ candidate_id: UUID
    │   └─ cv_analysis_id: UUID
    │
@@ -748,11 +951,11 @@ def get_container() -> Container:
    └─ Client can now start asking questions
 ```
 
-### Answer Evaluation Flow
+### Answer Evaluation Flow (Basic)
 
 ```
 1. Candidate Submits Answer
-   ├─→ POST /api/v1/interviews/{id}/answers
+   ├─→ POST /api/interviews/{id}/answers
    │   ├─ question_id: UUID
    │   └─ answer_text: string
 
@@ -802,6 +1005,179 @@ def get_container() -> Container:
    │   └─ Return next question
    └─ else:
        └─ Trigger CompleteInterviewUseCase
+```
+
+### Adaptive Follow-up Flow (WebSocket) with Session Orchestration
+
+**Added**: 2025-11-12 (Phase 4 - Adaptive Answers, Phase 5 - Session Orchestration)
+
+```
+1. Candidate Submits Answer via WebSocket
+   ├─→ Message type: "text_answer"
+   │   ├─ question_id: UUID
+   │   └─ answer_text: string
+
+2. Session Orchestrator handles message (state machine):
+   ├─→ State: QUESTIONING → EVALUATING
+   ├─→ Validate interview/question exists
+   ├─→ Call ProcessAnswerAdaptiveUseCase
+   │   ├─ Evaluate answer (semantic + gaps)
+   │   ├─ Calculate similarity_score
+   │   ├─ Detect concept gaps
+   │   └─ Return Answer with evaluation
+   │
+   └─→ Send evaluation to client
+
+3. Follow-up Decision Loop (max 3 iterations):
+   ├─→ Call FollowUpDecisionUseCase
+   │   ├─ Count existing follow-ups for parent question
+   │   ├─ Check break conditions:
+   │   │   ├─ If follow_up_count >= 3 → Exit
+   │   │   ├─ If similarity_score >= 0.8 → Exit
+   │   │   └─ If no gaps detected → Exit
+   │   │
+   │   ├─ Accumulate gaps from previous follow-ups
+   │   └─ Return decision dict
+   │
+   ├─→ If needs_followup == False:
+   │   ├─ State: EVALUATING → QUESTIONING
+   │   └─ Exit loop (move to next question)
+   │
+   └─→ If needs_followup == True:
+       ├─ State: EVALUATING → FOLLOW_UP
+       ├─ Call LLM.generate_followup_question()
+       │   ├─ Context: parent question + answer + cumulative gaps
+       │   ├─ Order: 1st, 2nd, or 3rd follow-up
+       │   └─ Returns targeted follow-up text
+       │
+       ├─ Store follow-up question in database
+       │   └─ FollowUpQuestionRepository.create()
+       │
+       ├─ Generate TTS audio for follow-up
+       │   └─ TextToSpeechPort.synthesize()
+       │
+       ├─ Send follow-up to client (WebSocket)
+       │   └─ Message type: "followup_question"
+       │
+       └─ Break loop (wait for next client message)
+           └─ Next answer re-enters loop at step 3
+
+4. After follow-up loop exits:
+   ├─ If interview has more main questions:
+   │   ├─ State: QUESTIONING
+   │   └─ Send next main question
+   └─ Else:
+       ├─ State: COMPLETE
+       └─ Generate interview summary (Phase 6)
+           └─ Complete interview
+```
+
+### Interview Summary Generation Flow (Phase 6)
+
+**Added**: 2025-11-12 (Phase 6 - Final Summary Generation)
+
+```
+1. Interview Completion Triggered
+   ├─→ State: EVALUATING → COMPLETE
+   ├─→ No more main questions remain
+   └─→ Call CompleteInterviewUseCase
+
+2. CompleteInterviewUseCase orchestrates (86 lines):
+   ├─→ Mark interview as COMPLETED
+   ├─→ If generate_summary=True:
+   │   ├─ Call GenerateSummaryUseCase
+   │   └─ Store summary in interview.metadata["summary"]
+   └─→ Save interview to database
+
+3. GenerateSummaryUseCase aggregates results (376 lines):
+   ├─→ Fetch all answers for interview
+   ├─→ Calculate aggregate metrics:
+   │   ├─ Overall score = 70% theoretical + 30% speaking
+   │   ├─ Theoretical score: avg(all answer similarity_scores)
+   │   ├─ Speaking score: avg(voice_metrics.overall_quality)
+   │   └─ Default speaking=85 if no voice answers
+   │
+   ├─→ Analyze gap progression:
+   │   ├─ Count answers with follow-ups
+   │   ├─ Identify gaps_filled (confirmed→False after follow-up)
+   │   ├─ Identify gaps_remaining (still confirmed=True)
+   │   └─ Build progression dict
+   │
+   ├─→ Generate LLM recommendations:
+   │   ├─ Pass evaluations, scores, gaps to LLM
+   │   ├─ LLM analyzes performance holistically
+   │   └─ Returns: strengths, weaknesses, study_topics, technique_tips
+   │
+   └─→ Build final summary dict:
+       ├─ overall_score: float
+       ├─ theoretical_score: float
+       ├─ speaking_score: float
+       ├─ answer_count: int
+       ├─ gap_progression: dict (filled, remaining, questions_with_followups)
+       ├─ strengths: list[str] (from LLM)
+       ├─ weaknesses: list[str] (from LLM)
+       ├─ study_topics: list[str] (from LLM)
+       └─ technique_tips: list[str] (from LLM)
+
+4. Session Orchestrator sends summary via WebSocket:
+   └─→ Message type: "interview_complete"
+       ├─ interview_id: UUID
+       ├─ summary: dict (all metrics + LLM recommendations)
+       └─ timestamp: str
+```
+
+**Key Metrics**:
+- **Overall Score**: 70% theoretical (answer similarity) + 30% speaking (voice quality)
+- **Gap Progression**: Tracks knowledge gaps filled during follow-ups vs remaining
+- **LLM Recommendations**: Personalized strengths, weaknesses, study topics, technique tips
+
+**Implementation Details**:
+- GenerateSummaryUseCase: 376 lines, 100% test coverage (14 tests)
+- CompleteInterviewUseCase: Updated to 86 lines, 100% test coverage (10 tests)
+- LLMPort enhanced with `generate_interview_recommendations()` method
+- Implemented in 3 adapters: OpenAI, AzureOpenAI, MockLLM
+- Summary stored in `interview.metadata["summary"]` as JSONB
+
+**Key Characteristics**:
+- **State Machine Pattern**: Session orchestrator manages lifecycle (5 states: IDLE → QUESTIONING → EVALUATING → FOLLOW_UP → COMPLETE)
+- **Message-Based Loop**: Handler breaks after sending first follow-up, waits for next message
+- **Not True Iterative**: Cannot block within handler waiting for answer (FastAPI WebSocket limitation)
+- **Break Conditions**: 3 exit paths - max count, high similarity, no gaps
+- **Gap Accumulation**: All missing concepts from previous follow-ups merged and passed to LLM
+- **Separation**: Decision logic isolated in FollowUpDecisionUseCase (testable)
+- **State Validation**: Validates interview/question exists BEFORE state transitions (bug fix)
+
+**Architecture Tradeoff**:
+- ✅ Simpler implementation, no nested message handling
+- ✅ Clear state machine with valid transition rules
+- ✅ Session state recovery and timeout handling
+- ❌ Cannot enforce strict max-3 in single transaction
+- ❌ Relies on client sending answers sequentially
+
+**Sequence Diagram**:
+```
+Client              Handler             FollowUpDecision    LLM
+  │                    │                      │              │
+  ├─ text_answer ────→ │                      │              │
+  │                    ├─ evaluate answer     │              │
+  │                    ├─ execute() ─────────→│              │
+  │                    │                      ├─ check count │
+  │                    │                      ├─ check gaps  │
+  │                    │←─ decision dict ─────┤              │
+  │                    │  {needs: true}       │              │
+  │                    ├─ generate_followup ─────────────→   │
+  │                    │←─ follow-up text ─────────────────  │
+  │←─ followup_question│                      │              │
+  │                    │ (breaks, waits)      │              │
+  │                    │                      │              │
+  ├─ text_answer ────→ │                      │              │
+  │                    ├─ evaluate answer     │              │
+  │                    ├─ execute() ─────────→│              │
+  │                    │                      ├─ check count │
+  │                    │                      ├─ similarity  │
+  │                    │←─ decision dict ─────┤              │
+  │                    │  {needs: false}      │              │
+  │←─ next_question ───│                      │              │
 ```
 
 ## Database Architecture
@@ -1058,88 +1434,126 @@ create_async_engine(
 
 ### REST API Design
 
-**Base URL**: `/api/v1`
+**Base URL**: `/api`
 
 **Endpoints**:
 
 ```
 # Health
-GET  /health                           # Health check
+GET  /health                                      # Health check ✅
 
+# Interviews ✅
+POST   /api/interviews                            # Create interview session ✅
+GET    /api/interviews/{id}                       # Get interview details ✅
+PUT    /api/interviews/{id}/start                 # Start interview ✅
+GET    /api/interviews/{id}/questions/current     # Get current question ✅
+
+# Planned
 # Candidates
-POST   /api/v1/candidates              # Create candidate
-GET    /api/v1/candidates/{id}         # Get candidate
-PUT    /api/v1/candidates/{id}         # Update candidate
-DELETE /api/v1/candidates/{id}         # Delete candidate
+POST   /api/candidates                            # Create candidate ⏳
+GET    /api/candidates/{id}                       # Get candidate ⏳
+PUT    /api/candidates/{id}                       # Update candidate ⏳
+DELETE /api/candidates/{id}                       # Delete candidate ⏳
 
 # CV Analysis
-POST /api/v1/cv/upload                 # Upload and analyze CV
-GET  /api/v1/cv/{id}                   # Get CV analysis
-
-# Interviews
-POST   /api/v1/interviews              # Create interview
-GET    /api/v1/interviews/{id}         # Get interview
-PUT    /api/v1/interviews/{id}/start   # Start interview
-PUT    /api/v1/interviews/{id}/complete # Complete interview
-GET    /api/v1/interviews/{id}/questions/{index} # Get question
+POST /api/cv/upload                               # Upload and analyze CV ⏳
+GET  /api/cv/{id}                                 # Get CV analysis ⏳
 
 # Answers
-POST /api/v1/interviews/{id}/answers   # Submit answer
-GET  /api/v1/interviews/{id}/answers   # Get all answers
+POST /api/interviews/{id}/answers                 # Submit answer ⏳
+GET  /api/interviews/{id}/answers                 # Get all answers ⏳
 
 # Questions (Admin)
-POST   /api/v1/questions               # Create question
-GET    /api/v1/questions               # List questions
-GET    /api/v1/questions/{id}          # Get question
-PUT    /api/v1/questions/{id}          # Update question
-DELETE /api/v1/questions/{id}          # Delete question
+POST   /api/questions                             # Create question ⏳
+GET    /api/questions                             # List questions ⏳
+GET    /api/questions/{id}                        # Get question ⏳
+PUT    /api/questions/{id}                        # Update question ⏳
+DELETE /api/questions/{id}                        # Delete question ⏳
 
 # Feedback
-GET /api/v1/interviews/{id}/feedback   # Get comprehensive feedback
+GET /api/interviews/{id}/feedback                 # Get comprehensive feedback ⏳
 ```
 
-### WebSocket API (Planned)
+### WebSocket API ✅
 
 **Endpoint**: `/ws/interviews/{interview_id}`
 
 **Protocol**:
+
 ```json
-// Client → Server: Submit answer
+// Client → Server: Submit text answer
 {
-  "type": "answer",
+  "type": "text_answer",
   "question_id": "uuid",
   "answer_text": "string"
+}
+
+// Client → Server: Submit audio chunk
+{
+  "type": "audio_chunk",
+  "audio_data": "base64_encoded_audio",
+  "is_final": false
+}
+
+// Client → Server: Request next question
+{
+  "type": "get_next_question"
+}
+
+// Server → Client: Send question with audio
+{
+  "type": "question",
+  "question_id": "uuid",
+  "text": "What is...?",
+  "question_type": "technical",
+  "difficulty": "medium",
+  "index": 0,
+  "total": 5,
+  "audio_data": "base64_encoded_tts_audio"
 }
 
 // Server → Client: Answer evaluation
 {
   "type": "evaluation",
   "answer_id": "uuid",
-  "evaluation": {
-    "score": 85.5,
-    "feedback": "Good answer...",
-    "strengths": ["..."],
-    "weaknesses": ["..."]
-  }
-}
-
-// Server → Client: Next question
-{
-  "type": "question",
-  "question_id": "uuid",
-  "text": "What is...?",
-  "question_type": "technical",
-  "difficulty": "medium"
+  "score": 85.5,
+  "feedback": "Good answer...",
+  "strengths": ["Clear explanation", "Good examples"],
+  "weaknesses": ["Missing edge cases"]
 }
 
 // Server → Client: Interview complete
 {
-  "type": "complete",
+  "type": "interview_complete",
   "interview_id": "uuid",
   "overall_score": 78.5,
-  "feedback_url": "/api/v1/interviews/{id}/feedback"
+  "total_questions": 5,
+  "feedback_url": "/api/interviews/{id}/feedback"
+}
+
+// Server → Client: Error
+{
+  "type": "error",
+  "code": "INTERVIEW_NOT_FOUND",
+  "message": "Interview {id} not found"
+}
+
+// Server → Client: Audio transcription (STT)
+{
+  "type": "transcription",
+  "text": "Transcribed text...",
+  "is_final": true
 }
 ```
+
+**Features**:
+- Real-time bi-directional communication
+- Automatic question delivery with TTS audio
+- Answer evaluation and immediate feedback
+- Progress tracking (current/total questions)
+- Error handling with descriptive codes
+- Support for both text and voice answers
+- Connection management via ConnectionManager
 
 ## Security Architecture
 

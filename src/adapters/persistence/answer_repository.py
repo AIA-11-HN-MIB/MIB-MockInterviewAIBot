@@ -1,14 +1,14 @@
 """PostgreSQL implementation of AnswerRepositoryPort."""
 
-from typing import List, Optional
 from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...domain.models.answer import Answer
 from ...domain.ports.answer_repository_port import AnswerRepositoryPort
-from .models import AnswerModel
 from .mappers import AnswerMapper
+from .models import AnswerModel
 
 
 class PostgreSQLAnswerRepository(AnswerRepositoryPort):
@@ -34,7 +34,7 @@ class PostgreSQLAnswerRepository(AnswerRepositoryPort):
         await self.session.refresh(db_model)
         return AnswerMapper.to_domain(db_model)
 
-    async def get_by_id(self, answer_id: UUID) -> Optional[Answer]:
+    async def get_by_id(self, answer_id: UUID) -> Answer | None:
         """Retrieve an answer by ID."""
         result = await self.session.execute(
             select(AnswerModel).where(AnswerModel.id == answer_id)
@@ -42,7 +42,7 @@ class PostgreSQLAnswerRepository(AnswerRepositoryPort):
         db_model = result.scalar_one_or_none()
         return AnswerMapper.to_domain(db_model) if db_model else None
 
-    async def get_by_ids(self, answer_ids: List[UUID]) -> List[Answer]:
+    async def get_by_ids(self, answer_ids: list[UUID]) -> list[Answer]:
         """Retrieve multiple answers by IDs."""
         result = await self.session.execute(
             select(AnswerModel).where(AnswerModel.id.in_(answer_ids))
@@ -50,7 +50,7 @@ class PostgreSQLAnswerRepository(AnswerRepositoryPort):
         db_models = result.scalars().all()
         return [AnswerMapper.to_domain(db_model) for db_model in db_models]
 
-    async def get_by_interview_id(self, interview_id: UUID) -> List[Answer]:
+    async def get_by_interview_id(self, interview_id: UUID) -> list[Answer]:
         """Retrieve all answers for an interview."""
         result = await self.session.execute(
             select(AnswerModel)
@@ -60,7 +60,7 @@ class PostgreSQLAnswerRepository(AnswerRepositoryPort):
         db_models = result.scalars().all()
         return [AnswerMapper.to_domain(db_model) for db_model in db_models]
 
-    async def get_by_question_id(self, question_id: UUID) -> List[Answer]:
+    async def get_by_question_id(self, question_id: UUID) -> list[Answer]:
         """Retrieve all answers for a question."""
         result = await self.session.execute(
             select(AnswerModel)
@@ -70,7 +70,7 @@ class PostgreSQLAnswerRepository(AnswerRepositoryPort):
         db_models = result.scalars().all()
         return [AnswerMapper.to_domain(db_model) for db_model in db_models]
 
-    async def get_by_candidate_id(self, candidate_id: UUID) -> List[Answer]:
+    async def get_by_candidate_id(self, candidate_id: UUID) -> list[Answer]:
         """Retrieve all answers by a candidate."""
         result = await self.session.execute(
             select(AnswerModel)

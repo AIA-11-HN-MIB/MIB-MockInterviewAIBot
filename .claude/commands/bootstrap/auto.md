@@ -1,9 +1,11 @@
 ---
-description: Bootstrap a new project automatically
+description: ⚡⚡⚡⚡ Bootstrap a new project automatically
 argument-hint: [user-requirements]
 ---
 
 **Ultrathink** to plan & bootstrap a new project follow the Orchestration Protocol, Core Responsibilities, Subagents Team and Development Rules in your `CLAUDE.md` file: 
+
+**IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.
 
 ---
 
@@ -36,36 +38,44 @@ argument-hint: [user-requirements]
 
 Follow strictly these following steps:
 
-**First thing first:** check if Git has been initialized, if not, ask the user if they want to initialize it, if yes, use `git-manager` subagent to initialize it.
+**First thing first:** check if Git has been initialized, if not, initialize it using `git-manager` subagent (use `main` branch).
 
 ### Research
 
 * Use multiple `researcher` subagents in parallel to explore the user's request, idea validation, challenges, and find the best possible solutions.
+* Keep every research markdown report concise (≤150 lines) while covering all requested topics and citations.
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
 ### Tech Stack
 
-1. Use `planner` subagent and multiple `researcher` subagents in parallel to find a best fit tech stack for this project
+1. Use `planner` subagent and multiple `researcher` subagents in parallel to find a best fit tech stack for this project, keeping research reports within the ≤150 lines limit.
 2. Write the tech stack down in `./docs` directory
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
 ### Wireframe & Design
 
-* Use `ui-ux-designer` subagent and multiple `researcher` subagents in parallel to create a design plan with TODO tasks in `./plans` directory.
+* Use `ui-ux-designer` subagent and multiple `researcher` subagents in parallel to create a design plan that follows the progressive disclosure structure:
+  - Create a directory `plans/YYYYMMDD-HHmm-plan-name` (example: `plans/20251101-1505-authentication-and-profile-implementation`).
+  - Save the overview access point at `plan.md`, keep it generic, under 80 lines, and list each phase with status/progress and links.
+  - For each phase, add `phase-XX-phase-name.md` files containing sections (Context links, Overview with date/priority/statuses, Key Insights, Requirements, Architecture, Related code files, Implementation Steps, Todo list, Success Criteria, Risk Assessment, Security Considerations, Next steps).
+* Keep related research reports within the ≤150 lines limit.
    - **Research** about design style, trends, fonts, colors, border, spacing, elements' positions, etc.
-   - Describe details of the assets in the design so they can be generated with `gemini-image-gen` skill later on.
+   - Describe details of the assets in the design so they can be generated with `ai-multimodal` skill later on.
    - **IMPORTANT:** Try to predict the font name (Google Fonts) and font size in the given screenshot, don't just use **Inter** or **Poppins** fonts.
 * Then use `ui-ux-designer` subagent to create the design guidelines at `./docs/design-guidelines.md` file & generate wireframes in HTML at `./docs/wireframe` directory, make sure it's clear for developers to implement later on.
-* If there are no logo provided, use `gemini-image-gen` skill to generate a logo.
+* If there are no logo provided, use `ai-multimodal` skill to generate a logo.
 * Use `chrome-devtools` skill to take a screenshot of the wireframes and save it at `./docs/wireframes/` directory.
 * Ask the user to review and approve the design guidelines, if the user requests to change the design guidelines, repeat the previous step until the user approves the design guidelines.
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
 ### Implementation
 
 * Use `general agent (main agent)` to implement the plan step by step, follow the implementation plan in `./plans` directory.
 * Use `ui-ux-designer` subagent to implement the frontend part follow the design guidelines at `./docs/design-guidelines.md` file.
-  * Use `gemini_gen_image` tool to generate the assets.
-  * Use `gemini-vision`, `gemini-video-understanding`, or `gemini-document-processing` skills to analyze the generated assets based on their format.
+  * Use `ai-multimodal` skill to generate the assets.
+  * Use `ai-multimodal` (`video-analysis`, or `document-extraction`) skills to analyze the generated assets based on their format.
   * Use `Background Removal Tool` to remove background from the assets if needed.
-  * Use `Gemini Image Editing` tool to edit the assets if needed.
+  * Use `ai-multimodal` (`image-generation`) skill to edit the assets if needed.
   * Use `imagemagick` skill to crop or resize the assets if needed.
 * Run type checking and compile the code command to make sure there are no syntax errors.
 
@@ -80,15 +90,17 @@ Follow strictly these following steps:
 
 * After finishing, delegate to `code-reviewer` subagent to review code. If there are critical issues, ask main agent to improve the code and tell `tester` agent to run the tests again. Repeat the process until all tests pass.
 * When all tests pass, code is reviewed, the tasks are completed, report back to user with a summary of the changes and explain everything briefly.
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
 ### Documentation
 
 * Use `docs-manager` subagent to update the docs if needed.
-  * Create/update `./docs/README.md` file.
+  * Create/update `./docs/README.md` file (keep it concise and under 300 lines).
   * Create/update `./docs/project-overview.-pdr.md` (Product Development Requirements) file.
   * Create/update `./docs/code-standards.md` file.
   * Create/update `./docs/system-architecture.md` file.
 * Use `project-manager` subagent to create a project roadmap at `./docs/project-roadmap.md` file.
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
 ### Onboarding
 
@@ -100,4 +112,4 @@ Follow strictly these following steps:
 ### Final Report
 * Report back to user with a summary of the changes and explain everything briefly, guide user to get started and suggest the next steps.
 * Ask the user if they want to commit and push to git repository, if yes, use `git-manager` subagent to commit and push to git repository.
-
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.

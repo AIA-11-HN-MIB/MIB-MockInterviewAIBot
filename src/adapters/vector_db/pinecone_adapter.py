@@ -1,10 +1,10 @@
 """Pinecone vector database adapter implementation."""
 
-from typing import List, Dict, Any, Optional
+from typing import Any
 from uuid import UUID
 
-from pinecone import Pinecone, ServerlessSpec
 from openai import AsyncOpenAI
+from pinecone import Pinecone, ServerlessSpec
 
 from ...domain.ports.vector_search_port import VectorSearchPort
 
@@ -62,8 +62,8 @@ class PineconeAdapter(VectorSearchPort):
     async def store_question_embedding(
         self,
         question_id: UUID,
-        embedding: List[float],
-        metadata: Dict[str, Any],
+        embedding: list[float],
+        metadata: dict[str, Any],
     ) -> None:
         """Store a question's vector embedding in Pinecone.
 
@@ -89,8 +89,8 @@ class PineconeAdapter(VectorSearchPort):
     async def store_cv_embedding(
         self,
         cv_analysis_id: UUID,
-        embedding: List[float],
-        metadata: Dict[str, Any],
+        embedding: list[float],
+        metadata: dict[str, Any],
     ) -> None:
         """Store a CV analysis vector embedding in Pinecone.
 
@@ -115,10 +115,10 @@ class PineconeAdapter(VectorSearchPort):
 
     async def find_similar_questions(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         """Find similar questions using semantic search.
 
         Args:
@@ -157,8 +157,8 @@ class PineconeAdapter(VectorSearchPort):
 
     async def find_similar_answers(
         self,
-        answer_embedding: List[float],
-        reference_embeddings: List[List[float]],
+        answer_embedding: list[float],
+        reference_embeddings: list[list[float]],
     ) -> float:
         """Calculate similarity between answer and reference answers.
 
@@ -198,7 +198,7 @@ class PineconeAdapter(VectorSearchPort):
 
         return results.matches[0].score if results.matches else 0.0
 
-    async def get_embedding(self, text: str) -> List[float]:
+    async def get_embedding(self, text: str) -> list[float]:
         """Generate embedding for text using OpenAI.
 
         Args:
@@ -214,7 +214,7 @@ class PineconeAdapter(VectorSearchPort):
 
         return response.data[0].embedding
 
-    async def delete_embeddings(self, ids: List[UUID]) -> None:
+    async def delete_embeddings(self, ids: list[UUID]) -> None:
         """Delete embeddings by IDs.
 
         Args:

@@ -1,11 +1,12 @@
 """LLM (Large Language Model) port interface."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List
+from typing import Any
 from uuid import UUID
 
-from ..models.question import Question
 from ..models.answer import AnswerEvaluation
+from ..models.evaluation import FollowUpEvaluationContext
+from ..models.question import Question
 
 
 class LLMPort(ABC):
@@ -18,9 +19,10 @@ class LLMPort(ABC):
     @abstractmethod
     async def generate_question(
         self,
-        context: Dict[str, Any],
+        context: dict[str, Any],
         skill: str,
         difficulty: str,
+        exemplars: list[dict[str, Any]] | None = None,
     ) -> str:
         """Generate an interview question.
 
@@ -28,6 +30,10 @@ class LLMPort(ABC):
             context: Interview context (CV analysis, previous answers, etc.)
             skill: Target skill to test
             difficulty: Question difficulty level
+            exemplars: Optional list of similar questions for inspiration.
+                      Each dict should contain: 'text', 'skills', 'difficulty', 'similarity_score'.
+                      Helps LLM understand desired question style and depth.
+                      Default: None (generate without exemplars)
 
         Returns:
             Generated question text
@@ -39,7 +45,8 @@ class LLMPort(ABC):
         self,
         question: Question,
         answer_text: str,
-        context: Dict[str, Any],
+        context: dict[str, Any],
+        followup_context: FollowUpEvaluationContext | None = None,
     ) -> AnswerEvaluation:
         """Evaluate a candidate's answer.
 
@@ -47,6 +54,9 @@ class LLMPort(ABC):
             question: The question that was asked
             answer_text: Candidate's answer
             context: Additional context for evaluation
+            followup_context: Optional context for follow-up question evaluation.
+                Includes previous evaluations, cumulative gaps, attempt number.
+                Used to provide LLM with history and apply attempt-based penalties.
 
         Returns:
             Evaluation results with score and feedback
@@ -57,8 +67,8 @@ class LLMPort(ABC):
     async def generate_feedback_report(
         self,
         interview_id: UUID,
-        questions: List[Question],
-        answers: List[Dict[str, Any]],
+        questions: list[Question],
+        answers: list[dict[str, Any]],
     ) -> str:
         """Generate comprehensive feedback report.
 
@@ -85,7 +95,7 @@ class LLMPort(ABC):
         pass
 
     @abstractmethod
-    async def extract_skills_from_text(self, text: str) -> List[Dict[str, str]]:
+    async def extract_skills_from_text(self, text: str) -> list[dict[str, str]]:
         """Extract skills from CV text using NLP.
 
         Args:
@@ -93,5 +103,114 @@ class LLMPort(ABC):
 
         Returns:
             List of extracted skills with metadata
+        """
+        pass
+
+    @abstractmethod
+    async def generate_ideal_answer(
+        self,
+        question_text: str,
+        context: dict[str, Any],
+    ) -> str:
+        """Generate ideal answer for a question.
+
+        Args:
+            question_text: The interview question
+            context: CV summary, skills, etc.
+
+        Returns:
+            Ideal answer text (150-300 words)
+        """
+        pass
+
+    @abstractmethod
+    async def generate_rationale(
+        self,
+        question_text: str,
+        ideal_answer: str,
+    ) -> str:
+        """Generate rationale explaining why answer is ideal.
+
+        Args:
+            question_text: The question
+            ideal_answer: The ideal answer
+
+        Returns:
+            Rationale text (50-100 words)
+        """
+        pass
+
+    @abstractmethod
+    async def detect_concept_gaps(
+        self,
+        answer_text: str,
+        ideal_answer: str,
+        question_text: str,
+        keyword_gaps: list[str],
+    ) -> dict[str, Any]:
+        """Detect missing concepts in answer using LLM.
+
+        Args:
+            answer_text: Candidate's answer
+            ideal_answer: Reference ideal answer
+            question_text: The question that was asked
+            keyword_gaps: Potential missing keywords from keyword analysis
+
+        Returns:
+            Dict with keys:
+                - concepts: list[str] - Missing key concepts
+                - keywords: list[str] - Subset of confirmed missing keywords
+                - confirmed: bool - Whether gaps are confirmed
+                - severity: str - "minor" | "moderate" | "major"
+        """
+        pass
+
+    @abstractmethod
+    async def generate_followup_question(
+        self,
+        parent_question: str,
+        answer_text: str,
+        missing_concepts: list[str],
+        severity: str,
+        order: int,
+        cumulative_gaps: list[str] | None = None,
+        previous_follow_ups: list[dict[str, Any]] | None = None,
+    ) -> str:
+        """Generate targeted follow-up question.
+
+        Args:
+            parent_question: Original question text
+            answer_text: Candidate's answer to parent question (or latest follow-up)
+            missing_concepts: List of concepts missing from current answer
+            severity: Gap severity ("minor" | "moderate" | "major")
+            order: Follow-up order in sequence (1, 2, 3, ...)
+            cumulative_gaps: All unique gaps accumulated across follow-up cycle (optional)
+            previous_follow_ups: Previous follow-up questions and answers for context (optional)
+
+        Returns:
+            Follow-up question text
+        """
+        pass
+
+    @abstractmethod
+    async def generate_interview_recommendations(
+        self,
+        context: dict[str, Any],
+    ) -> dict[str, list[str]]:
+        """Generate personalized interview recommendations.
+
+        Args:
+            context: Interview context including:
+                - interview_id: str
+                - total_answers: int
+                - gap_progression: dict (gaps filled, remaining, etc.)
+                - evaluations: list[dict] (scores, strengths, weaknesses per answer)
+
+        Returns:
+            Dict with keys:
+                - strengths: list[str] (top 3-5 strengths)
+                - weaknesses: list[str] (top 3-5 weaknesses)
+                - study_topics: list[str] (topic-specific study recommendations)
+                - technique_tips: list[str] (voice, pacing, structure tips)
         """
         pass

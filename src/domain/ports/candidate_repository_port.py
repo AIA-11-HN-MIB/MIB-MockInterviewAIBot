@@ -1,7 +1,6 @@
 """Candidate repository port interface."""
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
 from uuid import UUID
 
 from ..models.candidate import Candidate
@@ -27,7 +26,7 @@ class CandidateRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def get_by_id(self, candidate_id: UUID) -> Optional[Candidate]:
+    async def get_by_id(self, candidate_id: UUID) -> Candidate | None:
         """Retrieve a candidate by ID.
 
         Args:
@@ -39,7 +38,7 @@ class CandidateRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def get_by_email(self, email: str) -> Optional[Candidate]:
+    async def get_by_email(self, email: str) -> Candidate | None:
         """Retrieve a candidate by email.
 
         Args:
@@ -79,7 +78,7 @@ class CandidateRepositoryPort(ABC):
         self,
         skip: int = 0,
         limit: int = 100,
-    ) -> List[Candidate]:
+    ) -> list[Candidate]:
         """List all candidates with pagination.
 
         Args:

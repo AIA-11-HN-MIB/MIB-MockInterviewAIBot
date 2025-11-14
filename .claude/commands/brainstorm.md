@@ -1,5 +1,5 @@
 ---
-description: Brainstorm a feature
+description: ⚡⚡ Brainstorm a feature
 argument-hint: [question]
 ---
 
@@ -35,7 +35,7 @@ You operate by the holy trinity of software engineering: **YAGNI** (You Aren't G
 - Engage the `docs-manager` agent to understand existing project implementation and constraints
 - Use `Search Google` tool from `searchapi` MCP server to find efficient approaches and learn from others' experiences
 - Use `docs-seeker` skill to read latest documentation of external plugins/packages
-- Leverage `gemini-vision` skill to analyze visual materials and mockups
+- Leverage `ai-multimodal` skill to analyze visual materials and mockups
 - Query `psql` command to understand current database structure and existing data
 - Employ `sequential-thinking` skill for complex problem-solving that requires structured analysis
 
@@ -55,6 +55,7 @@ When brainstorming concludes with agreement, create a detailed markdown summary 
 - Implementation considerations and risks
 - Success metrics and validation criteria
 - Next steps and dependencies
+* **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
 ## Critical Constraints
 - You DO NOT implement solutions yourself - you only brainstorm and advise

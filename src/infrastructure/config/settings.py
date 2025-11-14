@@ -3,12 +3,16 @@
 import os
 import re
 from functools import lru_cache
-from typing import Optional
-from dotenv import load_dotenv
+from pathlib import Path
+
+from dotenv import load_dotenv, find_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load environment variables from .env file
-load_dotenv()
+# env_path = find_dotenv()
+# print(f"✅ .env file found: {env_path if env_path else 'None'}")
+#
+# load_dotenv(env_path)
 
 
 class Settings(BaseSettings):
@@ -26,25 +30,34 @@ class Settings(BaseSettings):
     # API Configuration
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    api_prefix: str = "/api/v1"
+    api_prefix: str = "/api"
 
     # LLM Provider Selection
     llm_provider: str = "openai"  # openai, claude, llama
 
     # OpenAI Configuration
-    openai_api_key: Optional[str] = None
+    openai_api_key: str | None = None
     openai_model: str = "gpt-4"
     openai_temperature: float = 0.7
+    openai_embedding_model: str = "text-embedding-3-small"
+    openai_embedding_api_key: str | None = None
+
+    # Azure OpenAI Configuration (alternative to standard OpenAI)
+    azure_openai_api_key: str | None = None
+    azure_openai_endpoint: str | None = None  # e.g., "https://your-resource.openai.azure.com/"
+    azure_openai_api_version: str = "2024-02-15-preview"
+    azure_openai_deployment_name: str | None = None  # Deployment name, not model name
+    use_azure_openai: bool = False  # Flag to enable Azure OpenAI
 
     # Anthropic Claude Configuration (alternative)
-    anthropic_api_key: Optional[str] = None
+    anthropic_api_key: str | None = None
     anthropic_model: str = "claude-3-sonnet-20240229"
 
     # Vector Database Selection
     vector_db_provider: str = "pinecone"  # pinecone, weaviate, chroma
 
     # Pinecone Configuration
-    pinecone_api_key: Optional[str] = None
+    pinecone_api_key: str | None = None
     pinecone_environment: str = "us-east-1"
     pinecone_index_name: str = "elios-interviews"
 
@@ -54,7 +67,7 @@ class Settings(BaseSettings):
     postgres_user: str = "elios"
     postgres_password: str = ""
     postgres_db: str = "elios_interviews"
-    database_url: Optional[str] = None  # Full DATABASE_URL from environment
+    database_url: str | None = None  # Full DATABASE_URL from environment
 
     @property
     def async_database_url(self) -> str:
@@ -91,9 +104,12 @@ class Settings(BaseSettings):
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
-    # Speech Services
-    azure_speech_key: Optional[str] = None
+    # Speech Services (Azure Speech SDK)
+    azure_speech_key: str | None = None
     azure_speech_region: str = "eastus"
+    azure_speech_language: str = "en-US"
+    azure_speech_voice: str = "en-US-AriaNeural"
+    azure_speech_cache_size: int = 128  # LRU cache size for TTS
 
     # File Storage
     upload_dir: str = "./uploads"
@@ -112,12 +128,32 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
 
+    # WebSocket Configuration
+    ws_host: str = "localhost"
+    ws_port: int = 8000
+    ws_base_url: str = "ws://localhost:8000"
+
+    # Mock Adapters (for development/testing)
+    # Individual flags for each adapter - set to False to use real implementations
+    use_mock_llm: bool = True
+    use_mock_vector_search: bool = True
+    use_mock_cv_analyzer: bool = True
+    use_mock_stt: bool = True
+    use_mock_tts: bool = True
+    use_mock_analytics: bool = True
+
     model_config = SettingsConfigDict(
-        env_file=(".env.local", ".env"),  # Try .env.local first, fallback to .env
+        env_file=("../.env.local", "../.env", ".env"),  # Try .env.local first, fallback to .env
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
     )
+
+    def print_loaded_env_file(self):
+        for env_file in self.model_config["env_file"]:
+            if Path(env_file).exists():
+                print(f"Found {env_file} (will be used if values not already set)")
+        print(f"Active environment: {self.environment}")
 
     def is_production(self) -> bool:
         """Check if running in production."""
@@ -135,4 +171,8 @@ def get_settings() -> Settings:
     Returns:
         Settings instance
     """
-    return Settings()
+
+    settings = Settings()
+    settings.print_loaded_env_file()
+
+    return settings

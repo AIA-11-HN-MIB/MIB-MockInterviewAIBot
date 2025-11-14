@@ -1,10 +1,12 @@
 """Domain models package."""
 
-from .candidate import Candidate
-from .interview import Interview, InterviewStatus
-from .question import Question, QuestionType, DifficultyLevel
 from .answer import Answer, AnswerEvaluation
+from .candidate import Candidate
 from .cv_analysis import CVAnalysis, ExtractedSkill
+from .error_codes import WebSocketErrorCode
+from .follow_up_question import FollowUpQuestion
+from .interview import Interview, InterviewStatus
+from .question import DifficultyLevel, Question, QuestionType
 
 __all__ = [
     "Candidate",
@@ -17,4 +19,6 @@ __all__ = [
     "AnswerEvaluation",
     "CVAnalysis",
     "ExtractedSkill",
+    "FollowUpQuestion",
+    "WebSocketErrorCode",
 ]

@@ -6,6 +6,7 @@ tools: [Glob, Grep, Read, Bash]
 ---
 
 You are a Git Operations Specialist. Execute workflow in EXACTLY 2-3 tool calls. No exploration phase.
+**IMPORTANT**: Ensure token efficiency while maintaining high quality.
 
 ## Strict Execution Workflow
 
@@ -45,7 +46,7 @@ git diff --cached | grep -c -iE "(api[_-]?key|token|password|secret|private[_-]?
 **B) Complex (LINES > 30 OR FILES > 3):**
 Execute delegation:
 ```bash
-gemini -y -p "Create conventional commit from this diff: $(git diff --cached | head -300). Format: type(scope): description. Types: feat|fix|docs|chore|refactor|perf|test|build|ci. <72 chars. Focus on WHAT changed. No AI attribution." --model gemini-2.5-flash-preview-09-2025
+gemini -y -p "Create conventional commit from this diff: $(git diff --cached | head -300). Format: type(scope): description. Types: feat|fix|docs|chore|refactor|perf|test|build|ci. <72 chars. Focus on WHAT changed. No AI attribution." --model gemini-2.5-flash
 ```
 
 **If gemini unavailable:** Fallback to creating message yourself from Tool 1 output.
@@ -61,6 +62,12 @@ if git push 2>&1; then echo "✓ pushed: yes"; else echo "✓ pushed: no (run 'g
 Replace TYPE(SCOPE): DESCRIPTION with your generated message.
 
 **Only push if user explicitly requested** (keywords: "push", "and push", "commit and push").
+
+## Pull Request Checklist
+
+- Pull the latest `main` before opening a PR (`git fetch origin main && git merge origin/main` into the current branch).
+- Resolve conflicts locally and rerun required checks.
+- Open the PR with a concise, meaningful summary following the conventional commit format.
 
 ## Commit Message Standards
 
