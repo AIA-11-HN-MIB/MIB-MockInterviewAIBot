@@ -264,7 +264,7 @@ async def plan_interview(
         # Execute planning use case
         use_case = PlanInterviewUseCase(
             llm=container.llm_port(),
-            vector_search=container.vector_search_port(),
+            # vector_search=container.vector_search_port(),
             cv_analysis_repo=cv_analysis_repo,
             interview_repo=container.interview_repository_port(session),
             question_repo=container.question_repository_port(session),

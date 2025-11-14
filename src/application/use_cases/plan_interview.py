@@ -30,7 +30,6 @@ class PlanInterviewUseCase:
     def __init__(
         self,
         llm: LLMPort,
-        vector_search: VectorSearchPort,
         cv_analysis_repo: CVAnalysisRepositoryPort,
         interview_repo: InterviewRepositoryPort,
         question_repo: QuestionRepositoryPort,
@@ -45,7 +44,6 @@ class PlanInterviewUseCase:
             question_repo: Question storage
         """
         self.llm = llm
-        self.vector_search = vector_search
         self.cv_analysis_repo = cv_analysis_repo
         self.interview_repo = interview_repo
         self.question_repo = question_repo
@@ -103,7 +101,7 @@ class PlanInterviewUseCase:
                 logger.info(f"Generated question {i + 1}/{n}: {question.id}")
 
                 # Store question embedding in vector DB (non-blocking)
-                await self._store_question_embedding(question)
+                # await self._store_question_embedding(question)
 
         except Exception as e:
             logger.error(f"Failed to generate questions: {e}")
@@ -199,33 +197,39 @@ class PlanInterviewUseCase:
             List of exemplar questions (max 3), empty list on failure
         """
         try:
+            # Query by skill and difficulty
+            questions = await self.question_repo.find_by_skill(skill, difficulty)
+            
+            # Filter by question type
+            questions_by_type = [q for q in questions if q.question_type == question_type][:5]
+
             # Build search query
-            query_text = self._build_search_query(skill, cv_analysis, difficulty)
+            # query_text = self._build_search_query(skill, cv_analysis, difficulty)
 
             # Get query embedding
-            query_embedding = await self.vector_search.get_embedding(query_text)
+            # query_embedding = await self.vector_search.get_embedding(query_text)
 
             # Search with filters
-            similar_questions = await self.vector_search.find_similar_questions(
-                query_embedding=query_embedding,
-                top_k=5,  # Request 5, use top 3
-                filters={
-                    "question_type": question_type.value,
-                    "difficulty": difficulty.value,
-                }
-            )
+            # similar_questions = await self.vector_search.find_similar_questions(
+            #     query_embedding=query_embedding,
+            #     top_k=5,  # Request 5, use top 3
+            #     filters={
+            #         "question_type": question_type.value,
+            #         "difficulty": difficulty.value,
+            #     }
+            # )
 
             # Format exemplars
             exemplars = [
                 {
-                    "text": q.get("text", ""),
-                    "skills": q.get("metadata", {}).get("skills", []),
-                    "difficulty": q.get("metadata", {}).get("difficulty", ""),
-                    "similarity_score": q.get("score", 0.0),
+                    "text": question.text,
+                    "skills": question.skills,
+                    "difficulty": question.difficulty.value if question.difficulty else "",
                 }
-                for q in similar_questions[:3]  # Use top 3
-                if q.get("score", 0) > 0.5  # Similarity threshold
+                for question in questions_by_type
             ]
+
+            print(exemplars)
 
             logger.info(f"Found {len(exemplars)} exemplar questions for {skill}")
             return exemplars
@@ -248,20 +252,20 @@ class PlanInterviewUseCase:
         """
         try:
             # Generate embedding
-            embedding = await self.vector_search.get_embedding(question.text)
+            # embedding = await self.vector_search.get_embedding(question.text)
 
             # Store with metadata
-            await self.vector_search.store_question_embedding(
-                question_id=question.id,
-                embedding=embedding,
-                metadata={
-                    "text": question.text,
-                    "skills": question.skills,
-                    "difficulty": question.difficulty.value,
-                    "question_type": question.question_type.value,
-                    "tags": question.tags or [],
-                }
-            )
+            # await self.vector_search.store_question_embedding(
+            #     question_id=question.id,
+            #     embedding=embedding,
+            #     metadata={
+            #         "text": question.text,
+            #         "skills": question.skills,
+            #         "difficulty": question.difficulty.value,
+            #         "question_type": question.question_type.value,
+            #         "tags": question.tags or [],
+            #     }
+            # )
 
             logger.info(f"Stored embedding for question {question.id}")
 
@@ -290,7 +294,7 @@ class PlanInterviewUseCase:
 
         # Select skill to test
         skills = cv_analysis.get_top_skills(limit=5)
-        skill = skills[index % len(skills)].name if skills else "general knowledge"
+        skill = skills[index % len(skills)].skill if skills else "general knowledge"
 
         # Find exemplar questions from vector DB
         exemplars = await self._find_exemplar_questions(
@@ -303,7 +307,7 @@ class PlanInterviewUseCase:
         # Generate question with exemplars
         context = {
             "summary": cv_analysis.summary or "No summary",
-            "skills": [s.name for s in skills],
+            "skills": [s.skill for s in skills],
             "experience": cv_analysis.work_experience_years or 0,
         }
 

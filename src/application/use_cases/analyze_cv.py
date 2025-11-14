@@ -68,13 +68,9 @@ class AnalyzeCVUseCase:
             candidate_id = str(candidate_id)
         )
 
-        # print(candidate)
-
         try:
-            saved_candidate = await self.candidate_repository_port.save(candidate)
-            print("Candidate saved:", saved_candidate.id)
-            saved_cv_info = await self.cv_analysis_repository_port.save(cv_analysis)
-            print("CV analysis saved:", saved_cv_info.id)
+            await self.candidate_repository_port.save(candidate)
+            await self.cv_analysis_repository_port.save(cv_analysis)
         except Exception as e:
             print("Error saving candidate: ", e)
 
