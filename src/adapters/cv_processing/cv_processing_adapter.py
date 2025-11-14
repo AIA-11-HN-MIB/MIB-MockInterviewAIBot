@@ -3,17 +3,17 @@ import spacy
 import os
 import json
 import pdfplumber
-from uuid import UUID
-from langchain_openai import OpenAIEmbeddings
 import re
+from uuid import UUID
+from langchain_openai import ChatOpenAI
+
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
-from typing import Dict, Any, List
+from typing import Dict, Any
 from datetime import datetime, timezone
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from ...domain.ports.cv_analyzer_port import CVAnalyzerPort
-from ...domain.ports.vector_search_port import VectorSearchPort
 from ...domain.ports.candidate_repository_port import CandidateRepositoryPort
 
 from ...domain.models.cv_analysis import CVAnalysis
@@ -24,6 +24,7 @@ from ...infrastructure.config import Settings
 _nlp_models = {}
 
 splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+
 setting = Settings()
 
 openai_client = AsyncOpenAI(base_url=setting.azure_openai_endpoint, api_key=setting.azure_openai_api_key)
@@ -98,6 +99,7 @@ class CVProcessingAdapter(CVAnalyzerPort):
         self.candidate_repository_port = candidate_repository_port
 
     SKILL_PATTERNS = load_skill_patterns()
+
     @staticmethod
     def read_cv(file_path: str) -> str:
         if file_path.lower().endswith('.pdf'):
@@ -210,10 +212,8 @@ class CVProcessingAdapter(CVAnalyzerPort):
         candidate_id: UUID
     ) -> Candidate:
         """
-        Generate a Candidate object from CV extracted information using GPT-4o-mini.
-
         Args:
-        extracted_info: JSON string containing CV extracted information
+        extracted_info: CV information
         cv_file_path: Path to the candidate's CV file
         
         Returns:
@@ -222,7 +222,7 @@ class CVProcessingAdapter(CVAnalyzerPort):
         try:
             # Prepare the prompt for GPT-4o-mini
             prompt = f"""
-            Extract candidate information from the following CV extracted_info:
+            Extract candidate information (candidate name, email) from the following CV info:
             {extracted_info}
             
             Return a JSON object with the following structure:
@@ -246,7 +246,7 @@ class CVProcessingAdapter(CVAnalyzerPort):
                     {"role": "user", "content": prompt}
             ],
             response_format={"type": "json_object"},
-            temperature=0.2  # Keep it deterministic
+            temperature=0
             )
             # Parse the response
             candidate_data = json.loads(response.choices[0].message.content.strip())

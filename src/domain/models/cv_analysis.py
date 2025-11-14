@@ -13,11 +13,9 @@ class ExtractedSkill(BaseModel):
     This is a value object within CV analysis.
     """
 
-    name: str = Field(alias="skill")
-    category: str = "technical"  # e.g., "technical", "soft", "language"
-    proficiency_level: str | None = Field(default=None, alias="proficiency")  # e.g., "beginner", "intermediate", "expert"
-    years_of_experience: float | None = Field(default=None, alias="years")
-    mentioned_count: int = 1  # How many times mentioned in CV
+    skill: str = Field(alias="skill")
+    proficiency: str | None = Field(default=None, alias="proficiency")  # e.g., "beginner", "intermediate", "expert"
+    years: float | None = Field(default=None, alias="years")
 
     def is_technical(self) -> bool:
         """Check if skill is technical.
@@ -85,7 +83,7 @@ class CVAnalysis(BaseModel):
             ExtractedSkill if found, None otherwise
         """
         for skill in self.skills:
-            if skill.name.lower() == skill_name.lower():
+            if skill.skill.lower() == skill_name.lower():
                 return skill
         return None
 
@@ -100,7 +98,7 @@ class CVAnalysis(BaseModel):
         """
         sorted_skills = sorted(
             self.skills,
-            key=lambda s: s.mentioned_count,
+            key=lambda s: s.skill,
             reverse=True
         )
         return sorted_skills[:limit]
