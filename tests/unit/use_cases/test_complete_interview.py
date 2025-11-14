@@ -4,10 +4,15 @@ from uuid import uuid4
 
 import pytest
 
+from src.application.dto.detailed_feedback_dto import (
+    DetailedInterviewFeedback,
+    EvaluationDetail,
+    QuestionDetailedFeedback,
+)
 from src.application.dto.interview_completion_dto import InterviewCompletionResult
 from src.application.use_cases.complete_interview import CompleteInterviewUseCase
 from src.domain.models.answer import Answer
-from src.domain.models.evaluation import Evaluation
+from src.domain.models.evaluation import ConceptGap, Evaluation, GapSeverity
 from src.domain.models.interview import InterviewStatus
 
 
@@ -85,17 +90,20 @@ class TestCompleteInterviewUseCase:
         assert result.interview.status == InterviewStatus.COMPLETE
         assert result.summary is not None  # Always present
 
-        # Verify summary structure
-        assert result.summary["interview_id"] == str(sample_interview_adaptive.id)
-        assert "overall_score" in result.summary
-        assert "strengths" in result.summary
-        assert "weaknesses" in result.summary
-        assert "total_questions" in result.summary
+        # Verify summary is DetailedInterviewFeedback DTO
+        assert isinstance(result.summary, DetailedInterviewFeedback)
+        assert result.summary.interview_id == sample_interview_adaptive.id
+        assert result.summary.overall_score >= 0.0
+        assert isinstance(result.summary.strengths, list)
+        assert isinstance(result.summary.weaknesses, list)
+        # sample_interview_adaptive has 3 question_ids by default
+        assert result.summary.total_questions == 3
+        # Only 1 question has answer/evaluation
+        assert len(result.summary.question_feedback) == 1
 
         # Verify summary stored in metadata
         assert result.interview.plan_metadata is not None
         assert "completion_summary" in result.interview.plan_metadata
-        assert result.interview.plan_metadata["completion_summary"] == result.summary
 
     @pytest.mark.asyncio
     async def test_complete_interview_not_found(
@@ -209,9 +217,15 @@ class TestCompleteInterviewUseCase:
         result = await use_case.execute(interview_id=sample_interview_adaptive.id)
 
         assert result.interview.status == InterviewStatus.COMPLETE
-        assert result.summary["total_questions"] == 3
-        assert result.summary["overall_score"] > 0.0
-        assert len(result.summary["question_summaries"]) == 3
+        assert isinstance(result.summary, DetailedInterviewFeedback)
+        assert result.summary.total_questions == 3
+        assert result.summary.overall_score > 0.0
+        assert len(result.summary.question_feedback) == 3
+
+        # Verify each question feedback is typed
+        for qf in result.summary.question_feedback:
+            assert isinstance(qf, QuestionDetailedFeedback)
+            assert isinstance(qf.main_evaluation, EvaluationDetail)
 
     @pytest.mark.asyncio
     async def test_complete_interview_initializes_metadata_if_none(

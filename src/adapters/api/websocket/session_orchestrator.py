@@ -546,27 +546,24 @@ class InterviewSessionOrchestrator:
         )
         result = await complete_use_case.execute(self.interview_id)
 
-        # Send summary message to client (always present)
+        # Send detailed feedback to client via WebSocket
+        # Serialize DetailedInterviewFeedback DTO to JSON dict
+        detailed_feedback = result.summary.model_dump(mode="json")
+
         await self._send_message(
             {
                 "type": "interview_complete",
-                "interview_id": result.summary["interview_id"],
-                "overall_score": result.summary["overall_score"],
-                "theoretical_score_avg": result.summary["theoretical_score_avg"],
-                "speaking_score_avg": result.summary["speaking_score_avg"],
-                "total_questions": result.summary["total_questions"],
-                "total_follow_ups": result.summary["total_follow_ups"],
-                "gap_progression": result.summary["gap_progression"],
-                "strengths": result.summary["strengths"],
-                "weaknesses": result.summary["weaknesses"],
-                "study_recommendations": result.summary["study_recommendations"],
-                "technique_tips": result.summary["technique_tips"],
-                "completion_time": result.summary["completion_time"],
+                "interview_id": str(result.interview.id),
+                "status": result.interview.status.value,
+                "detailed_feedback": detailed_feedback,
                 "feedback_url": f"/api/interviews/{self.interview_id}/summary",
             }
         )
 
-        logger.info(f"Interview {self.interview_id} completed with summary")
+        logger.info(
+            f"Interview {self.interview_id} completed with detailed feedback "
+            f"(payload size: ~{len(str(detailed_feedback))} bytes)"
+        )
 
     async def _send_evaluation(self, answer: Answer, evaluation: Evaluation) -> None:
         """Send evaluation message.

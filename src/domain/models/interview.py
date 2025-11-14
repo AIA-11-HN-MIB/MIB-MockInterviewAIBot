@@ -275,10 +275,11 @@ class Interview(BaseModel):
         if self.has_more_questions():
             self.transition_to(InterviewStatus.QUESTIONING)
             self.updated_at = now
-        else:
-            self.transition_to(InterviewStatus.COMPLETE)
-            self.completed_at = now
-            self.updated_at = now
+        # TODO: fix state transition
+        # else:
+        #     self.transition_to(InterviewStatus.COMPLETE)
+        #     self.completed_at = now
+        #     self.updated_at = now
 
     def proceed_after_evaluation(self) -> None:
         """Advance interview after evaluation is complete.
@@ -292,10 +293,11 @@ class Interview(BaseModel):
             self.transition_to(InterviewStatus.QUESTIONING)
             return
 
-        self.transition_to(InterviewStatus.COMPLETE)
-        now = datetime.utcnow()
-        self.completed_at = now
-        self.updated_at = now
+        # TODO: fix state transition
+        # self.transition_to(InterviewStatus.COMPLETE)
+        # now = datetime.utcnow()
+        # self.completed_at = now
+        # self.updated_at = now
 
     def is_planned(self) -> bool:
         """Check if interview has planning metadata.

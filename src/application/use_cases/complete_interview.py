@@ -15,6 +15,12 @@ from ...domain.ports.follow_up_question_repository_port import (
 from ...domain.ports.interview_repository_port import InterviewRepositoryPort
 from ...domain.ports.llm_port import LLMPort
 from ...domain.ports.question_repository_port import QuestionRepositoryPort
+from ..dto.detailed_feedback_dto import (
+    ConceptGapDetail,
+    DetailedInterviewFeedback,
+    EvaluationDetail,
+    QuestionDetailedFeedback,
+)
 from ..dto.interview_completion_dto import InterviewCompletionResult
 
 
@@ -103,8 +109,8 @@ class CompleteInterviewUseCase:
             summary=summary,
         )
 
-    async def _generate_summary(self, interview: Interview) -> dict[str, Any]:
-        """Generate comprehensive interview summary.
+    async def _generate_summary(self, interview: Interview) -> DetailedInterviewFeedback:
+        """Generate comprehensive interview summary with detailed DTOs.
 
         Aggregates all evaluations (main questions + follow-ups), analyzes gap
         progression, and generates personalized recommendations using LLM.
@@ -113,20 +119,7 @@ class CompleteInterviewUseCase:
             interview: Interview entity
 
         Returns:
-            dict containing:
-                - interview_id: str
-                - overall_score: float (weighted avg of all evaluations)
-                - theoretical_score_avg: float
-                - speaking_score_avg: float
-                - total_questions: int (main questions only)
-                - total_follow_ups: int
-                - question_summaries: list[dict] (per-question analysis)
-                - gap_progression: dict (how gaps changed after follow-ups)
-                - strengths: list[str]
-                - weaknesses: list[str]
-                - study_recommendations: list[str]
-                - technique_tips: list[str]
-                - completion_time: str (ISO format)
+            DetailedInterviewFeedback DTO with complete evaluation details
         """
         # Fetch all answers (main + follow-ups)
         all_answers = await self.answer_repo.get_by_interview_id(interview.id)
@@ -148,23 +141,26 @@ class CompleteInterviewUseCase:
             interview, all_answers, gap_progression, evaluations_map
         )
 
-        return {
-            "interview_id": str(interview.id),
-            "overall_score": metrics["overall_score"],
-            "theoretical_score_avg": metrics["theoretical_avg"],
-            "speaking_score_avg": metrics["speaking_avg"],
-            "total_questions": len(interview.question_ids),
-            "total_follow_ups": len(interview.adaptive_follow_ups),
-            "question_summaries": await self._create_question_summaries(
-                question_groups, evaluations_map
-            ),
-            "gap_progression": gap_progression,
-            "strengths": recommendations["strengths"],
-            "weaknesses": recommendations["weaknesses"],
-            "study_recommendations": recommendations["study_topics"],
-            "technique_tips": recommendations["technique_tips"],
-            "completion_time": datetime.now(UTC).isoformat(),
-        }
+        # Create detailed per-question feedback
+        question_feedback = await self._create_question_detailed_feedback(
+            question_groups, evaluations_map
+        )
+
+        return DetailedInterviewFeedback(
+            interview_id=interview.id,
+            overall_score=metrics["overall_score"],
+            theoretical_score_avg=metrics["theoretical_avg"],
+            speaking_score_avg=metrics["speaking_avg"],
+            total_questions=len(interview.question_ids),
+            total_follow_ups=len(interview.adaptive_follow_ups),
+            question_feedback=question_feedback,
+            gap_progression=gap_progression,
+            strengths=recommendations["strengths"],
+            weaknesses=recommendations["weaknesses"],
+            study_recommendations=recommendations["study_topics"],
+            technique_tips=recommendations["technique_tips"],
+            completion_time=datetime.now(UTC),
+        )
 
     async def _group_answers_by_main_question(
         self,
@@ -391,64 +387,128 @@ class CompleteInterviewUseCase:
 
         return await self.llm.generate_interview_recommendations(context)
 
-    async def _create_question_summaries(
+    async def _create_question_detailed_feedback(
         self,
         question_groups: dict[UUID, dict[str, Any]],
         evaluations_map: dict[UUID, Evaluation],
-    ) -> list[dict[str, Any]]:
-        """Create per-question analysis using evaluations table.
+    ) -> list[QuestionDetailedFeedback]:
+        """Create detailed per-question feedback using strongly-typed DTOs.
 
         Args:
             question_groups: Grouped answers by main question
             evaluations_map: Dict mapping answer_id to Evaluation
 
         Returns:
-            List of dicts with keys:
-                - question_id: UUID
-                - question_text: str
-                - main_answer_score: float
-                - follow_up_count: int
-                - initial_gaps: list[str]
-                - final_gaps: list[str]
-                - improvement: bool (whether gaps were filled)
+            List of QuestionDetailedFeedback DTOs with complete evaluation details
         """
-        summaries = []
+        feedback_list = []
 
         for main_question_id, group in question_groups.items():
             question = group["question"]
             main_answer = group["main_answer"]
             follow_up_answers = group["follow_up_answers"]
+            follow_ups = group["follow_ups"]
 
-            # Get initial gaps from main answer's evaluation in evaluations table
-            initial_gaps = []
-            if main_answer and main_answer.id in evaluations_map:
-                main_evaluation = evaluations_map[main_answer.id]
-                initial_gaps = [gap.concept for gap in main_evaluation.gaps if not gap.resolved]
+            # Skip if no main answer
+            if not main_answer or main_answer.id not in evaluations_map:
+                continue
 
-            final_gaps = initial_gaps
-
-            if follow_up_answers:
-                final_answer = follow_up_answers[-1]
-                if final_answer.id in evaluations_map:
-                    final_evaluation = evaluations_map[final_answer.id]
-                    final_gaps = [
-                        gap.concept for gap in final_evaluation.gaps if not gap.resolved
-                    ]
-
-            main_answer_score = 0.0
-            if main_answer and main_answer.id in evaluations_map:
-                main_answer_score = evaluations_map[main_answer.id].final_score
-
-            summaries.append(
-                {
-                    "question_id": str(main_question_id),
-                    "question_text": question.text if question else "Unknown",
-                    "main_answer_score": main_answer_score,
-                    "follow_up_count": len(follow_up_answers),
-                    "initial_gaps": initial_gaps,
-                    "final_gaps": final_gaps,
-                    "improvement": len(final_gaps) < len(initial_gaps),
-                }
+            # Build main evaluation detail
+            main_eval = evaluations_map[main_answer.id]
+            main_evaluation_detail = self._build_evaluation_detail(
+                answer=main_answer,
+                evaluation=main_eval,
+                question_text=question.text if question else "Unknown",
             )
 
-        return summaries
+            # Build follow-up evaluation details
+            follow_up_evaluation_details = []
+            for fu_answer, fu_question in zip(follow_up_answers, follow_ups):
+                if fu_answer.id in evaluations_map:
+                    fu_eval = evaluations_map[fu_answer.id]
+                    fu_detail = self._build_evaluation_detail(
+                        answer=fu_answer,
+                        evaluation=fu_eval,
+                        question_text=fu_question.text if fu_question else "Follow-up",
+                    )
+                    follow_up_evaluation_details.append(fu_detail)
+
+            # Calculate score progression
+            score_progression = [main_eval.final_score]
+            score_progression.extend(
+                [
+                    evaluations_map[fu_answer.id].final_score
+                    for fu_answer in follow_up_answers
+                    if fu_answer.id in evaluations_map
+                ]
+            )
+
+            # Calculate gap filled count
+            initial_gaps = {gap.concept for gap in main_eval.gaps if not gap.resolved}
+            final_gaps = initial_gaps
+            if follow_up_answers:
+                last_fu_answer = follow_up_answers[-1]
+                if last_fu_answer.id in evaluations_map:
+                    last_fu_eval = evaluations_map[last_fu_answer.id]
+                    final_gaps = {gap.concept for gap in last_fu_eval.gaps if not gap.resolved}
+            gap_filled_count = len(initial_gaps - final_gaps)
+
+            # Create QuestionDetailedFeedback DTO
+            question_feedback = QuestionDetailedFeedback(
+                question_id=main_question_id,
+                question_text=question.text if question else "Unknown",
+                main_evaluation=main_evaluation_detail,
+                follow_up_evaluations=follow_up_evaluation_details,
+                score_progression=score_progression,
+                gap_filled_count=gap_filled_count,
+            )
+
+            feedback_list.append(question_feedback)
+
+        return feedback_list
+
+    def _build_evaluation_detail(
+        self,
+        answer: Answer,
+        evaluation: Evaluation,
+        question_text: str,
+    ) -> EvaluationDetail:
+        """Build EvaluationDetail DTO from domain entities.
+
+        Args:
+            answer: Answer entity
+            evaluation: Evaluation entity
+            question_text: Full text of question
+
+        Returns:
+            EvaluationDetail DTO with complete evaluation data
+        """
+        # Convert ConceptGap entities to ConceptGapDetail DTOs
+        gap_details = [
+            ConceptGapDetail(
+                concept=gap.concept,
+                severity=gap.severity.value,
+                resolved=gap.resolved,
+            )
+            for gap in evaluation.gaps
+        ]
+
+        return EvaluationDetail(
+            answer_id=answer.id,
+            question_id=evaluation.question_id,
+            question_text=question_text,
+            attempt_number=evaluation.attempt_number,
+            raw_score=evaluation.raw_score,
+            penalty=evaluation.penalty,
+            final_score=evaluation.final_score,
+            similarity_score=evaluation.similarity_score,
+            completeness=evaluation.completeness,
+            relevance=evaluation.relevance,
+            sentiment=evaluation.sentiment,
+            reasoning=evaluation.reasoning,
+            strengths=evaluation.strengths,
+            weaknesses=evaluation.weaknesses,
+            improvement_suggestions=evaluation.improvement_suggestions,
+            gaps=gap_details,
+            evaluated_at=evaluation.evaluated_at,
+        )
