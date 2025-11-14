@@ -34,13 +34,13 @@ async def upload_cv(
     ):
     """
     Upload a CV file to the server.
-    
+
     This endpoint accepts a PDF file and saves it to the server.
     Returns the file path where the CV is stored.
     """
     if not file.filename.endswith(".pdf"):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="File must be a PDF")
 
     try:
@@ -49,6 +49,7 @@ async def upload_cv(
         UPLOAD_DIR = setting.upload_dir
         file_extension = os.path.splitext(file.filename)[1]
         unique_filename = f"{uuid.uuid4()}{file_extension}"
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
         file_path = os.path.join(UPLOAD_DIR, unique_filename)
 
         # Save the uploaded file
@@ -73,7 +74,7 @@ async def upload_cv(
         # Clean up the file if there was an error
         if 'file_path' in locals() and os.path.exists(file_path):
             os.remove(file_path)
-        
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error uploading file: {str(e)}"
