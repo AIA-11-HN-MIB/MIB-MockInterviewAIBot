@@ -73,3 +73,23 @@ class FollowUpQuestionResponse(BaseModel):
     text: str
     generated_reason: str
     order_in_sequence: int
+
+
+class InterviewSummaryResponse(BaseModel):
+    """Response with comprehensive interview summary.
+
+    Used for polling endpoint to retrieve summary after completion.
+    """
+    interview_id: str
+    overall_score: float
+    theoretical_score_avg: float
+    speaking_score_avg: float
+    total_questions: int
+    total_follow_ups: int
+    question_summaries: list[dict[str, Any]]
+    gap_progression: dict[str, Any]
+    strengths: list[str]
+    weaknesses: list[str]
+    study_recommendations: list[str]
+    technique_tips: list[str]
+    completion_time: str

@@ -38,7 +38,7 @@ argument-hint: [user-requirements]
 
 Follow strictly these following steps:
 
-**First thing first:** check if Git has been initialized, if not, ask the user if they want to initialize it, if yes, use `git-manager` subagent to initialize it.
+**First thing first:** check if Git has been initialized, if not, initialize it using `git-manager` subagent (use `main` branch).
 
 ### Research
 

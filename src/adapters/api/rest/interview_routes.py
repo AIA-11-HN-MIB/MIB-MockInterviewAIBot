@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....application.dto.interview_dto import (
     InterviewResponse,
+    InterviewSummaryResponse,
     PlanInterviewRequest,
     PlanningStatusResponse,
     QuestionResponse,
@@ -33,13 +34,13 @@ async def upload_cv(
     ):
     """
     Upload a CV file to the server.
-    
+
     This endpoint accepts a PDF file and saves it to the server.
     Returns the file path where the CV is stored.
     """
     if not file.filename.endswith(".pdf"):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="File must be a PDF")
 
     try:
@@ -48,6 +49,7 @@ async def upload_cv(
         UPLOAD_DIR = setting.upload_dir
         file_extension = os.path.splitext(file.filename)[1]
         unique_filename = f"{uuid.uuid4()}{file_extension}"
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
         file_path = os.path.join(UPLOAD_DIR, unique_filename)
 
         # Save the uploaded file
@@ -72,7 +74,7 @@ async def upload_cv(
         # Clean up the file if there was an error
         if 'file_path' in locals() and os.path.exists(file_path):
             os.remove(file_path)
-        
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error uploading file: {str(e)}"
@@ -321,13 +323,11 @@ async def get_planning_status(
         )
 
     # Determine message based on status
-    if interview.status == InterviewStatus.PREPARING:
-        message = "Interview planning in progress..."
-    elif interview.status == InterviewStatus.READY:
+    if interview.status == InterviewStatus.IDLE:
         message = f"Interview ready with {interview.planned_question_count} questions"
-    elif interview.status == InterviewStatus.IN_PROGRESS:
+    elif interview.status == InterviewStatus.QUESTIONING or interview.status == InterviewStatus.EVALUATING:
         message = "Interview started"
-    elif interview.status == InterviewStatus.COMPLETED:
+    elif interview.status == InterviewStatus.COMPLETE:
         message = "Interview completed"
     else:
         message = f"Interview status: {interview.status.value}"
@@ -339,3 +339,62 @@ async def get_planning_status(
         plan_metadata=interview.plan_metadata,
         message=message,
     )
+
+
+@router.get(
+    "/{interview_id}/summary",
+    response_model=InterviewSummaryResponse,
+    summary="Get interview completion summary",
+)
+async def get_interview_summary(
+    interview_id: UUID,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Get comprehensive interview summary.
+
+    This endpoint retrieves the cached summary generated during interview completion.
+    Use case: Client reconnects after WebSocket disconnect and needs to retrieve summary.
+
+    Args:
+        interview_id: Interview UUID
+        session: Database session
+
+    Returns:
+        Interview summary with all metrics, recommendations, and analysis
+
+    Raises:
+        HTTPException:
+            - 404: Interview not found
+            - 400: Interview not completed
+            - 404: Summary not generated
+    """
+    container = get_container()
+    interview_repo = container.interview_repository_port(session)
+    interview = await interview_repo.get_by_id(interview_id)
+
+    if not interview:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Interview {interview_id} not found",
+        )
+
+    if interview.status != InterviewStatus.COMPLETE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Interview not completed (status: {interview.status.value})",
+        )
+
+    # Extract summary from metadata
+    summary = (
+        interview.plan_metadata.get("completion_summary")
+        if interview.plan_metadata
+        else None
+    )
+
+    if not summary:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Summary not found (interview completed without summary generation)",
+        )
+
+    return InterviewSummaryResponse(**summary)

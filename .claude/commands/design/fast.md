@@ -6,19 +6,17 @@ argument-hint: [tasks]
 Think hard to plan & start working on these tasks follow the Orchestration Protocol, Core Responsibilities, Subagents Team and Development Rules: 
 <tasks>$ARGUMENTS</tasks>
 
+**IMPORTANT**: Activate `aesthetic` skills.
+**IMPORTANT**: Analyze the list of skills  at `.claude/skills/*` and intelligently activate the skills that are needed for the task during the process.
+**Ensure token efficiency while maintaining high quality.**
+
 ## Workflow:
-1. Use `ui-ux-designer` subagent and `researcher` subagent (research about design style, trends, fonts, colors, elements' positions, etc.) to create a design plan following the progressive disclosure structure:
-   - Create a directory `plans/YYYYMMDD-HHmm-plan-name` (example: `plans/20251101-1505-authentication-and-profile-implementation`).
-   - Save the overview access point at `plan.md`, keep it generic, under 80 lines, and list each phase with status/progress and links.
-   - For each phase, add `phase-XX-phase-name.md` files containing sections (Context links, Overview with date/priority/statuses, Key Insights, Requirements, Architecture, Related code files, Implementation Steps, Todo list, Success Criteria, Risk Assessment, Security Considerations, Next steps).
-   - Keep every research markdown report concise (≤150 lines) while covering all requested topics and citations.
-   - **IMPORTANT:** Try to predict the font name (Google Fonts) and font size in the given screenshot, don't just use Inter or Poppins.
-2. Then use `ui-ux-designer` subagent to implement the plan step by step.
+2. Use `ui-ux-designer` subagent to start the design process.
 3. If user doesn't specify, create the design in pure HTML/CSS/JS.
 4. Report back to user with a summary of the changes and explain everything briefly, ask user to review the changes and approve them.
 5. If user approves the changes, update the `./docs/design-guidelines.md` docs if needed.
 
 ## Notes:
-- Remember that you have the capability to generate images, videos, edit images, etc. with ai-multimodal skill for image generation. Use them to create the design and real assets.
-- Always review, analyze and double check generated assets with ai-multimodal skill to verify quality.
+- Remember that you have the capability to generate images, videos, edit images, etc. with `ai-multimodal` skills. Use them to create the design and real assets.
+- Always review, analyze and double check generated assets with `ai-multimodal` skills to verify quality.
 - Maintain and update `./docs/design-guidelines.md` docs if needed.

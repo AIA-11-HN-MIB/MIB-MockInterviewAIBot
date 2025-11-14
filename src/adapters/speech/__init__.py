@@ -1,9 +1,6 @@
-"""Speech adapters package."""
+"""Speech adapters (STT and TTS)."""
 
-from .azure_stt_adapter import AzureSpeechToTextAdapter
-from .azure_tts_adapter import AzureTextToSpeechAdapter
+from .azure_speech_adapter import AzureSpeechAdapter
+from .azure_tts_adapter import AzureTTSAdapter
 
-__all__ = [
-    "AzureSpeechToTextAdapter",
-    "AzureTextToSpeechAdapter",
-]
+__all__ = ["AzureSpeechAdapter", "AzureTTSAdapter"]

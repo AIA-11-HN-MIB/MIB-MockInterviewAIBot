@@ -6,8 +6,12 @@ argument-hint: [video]
 Think hard to plan & start designing follow exactly this video: 
 <video>$ARGUMENTS</video>
 
+**IMPORTANT**: Activate `aesthetic` skills.
+**IMPORTANT**: Analyze the list of skills  at `.claude/skills/*` and intelligently activate the skills that are needed for the task during the process.
+**Ensure token efficiency while maintaining high quality.**
+
 ## Workflow:
-1. Use `eyes` analyze tool to describe super details of the video: be specific about describing every element, every interaction, every animation, every transition, every color, every font, every border, every spacing, every size, every shape, every texture, every material, every light, every shadow, every reflection, every refraction, every blur, every glow, every image, background transparency, etc.
+1. Use `ai-multimodal` skills to describe super details of the video: be specific about describing every element, every interaction, every animation, every transition, every color, every font, every border, every spacing, every size, every shape, every texture, every material, every light, every shadow, every reflection, every refraction, every blur, every glow, every image, background transparency, etc.
    - **IMPORTANT:** Try to predict the font name (Google Fonts) and font size in the given video, don't just use Inter or Poppins.
 2. Use `ui-ux-designer` subagent to create a design plan following the progressive disclosure structure so the final result matches the video:
    - Create a directory `plans/YYYYMMDD-HHmm-plan-name` (example: `plans/20251101-1505-authentication-and-profile-implementation`).

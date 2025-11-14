@@ -1,44 +1,23 @@
 ---
-description: ⚡⚡⚡ Research, analyze, and create an implementation plan
+description: ⚡⚡⚡ Intelligent plan creation with prompt enhancement
 argument-hint: [task]
 ---
 
 ## Your mission
-<task>$ARGUMENTS</task>
+<task>
+$ARGUMENTS
+</task>
 
 ## Workflow
-1. Create a directory named `plans/YYYYMMDD-HHmm-plan-name` (eg. `plans/20251101-1505-authentication-and-profile-implementation`).
-2. Use multiple `researcher` agents in parallel to research for this task, each agent research for a different aspect of the task and perform max 5 researches.
-3. Use `scout` agent to search the codebase for files needed to complete the task.
-4. Main agent gathers all research and scout report filepaths, and pass them to `planner` subagent with the prompt to create an implementation plan of this task.
-5. Main agent receives the implementation plan from `planner` subagent, and ask user to review the plan
-
-## Output Requirements
-
-**Plan Directory Structure**
-```
-plans/
-└── YYYYMMDD-HHmm-plan-name/
-    ├── research/
-    │   ├── researcher-XX-report.md
-    │   └── ...
-    ├── scout/
-    │   ├── scout-XX-report.md
-    │   └── ...
-    ├── plan.md
-    ├── phase-XX-phase-name-here.md
-    └── ...
-```
-
-**Research Output Requirements**
-- Ensure every research markdown report remains concise (≤150 lines) while covering all requested topics and citations.
-
-**Plan File Specification**
-- Save the overview access point at `plans/YYYYMMDD-HHmm-plan-name/plan.md`. Keep it generic, under 80 lines, and list each implementation phase with status and progress plus links to phase files.
-- For each phase, create `plans/YYYYMMDD-HHmm-plan-name/phase-XX-phase-name-here.md` containing the following sections in order: Context links (reference parent plan, dependencies, docs), Overview (date, description, priority, implementation status, review status), Key Insights, Requirements, Architecture, Related code files, Implementation Steps, Todo list, Success Criteria, Risk Assessment, Security Considerations, Next steps.
+- Analyze the given task and ask for more details if needed.
+- Decide to use `/plan:fast` or `/plan:hard` SlashCommands based on the complexity.
+- Execute SlashCommand: `/plan:fast <detailed-instructions-prompt>` or `/plan:hard <detailed-instructions-prompt>`
+- Activate `planning` skill.
+- Note: `detailed-instructions-prompt` is **an enhanced prompt** that describes the task in detail based on the provided task description.
 
 ## Important Notes
 **IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.
 **IMPORTANT:** Sacrifice grammar for the sake of concision when writing reports.
+**IMPORTANT:** Ensure token efficiency while maintaining high quality.
 **IMPORTANT:** In reports, list any unresolved questions at the end, if any.
 **IMPORTANT**: **Do not** start implementing.

@@ -1,7 +1,7 @@
 # Codebase Summary
 
-**Last Updated**: 2025-11-10
-**Version**: 0.1.0
+**Last Updated**: 2025-11-14
+**Version**: 0.2.1
 **Repository**: https://github.com/elios/elios-ai-service
 
 ## Table of Contents
@@ -10,12 +10,6 @@
 - [Project Structure](#project-structure)
 - [Core Technologies](#core-technologies)
 - [Key Components](#key-components)
-  - [1. Domain Layer (Core Business Logic)](#1-domain-layer-core-business-logic)
-  - [2. Application Layer (Use Cases)](#2-application-layer-use-cases)
-  - [3. Adapters Layer (External Integrations)](#3-adapters-layer-external-integrations)
-  - [4. Infrastructure Layer (Cross-Cutting Concerns)](#4-infrastructure-layer-cross-cutting-concerns)
-  - [5. Database Migrations](#5-database-migrations)
-  - [6. Utility Scripts](#6-utility-scripts)
 - [Entry Points](#entry-points)
 - [Development Workflow](#development-workflow)
 - [Development Principles](#development-principles)
@@ -31,7 +25,13 @@
 
 ## Overview
 
-Elios AI Interview Service is a Python-based AI-powered mock interview platform built with Clean Architecture principles (Hexagonal/Ports & Adapters pattern). The codebase emphasizes separation of concerns, testability, and flexibility through abstract interfaces and dependency injection. The platform integrates with OpenAI GPT-4 for natural language processing, Pinecone for vector-based semantic search, and PostgreSQL for persistent storage.
+Elios AI Interview Service is Python-based AI-powered mock interview platform built with Clean Architecture principles (Hexagonal/Ports & Adapters pattern). Platform emphasizes separation of concerns, testability, flexibility through abstract interfaces and dependency injection. Integrates OpenAI GPT-4 for NLP, Pinecone for vector-based semantic search, PostgreSQL for persistent storage.
+
+**Recent Major Changes** (2025-11-14):
+- Context-aware evaluation with entity separation
+- Domain-Driven State Management (migrated from WebSocket orchestrator)
+- Follow-up question evaluation refactoring
+- Enhanced LLM response parsing with JSON extraction
 
 ## Project Structure
 
@@ -39,16 +39,17 @@ Elios AI Interview Service is a Python-based AI-powered mock interview platform 
 EliosAIService/
 ├── src/                          # Source code (Clean Architecture layers)
 │   ├── domain/                   # Core business logic (no external dependencies)
-│   │   ├── models/              # Domain entities (6 files)
+│   │   ├── models/              # Domain entities (8 files)
 │   │   │   ├── __init__.py
 │   │   │   ├── candidate.py     # Candidate entity
-│   │   │   ├── interview.py     # Interview aggregate root
+│   │   │   ├── interview.py     # Interview aggregate root (Domain-Driven State)
 │   │   │   ├── question.py      # Question value object
-│   │   │   ├── answer.py        # Answer entity with evaluation & adaptive fields
-│   │   │   ├── follow_up_question.py  # Follow-up question for adaptive interviews ✅
-│   │   │   └── cv_analysis.py   # CV analysis entity
-│   │   └── ports/               # Abstract interfaces (12 files)
-│   │       ├── __init__.py
+│   │   │   ├── answer.py        # Answer entity with evaluation
+│   │   │   ├── follow_up_question.py  # Follow-up question for adaptive interviews
+│   │   │   ├── cv_analysis.py   # CV analysis entity
+│   │   │   ├── evaluation.py    # Evaluation entity with context separation
+│   │   │   └── error_codes.py   # Error code enumeration
+│   │   └── ports/               # Abstract interfaces (13 files)
 │   │       ├── llm_port.py                      # LLM interface
 │   │       ├── vector_search_port.py            # Vector DB interface
 │   │       ├── cv_analyzer_port.py              # CV processing interface
@@ -60,112 +61,93 @@ EliosAIService/
 │   │       ├── interview_repository_port.py     # Interview persistence
 │   │       ├── answer_repository_port.py        # Answer persistence
 │   │       ├── cv_analysis_repository_port.py   # CV analysis persistence
-│   │       └── follow_up_question_repository_port.py  # Follow-up question persistence ✅
+│   │       ├── follow_up_question_repository_port.py  # Follow-up persistence
+│   │       └── evaluation_repository_port.py    # Evaluation persistence (NEW)
 │   ├── application/             # Use cases and orchestration
-│   │   ├── __init__.py
-│   │   ├── dto/                 # Data Transfer Objects (3 files)
-│   │   │   ├── interview_dto.py # Interview request/response DTOs ✅
-│   │   │   ├── answer_dto.py    # Answer request/response DTOs ✅
-│   │   │   └── websocket_dto.py # WebSocket message DTOs ✅
-│   │   └── use_cases/           # Application business flows (6 files)
-│   │       ├── __init__.py
-│   │       ├── analyze_cv.py    # CV analysis workflow ✅
-│   │       ├── plan_interview.py # Interview planning with adaptive question generation ✅
-│   │       ├── get_next_question.py # Retrieve next question ✅
-│   │       ├── process_answer_adaptive.py # Adaptive answer evaluation & gap detection ✅
-│   │       └── complete_interview.py # Finalize interview session ✅
+│   │   ├── dto/                 # Data Transfer Objects (4 files)
+│   │   │   ├── interview_dto.py # Interview request/response DTOs
+│   │   │   ├── answer_dto.py    # Answer request/response DTOs
+│   │   │   ├── audio_dto.py     # Audio processing DTOs (NEW)
+│   │   │   └── websocket_dto.py # WebSocket message DTOs
+│   │   └── use_cases/           # Application business flows (8 files)
+│   │       ├── analyze_cv.py    # CV analysis workflow
+│   │       ├── plan_interview.py # Interview planning with adaptive questions
+│   │       ├── get_next_question.py # Retrieve next question
+│   │       ├── process_answer_adaptive.py # Adaptive answer evaluation
+│   │       ├── complete_interview.py # Finalize interview session
+│   │       ├── generate_summary.py # Interview summary generation
+│   │       ├── follow_up_decision.py # Follow-up decision logic
+│   │       └── combine_evaluation.py # Combine evaluations (NEW)
 │   ├── adapters/                # External service implementations
-│   │   ├── __init__.py
 │   │   ├── llm/                 # LLM provider adapters
-│   │   │   ├── __init__.py
-│   │   │   └── openai_adapter.py # OpenAI GPT-4 implementation ✅
+│   │   │   ├── openai_adapter.py # OpenAI GPT-4 implementation
+│   │   │   └── azure_openai_adapter.py # Azure OpenAI implementation
 │   │   ├── vector_db/           # Vector database adapters
-│   │   │   ├── __init__.py
-│   │   │   └── pinecone_adapter.py # Pinecone implementation ✅
-│   │   ├── mock/                # Mock adapters for development (6 total) ✅
-│   │   │   ├── __init__.py
-│   │   │   ├── mock_llm_adapter.py          # Mock LLM ✅
-│   │   │   ├── mock_vector_search_adapter.py # Mock vector DB ✅
-│   │   │   ├── mock_stt_adapter.py          # Mock speech-to-text ✅
-│   │   │   ├── mock_tts_adapter.py          # Mock text-to-speech ✅
-│   │   │   ├── mock_cv_analyzer.py          # Mock CV analyzer ✅
-│   │   │   └── mock_analytics.py            # Mock analytics ✅
-│   │   ├── persistence/         # Database adapters (8 files)
-│   │   │   ├── __init__.py
+│   │   │   ├── pinecone_adapter.py # Pinecone implementation
+│   │   │   └── chroma_adapter.py # ChromaDB implementation (NEW)
+│   │   ├── mock/                # Mock adapters for development (6 total)
+│   │   │   ├── mock_llm_adapter.py
+│   │   │   ├── mock_vector_search_adapter.py
+│   │   │   ├── mock_stt_adapter.py
+│   │   │   ├── mock_tts_adapter.py
+│   │   │   ├── mock_cv_analyzer.py
+│   │   │   └── mock_analytics.py
+│   │   ├── persistence/         # Database adapters (10 files)
 │   │   │   ├── models.py        # SQLAlchemy ORM models
 │   │   │   ├── mappers.py       # Domain ↔ DB model conversion
-│   │   │   ├── candidate_repository.py      ✅
-│   │   │   ├── question_repository.py       ✅
-│   │   │   ├── interview_repository.py      ✅
-│   │   │   ├── answer_repository.py         ✅
-│   │   │   ├── cv_analysis_repository.py    ✅
-│   │   │   └── follow_up_question_repository.py  # Follow-up question persistence ✅
+│   │   │   ├── candidate_repository.py
+│   │   │   ├── question_repository.py
+│   │   │   ├── interview_repository.py
+│   │   │   ├── answer_repository.py
+│   │   │   ├── cv_analysis_repository.py
+│   │   │   ├── follow_up_question_repository.py
+│   │   │   └── evaluation_repository.py  # Evaluation persistence (NEW)
+│   │   ├── speech/              # Speech service adapters (NEW)
+│   │   │   ├── azure_stt_adapter.py # Azure Speech-to-Text
+│   │   │   └── azure_tts_adapter.py # Azure Text-to-Speech
+│   │   ├── cv_processing/       # CV processing adapters (NEW)
+│   │   │   └── cv_processing_adapter.py
 │   │   └── api/                 # API layer
-│   │       ├── __init__.py
 │   │       ├── rest/            # REST endpoints (2 files)
-│   │       │   ├── __init__.py
-│   │       │   ├── health_routes.py     # Health check endpoint ✅
-│   │       │   └── interview_routes.py  # Interview CRUD endpoints ✅
-│   │       └── websocket/       # WebSocket handlers (2 files)
-│   │           ├── __init__.py
-│   │           ├── connection_manager.py # WebSocket connection pool ✅
-│   │           └── interview_handler.py  # Real-time interview handler ✅
+│   │       │   ├── health_routes.py     # Health check endpoint
+│   │       │   └── interview_routes.py  # Interview CRUD endpoints
+│   │       └── websocket/       # WebSocket handlers (3 files)
+│   │           ├── connection_manager.py # WebSocket connection pool
+│   │           ├── session_orchestrator.py # Session orchestrator (delegated to domain)
+│   │           └── interview_handler.py  # Simplified WebSocket I/O handler
 │   └── infrastructure/          # Cross-cutting concerns
-│       ├── __init__.py
 │       ├── config/              # Configuration management
-│       │   ├── __init__.py
-│       │   └── settings.py      # Pydantic settings ✅
+│       │   └── settings.py      # Pydantic settings
 │       ├── database/            # Database infrastructure
-│       │   ├── __init__.py
 │       │   ├── base.py          # SQLAlchemy base class
-│       │   └── session.py       # Async session management ✅
+│       │   └── session.py       # Async session management
 │       └── dependency_injection/
-│           ├── __init__.py
-│           └── container.py     # DI container ✅
+│           └── container.py     # DI container
 ├── alembic/                     # Database migrations
-│   ├── versions/                # Migration scripts (sequential naming)
-│   │   ├── 0001_initial_database_schema_with_all_tables.py ✅
-│   │   ├── 0002_seed_sample_data.py ✅
-│   │   ├── 0003_add_planning_and_adaptive_fields.py ✅
-│   │   ├── 0004_seed_data_for_planning_and_adaptive.py ✅
-│   │   └── 0005_drop_reference_answer_column.py ✅
-│   ├── env.py                   # Alembic environment config
-│   └── script.py.mako          # Migration template
-├── scripts/                     # Utility scripts
-│   ├── setup_db.py             # Database initialization ✅
-│   ├── verify_db.py            # Database verification ✅
-│   ├── test_env.py             # Environment testing ✅
-│   ├── setup_and_migrate.sh    # Unix migration script ✅
-│   └── setup_and_migrate.bat   # Windows migration script ✅
+│   └── versions/                # Migration scripts
+│       ├── 0001_create_tables.py
+│       ├── 0002_insert_seed_data.py
+│       └── 0003_create_evaluations_tables.py (NEW)
+├── tests/                       # Test suites
+│   ├── unit/                    # Unit tests (150+ tests)
+│   ├── integration/             # Integration tests
+│   └── conftest.py              # Test fixtures
 ├── docs/                        # Project documentation
-│   ├── project-overview-pdr.md # Product requirements ✅
-│   ├── codebase-summary.md     # This file ✅
-│   ├── code-standards.md       # Coding standards 🔄
-│   ├── system-architecture.md  # Architecture details 🔄
-│   ├── api.md                  # API reference (template)
-│   ├── spec.md                 # Project specification (template)
-│   ├── architecture.md         # Architecture guide (template)
-│   └── RELEASE.md             # Release notes
-├── tests/                       # Test suites (planned)
-│   ├── unit/                   # Unit tests ⏳
-│   ├── integration/            # Integration tests ⏳
-│   └── e2e/                    # End-to-end tests ⏳
-├── .env.example                # Environment variables template ✅
-├── .env.local                  # Local config (gitignored) ✅
-├── .gitignore                  # Git exclusions ✅
-├── alembic.ini                 # Alembic configuration ✅
-├── pyproject.toml              # Project metadata & dependencies ✅
-├── CLAUDE.md                   # Claude Code instructions ✅
-├── README.md                   # Project overview ✅
-├── DATABASE_SETUP.md           # Database setup guide ✅
-├── ENV_SETUP.md                # Environment setup guide ✅
-└── CHANGELOG_ENV.md            # Environment config changelog ✅
+│   ├── project-overview-pdr.md
+│   ├── codebase-summary.md     # This file
+│   ├── code-standards.md
+│   ├── system-architecture.md
+│   └── project-roadmap.md
+├── .env.example                # Environment variables template
+├── pyproject.toml              # Project metadata & dependencies
+├── CLAUDE.md                   # Claude Code instructions
+└── README.md                   # Project overview
 ```
 
 ## Core Technologies
 
 ### Runtime & Language
-- **Python**: 3.11+ (type hints, async/await, modern syntax)
+- **Python**: 3.11+ (type hints, async/await)
 - **Package Manager**: pip with pyproject.toml
 - **Build System**: setuptools
 - **License**: MIT
@@ -184,23 +166,13 @@ EliosAIService/
 
 ### Vector Database
 - **Pinecone Client**: 3.0.0+ (semantic search, embeddings storage)
+- **ChromaDB**: Local vector database alternative (NEW)
 
 ### Database & ORM
 - **PostgreSQL**: 14+ (Neon cloud database)
 - **SQLAlchemy**: 2.0.0+ with asyncio support
 - **asyncpg**: 0.29.0+ (async PostgreSQL driver)
 - **Alembic**: 1.13.0+ (database migrations)
-
-### Document Processing
-- **PyPDF2**: 3.0.0+ (PDF parsing - planned)
-- **python-docx**: 1.1.0+ (DOCX parsing - planned)
-
-### Utilities
-- **python-multipart**: 0.0.6+ (file upload support)
-- **python-jose**: 3.3.0+ with cryptography (JWT tokens - planned)
-- **passlib**: 1.7.4+ with bcrypt (password hashing - planned)
-- **httpx**: 0.25.0+ (async HTTP client)
-- **python-dotenv**: 1.0.0+ (development environment loading)
 
 ### Development Tools
 - **pytest**: 7.4.0+ (testing framework)
@@ -210,7 +182,6 @@ EliosAIService/
 - **ruff**: 0.1.6+ (fast Python linter)
 - **black**: 23.11.0+ (code formatter)
 - **mypy**: 1.7.0+ (static type checker)
-- **ipython**: 8.18.0+ (enhanced REPL)
 
 ## Key Components
 
@@ -221,89 +192,121 @@ EliosAIService/
 
 #### Models (`src/domain/models/`)
 
-**Candidate** (`candidate.py` - 41 lines):
-- Rich domain model for interview candidates
-- Methods: `update_cv()`, `has_cv()`
-- Fields: id, name, email, cv_file_path, timestamps
-
-**Interview** (`interview.py` - 137 lines):
+**Interview** (`interview.py` - 150+ lines):
+- **NEW**: Domain-Driven State Management (migrated from WebSocket orchestrator)
 - Aggregate root controlling interview lifecycle
-- States: PREPARING, READY, IN_PROGRESS, COMPLETED, CANCELLED
-- Methods: `start()`, `complete()`, `cancel()`, `mark_ready()`, `add_question()`, `add_answer()`
-- Business rules: Can't start without CV analysis, tracks progress, manages Q&A flow
+- States: IDLE, QUESTIONING, EVALUATING, REVIEWING, COMPLETED
+- Methods: `transition_to()`, `can_transition_to()`, `validate_state_transition()`
+- Business rules: State machine enforces valid transitions, tracks progress
 - Progress tracking: `has_more_questions()`, `get_current_question_id()`, `get_progress_percentage()`
+
+**Evaluation** (`evaluation.py` - NEW):
+- **Context-aware evaluation entity** with parent/child separation
+- Types: PARENT_QUESTION, FOLLOW_UP, COMBINED
+- Fields: `parent_evaluation`, `child_evaluations`, `context_type`
+- Methods: `add_child_evaluation()`, `get_combined_score()`, `has_children()`
+
+**Answer** (`answer.py`):
+- Entity containing candidate responses
+- Includes evaluation results (scores, feedback)
+- Methods: `evaluate()`, `is_evaluated()`, `get_score()`, `has_gaps()`, `is_adaptive_complete()`
+- Support for both text and voice answers
 
 **Question** (`question.py` - 84 lines):
 - Value object representing interview questions
 - Types: TECHNICAL, BEHAVIORAL, SITUATIONAL
 - Difficulty: EASY, MEDIUM, HARD
-- Methods: `has_skill()`, `has_tag()`, `is_suitable_for_difficulty()`
+- Methods: `has_skill()`, `has_tag()`, `is_suitable_for_difficulty()`, `has_ideal_answer()`
 - Supports semantic search via embeddings
-
-**Answer** (`answer.py`):
-- Entity containing candidate responses
-- Includes evaluation results (scores, feedback)
-- Methods: `evaluate()`, `is_evaluated()`, `get_score()`
-- Support for both text and voice answers
 
 **CVAnalysis** (`cv_analysis.py` - 118 lines):
 - Entity storing structured CV analysis
 - Contains: ExtractedSkill list, experience, education, embeddings
 - Methods: `get_technical_skills()`, `has_skill()`, `get_top_skills()`, `is_experienced()`
-- Suggested topics and difficulty levels
 
-#### Ports (`src/domain/ports/`)
+**Candidate** (`candidate.py` - 41 lines):
+- Rich domain model for interview candidates
+- Methods: `update_cv()`, `has_cv()`
+- Fields: id, name, email, cv_file_path, timestamps
 
-**LLMPort** - Large Language Model interface:
-- `generate_question()`: Create interview questions
-- `evaluate_answer()`: Assess response quality
-- `generate_feedback_report()`: Create comprehensive feedback
-- `summarize_cv()`: Summarize CV content
-- `extract_skills_from_text()`: Extract skills using NLP
-
-**VectorSearchPort** - Vector database interface:
-- `store_question_embedding()`: Store question vectors
-- `store_cv_embedding()`: Store CV vectors
-- `find_similar_questions()`: Semantic search
-- `find_similar_answers()`: Answer similarity
-- `get_embedding()`: Generate text embeddings
-
-**Repository Ports** (5 interfaces):
-- `QuestionRepositoryPort`: Question CRUD operations
-- `CandidateRepositoryPort`: Candidate persistence
-- `InterviewRepositoryPort`: Interview management
-- `AnswerRepositoryPort`: Answer storage
-- `CVAnalysisRepositoryPort`: CV analysis persistence
-
-**Other Ports**:
-- `CVAnalyzerPort`: CV text extraction and analysis
-- `SpeechToTextPort`: Audio transcription
-- `TextToSpeechPort`: Speech synthesis
-- `AnalyticsPort`: Performance metrics and reporting
+**FollowUpQuestion** (`follow_up_question.py`):
+- Entity for adaptive follow-up questions
+- Fields: `parent_question_id`, `order`, `context`
+- Methods: `is_first_follow_up()`, `is_second_follow_up()`, `is_third_follow_up()`
 
 ### 2. Application Layer (Use Cases)
 
 **Location**: `src/application/`
-**Responsibility**: Orchestrate domain objects and coordinate workflows
+**Responsibility**: Orchestrate domain objects to accomplish business flows
 
-#### Use Cases (`src/application/use_cases/`)
+#### Use Cases (`application/use_cases/`)
 
-**AnalyzeCVUseCase** (`analyze_cv.py` - 83 lines):
+**CombineEvaluationUseCase** (`combine_evaluation.py` - NEW):
 ```python
 Workflow:
-1. Extract text from CV file (CVAnalyzerPort)
-2. Analyze and extract structured info
-3. Generate CV embeddings (VectorSearchPort)
-4. Store embeddings in vector database
-→ Returns: CVAnalysis entity
+1. Fetch parent evaluation (main question answer)
+2. Fetch all child evaluations (follow-up answers)
+3. Calculate combined metrics:
+   ├─ average_score = weighted avg of all scores
+   ├─ gap_resolution = tracking gaps filled through follow-ups
+   └─ overall_improvement = comparing first vs last answer
+4. Create COMBINED evaluation entity
+→ Returns: Evaluation with context_type=COMBINED
 ```
 
-**PlanInterviewUseCase** (`plan_interview.py` - 381 lines) ✅:
+**ProcessAnswerAdaptiveUseCase** (`process_answer_adaptive.py`):
+```python
+Workflow:
+1. Retrieve interview and question
+2. Evaluate answer using LLM (context-aware)
+3. Detect knowledge gaps
+4. Create Answer entity with evaluation
+5. Create Evaluation entity (PARENT_QUESTION or FOLLOW_UP)
+6. Store answer and evaluation in repositories
+7. Update interview state
+→ Returns: Answer entity + has_more flag
+```
+
+**FollowUpDecisionUseCase** (`follow_up_decision.py`):
+```python
+Workflow:
+1. Count existing follow-ups for parent question
+2. Check break conditions:
+   ├─ follow_up_count >= 3 → Exit
+   ├─ similarity_score >= 0.8 → Exit
+   └─ no gaps detected → Exit
+3. Accumulate gaps from previous follow-ups
+4. Return decision dict with needs_followup flag
+→ Returns: decision dict (needs_followup, reason, count, cumulative_gaps)
+```
+
+**GenerateSummaryUseCase** (`generate_summary.py` - 376 lines):
+```python
+Workflow:
+1. Fetch all answers for interview
+2. Calculate aggregate metrics:
+   ├─ overall_score = 70% theoretical + 30% speaking
+   ├─ theoretical_score = avg(similarity_scores)
+   ├─ speaking_score = avg(voice_metrics.overall_quality)
+   └─ defaults: speaking=85 if no voice answers
+3. Analyze gap progression:
+   ├─ Count answers with follow-ups
+   ├─ Identify gaps_filled (confirmed→False after follow-up)
+   ├─ Identify gaps_remaining (still confirmed=True)
+   └─ Build progression dict
+4. Generate LLM recommendations:
+   ├─ Pass evaluations, scores, gaps to LLM
+   └─ Returns: strengths, weaknesses, study_topics, technique_tips
+5. Build final summary dict (9 fields)
+→ Returns: dict with all metrics + LLM recommendations
+```
+
+**PlanInterviewUseCase** (`plan_interview.py` - 381 lines):
 ```python
 Workflow:
 1. Load CV analysis
 2. Calculate n (2-5) based on skill diversity
-3. Create Interview entity (status=PREPARING)
+3. Create Interview entity (status=IDLE)
 4. FOR each question:
    ├─ Build search query (skill + difficulty + experience)
    ├─ Find 3 exemplar questions (vector search with filters)
@@ -311,173 +314,82 @@ Workflow:
    ├─ Generate ideal answer + rationale
    ├─ Store question in DB
    └─ Store question embedding in vector DB (non-blocking)
-5. Mark interview as READY
-→ Returns: Interview entity
-
-New Helper Methods:
-- _build_search_query(): Build vector search query
-- _find_exemplar_questions(): Retrieve exemplar questions
-- _store_question_embedding(): Store embeddings for future searches
-```
-
-**GetNextQuestionUseCase** (`get_next_question.py` - 34 lines) ✅:
-```python
-Workflow:
-1. Retrieve interview from repository
-2. Get current question ID based on index
-3. Fetch question details
-→ Returns: Question entity or None
-```
-
-**ProcessAnswerUseCase** (`process_answer.py` - 66 lines) ✅:
-```python
-Workflow:
-1. Retrieve interview and question
-2. Evaluate answer using LLM
-3. Create Answer entity with evaluation
-4. Store answer in repository
-5. Update interview progress
-→ Returns: Answer entity + has_more flag
-```
-
-**CompleteInterviewUseCase** (`complete_interview.py` - 25 lines) ✅:
-```python
-Workflow:
-1. Retrieve interview
-2. Mark as COMPLETED
-3. Update in repository
+5. Transition interview to QUESTIONING state
 → Returns: Interview entity
 ```
-
-**Planned Use Cases**:
-- `GenerateFeedbackUseCase`: Create comprehensive feedback report
 
 ### 3. Adapters Layer (External Integrations)
 
 **Location**: `src/adapters/`
 **Responsibility**: Implement domain ports with concrete technologies
 
-#### LLM Adapters (`src/adapters/llm/`)
+#### LLM Adapters (`adapters/llm/`)
 
-**OpenAIAdapter** (`openai_adapter.py` - 269 lines) ✅:
+**OpenAIAdapter** (`openai_adapter.py` - 400+ lines):
 - Implements `LLMPort` interface
 - Uses OpenAI GPT-4 for all LLM operations
+- **NEW**: Enhanced JSON extraction from markdown responses
 - Features:
   - Structured JSON output for evaluations
   - Configurable model and temperature
   - Async operations
   - Context-aware question generation
   - Multi-dimensional answer evaluation
-- Methods fully implemented:
-  - `generate_question()`: Context-aware question generation
-  - `evaluate_answer()`: Returns AnswerEvaluation with scores
-  - `generate_feedback_report()`: Comprehensive interview feedback
-  - `summarize_cv()`: 3-4 sentence CV summary
-  - `extract_skills_from_text()`: Structured skill extraction
+  - JSON extraction with `extract_json_from_markdown()`
 
-**Planned Adapters**:
-- `ClaudeAdapter`: Anthropic Claude implementation
-- `LlamaAdapter`: Meta Llama 3 implementation
+**AzureOpenAIAdapter** (`azure_openai_adapter.py` - NEW):
+- Azure-hosted OpenAI GPT-4 implementation
+- Same features as OpenAIAdapter
+- Region-specific deployment configuration
 
-#### Vector Database Adapters (`src/adapters/vector_db/`)
+#### Vector Database Adapters (`adapters/vector_db/`)
 
-**PineconeAdapter** (`pinecone_adapter.py`) ✅:
+**PineconeAdapter** (`pinecone_adapter.py`):
 - Implements `VectorSearchPort` interface
 - Serverless Pinecone with 1536 dimensions (OpenAI embeddings)
-- Features:
-  - Auto-creates index if missing
-  - Cosine similarity search
-  - Metadata filtering
-  - Batch operations support
-- Methods: Question/CV embedding storage, similarity search
+- Features: Auto-creates index, cosine similarity search, metadata filtering
 
-**Planned Adapters**:
-- `WeaviateAdapter`: Weaviate implementation
-- `ChromaAdapter`: ChromaDB for local development
+**ChromaAdapter** (`chroma_adapter.py` - NEW):
+- Local vector database implementation
+- In-memory or persistent storage
+- Good for development and testing
 
-#### Persistence Adapters (`src/adapters/persistence/`)
+#### Persistence Adapters (`adapters/persistence/`)
 
-**Database Models** (`models.py`) ✅:
+**NEW: Evaluation Repository** (`evaluation_repository.py`):
+- Stores context-aware evaluations
+- Supports parent-child relationships
+- Queries: `get_by_parent_question()`, `get_by_type()`, `get_combined()`
+
+**Database Models** (`models.py`):
 - SQLAlchemy 2.0 async models
-- Tables: CandidateModel, InterviewModel, QuestionModel, AnswerModel, CVAnalysisModel
-- Features:
-  - UUID primary keys
-  - Timestamps (created_at, updated_at)
-  - Foreign key relationships
-  - Indexes on frequently queried columns
-  - JSONB columns for flexible metadata
-  - PostgreSQL-specific types (UUID, ARRAY, JSONB)
-  - GIN indexes on array columns
+- **NEW**: EvaluationModel with parent_id, context_type, evaluation_data
+- Tables: CandidateModel, InterviewModel, QuestionModel, AnswerModel, CVAnalysisModel, FollowUpQuestionModel, EvaluationModel
+- Features: UUID PKs, timestamps, foreign keys, indexes, JSONB columns
 
-**Mappers** (`mappers.py`) ✅:
+**Mappers** (`mappers.py`):
 - Bidirectional conversion: Domain models ↔ Database models
-- Classes: CandidateMapper, InterviewMapper, QuestionMapper, AnswerMapper, CVAnalysisMapper
-- Methods: `to_domain()`, `to_db_model()`
+- **NEW**: EvaluationMapper with parent-child serialization
+- Classes: CandidateMapper, InterviewMapper, QuestionMapper, AnswerMapper, CVAnalysisMapper, FollowUpQuestionMapper, EvaluationMapper
 
-**Repositories** (5 files) ✅:
-- `PostgreSQLCandidateRepository`: Candidate CRUD
-- `PostgreSQLQuestionRepository`: Question management with filtering
-- `PostgreSQLInterviewRepository`: Interview lifecycle with status queries
-- `PostgreSQLAnswerRepository`: Answer storage and retrieval
-- `PostgreSQLCVAnalysisRepository`: CV analysis persistence
+#### Speech Adapters (`adapters/speech/` - NEW)
 
-Each repository:
-- Implements corresponding port interface
-- Uses async SQLAlchemy sessions
-- Handles mapping between layers
-- Provides CRUD operations + domain-specific queries
+**AzureSTTAdapter** (`azure_stt_adapter.py`):
+- Azure Speech-to-Text implementation
+- Supports streaming recognition
+- Language detection
 
-#### Mock Adapters (`adapters/mock/`) ✅
+**AzureTTSAdapter** (`azure_tts_adapter.py`):
+- Azure Text-to-Speech implementation
+- Multiple voice options
+- SSML support for prosody control
 
-**6 Mock Adapters for Development**:
+#### CV Processing Adapters (`adapters/cv_processing/` - NEW)
 
-**MockLLMAdapter** (`mock_llm_adapter.py`):
-- Implements LLMPort interface
-- Returns placeholder responses for testing
-- Used for development without OpenAI API costs
-
-**MockVectorSearchAdapter** (`mock_vector_search_adapter.py`):
-- Implements VectorSearchPort interface
-- In-memory vector storage with cosine similarity
-- No Pinecone dependency for tests
-
-**MockSTTAdapter** (`mock_stt_adapter.py`):
-- Implements SpeechToTextPort interface
-- Returns placeholder transcriptions
-
-**MockTTSAdapter** (`mock_tts_adapter.py`):
-- Implements TextToSpeechPort interface
-- Returns empty audio bytes
-
-**MockCVAnalyzerAdapter** (`mock_cv_analyzer.py`):
-- Implements CVAnalyzerPort interface
-- Filename-based skill extraction (e.g., "python-developer.pdf" → ["Python", "FastAPI"])
-- No document parsing library needed
-
-**MockAnalyticsAdapter** (`mock_analytics.py`):
-- Implements AnalyticsPort interface
-- In-memory performance metrics
-- Simple answer quality assessment
-
-**Configuration**: Controlled via `USE_MOCK_ADAPTERS` environment variable (default: `true`)
-
-#### API Adapters (`src/adapters/api/`)
-
-**REST API** (`api/rest/`) ✅:
-- `health_routes.py`: Health check endpoint
-- `interview_routes.py`: Interview management (4 endpoints)
-  - POST /api/interviews - Create interview session
-  - GET /api/interviews/{id} - Get interview details
-  - PUT /api/interviews/{id}/start - Start interview
-  - GET /api/interviews/{id}/questions/current - Get current question
-
-**WebSocket** (`api/websocket/`) ✅:
-- `connection_manager.py`: WebSocket connection pool management
-- `interview_handler.py`: Real-time interview handler
-  - Protocol: text_answer, audio_chunk, get_next_question
-  - Responses: question, evaluation, interview_complete, error
-  - Integrated TTS for audio question delivery
-  - Handles answer processing and interview completion
+**CVProcessingAdapter** (`cv_processing_adapter.py`):
+- PDF and DOCX parsing
+- Skill extraction using NLP
+- Education and experience analysis
 
 ### 4. Infrastructure Layer (Cross-Cutting Concerns)
 
@@ -486,106 +398,44 @@ Each repository:
 
 #### Configuration (`infrastructure/config/`)
 
-**Settings** (`settings.py` - 124 lines) ✅:
+**Settings** (`settings.py` - 150+ lines):
 - Pydantic Settings for type-safe configuration
-- Environment variable loading (.env.local → .env)
-- Configuration groups:
-  - Application (name, version, environment)
-  - API (host, port, CORS, prefix)
-  - LLM Provider (OpenAI, Claude configs)
-  - Vector DB (Pinecone, Weaviate, ChromaDB)
-  - PostgreSQL (connection, credentials)
-  - Speech Services (Azure STT, region)
-  - File Storage (upload directories)
-  - Interview (question count, scoring, timeouts)
-  - Logging (level, format)
-- Special features:
-  - `async_database_url` property: Converts postgresql:// to postgresql+asyncpg://
-  - Strips SSL parameters incompatible with asyncpg
-  - Environment detection methods: `is_production()`, `is_development()`
+- **NEW**: Azure Speech service configuration
+- **NEW**: ChromaDB configuration
+- Configuration groups: Application, API, LLM Provider, Vector DB, PostgreSQL, Speech Services, File Storage, Interview, Logging
+- Special features: `async_database_url` property, environment detection methods
 
 #### Database (`infrastructure/database/`)
 
-**Session Management** (`session.py` - 129 lines) ✅:
+**Session Management** (`session.py` - 129 lines):
 - Async SQLAlchemy 2.0 session factory
-- Features:
-  - Global engine and session factory
-  - Connection pooling (configurable by environment)
-  - Pool pre-ping for connection verification
-  - Automatic rollback on errors
-  - Proper cleanup with `async with` context
-- Functions:
-  - `create_engine()`: Configure async engine
-  - `init_db()`: Initialize on startup
-  - `close_db()`: Cleanup on shutdown
-  - `get_async_session()`: Dependency injection function
-  - `get_engine()`: Access engine instance
-
-**Base** (`base.py`) ✅:
-- SQLAlchemy DeclarativeBase for all models
+- Features: Global engine, session factory, connection pooling, automatic rollback
+- Functions: `create_engine()`, `init_db()`, `close_db()`, `get_async_session()`, `get_engine()`
 
 #### Dependency Injection (`infrastructure/dependency_injection/`)
 
-**Container** (`container.py` - 259 lines) ✅:
+**Container** (`container.py` - 300+ lines):
 - Central DI container for all dependencies
+- **NEW**: Evaluation repository injection
+- **NEW**: Speech service adapters injection
 - Configuration-driven implementation selection
-- Methods:
-  - `llm_port()`: Returns OpenAI (or Claude/Llama based on config)
-  - `vector_search_port()`: Returns Pinecone (or Weaviate/ChromaDB)
-  - Repository methods (5): Return PostgreSQL repositories
-  - `cv_analyzer_port()`: CV processing (not implemented yet)
-  - `speech_to_text_port()`: STT service (not implemented yet)
-  - `text_to_speech_port()`: TTS service (not implemented yet)
-  - `analytics_port()`: Analytics service (not implemented yet)
-- Singleton pattern with `@lru_cache` for get_container()
-
-### 5. Database Migrations
-
-**Location**: `alembic/`
-**Tool**: Alembic with async support
-
-**Migrations**:
-- `a4047ce5a909_initial_database_schema_with_all_tables.py` ✅
-  - Creates 5 tables: candidates, interviews, questions, answers, cv_analyses
-  - Establishes foreign key relationships
-  - Adds indexes for performance
-  - Includes proper constraints
-
-**Configuration**:
-- `alembic.ini`: Alembic settings
-- `env.py`: Async-compatible environment configuration
-- Uses `asyncio.run()` for async migrations
-
-### 6. Utility Scripts
-
-**Location**: `scripts/`
-
-**Database Scripts** ✅:
-- `setup_db.py`: Initialize database with verification
-- `verify_db.py`: Check tables and count rows
-- `test_env.py`: Test environment configuration loading
-- `setup_and_migrate.sh`: Unix automated setup
-- `setup_and_migrate.bat`: Windows automated setup (cloud PostgreSQL compatible)
+- Methods: `llm_port()`, `vector_search_port()`, repository methods, speech service methods
 
 ## Entry Points
 
 ### For Users
 - **README.md**: Project overview and quick start
-- **DATABASE_SETUP.md**: Comprehensive database setup guide
-- **ENV_SETUP.md**: Environment configuration best practices
 - **docs/project-overview-pdr.md**: Product requirements and roadmap
 
 ### For Developers
-- **pyproject.toml**: Dependencies, scripts, and tool configuration
+- **pyproject.toml**: Dependencies, scripts, tool configuration
 - **CLAUDE.md**: Development instructions and architecture overview
-- **alembic.ini**: Database migration configuration
-- **.env.example**: Template for required environment variables
 - **src/main.py**: Application entry point (FastAPI app)
 
 ### For Testing
-- **tests/**: Test suites (planned structure)
-- **pytest.ini**: Test configuration in pyproject.toml
-- **Coverage config**: htmlcov/ output directory
+- **tests/**: Test suites (150+ tests)
+- **pytest.ini**: Test configuration
+- **tests/conftest.py**: Shared test fixtures
 
 ## Development Workflow
 
@@ -610,56 +460,22 @@ cp .env.example .env.local
 # 5. Run migrations
 alembic upgrade head
 
-# 6. Verify database
-python scripts/verify_db.py
-
-# 7. Start development server
+# 6. Start development server
 python src/main.py
 ```
 
 ### Testing Strategy
 
-**Unit Tests** (`tests/unit/`) ⏳:
+**Unit Tests** (`tests/unit/`):
 - Test domain logic in isolation
 - Mock all ports
 - Fast execution (milliseconds)
-- Target coverage: >80%
+- 150+ tests, 85%+ coverage
 
-**Integration Tests** (`tests/integration/`) ⏳:
+**Integration Tests** (`tests/integration/`):
 - Test adapters with real services
 - Use test environments for external APIs
 - Verify port implementations
-- Slower execution (seconds)
-
-**E2E Tests** (`tests/e2e/`) ⏳:
-- Test complete user flows
-- Use test database
-- Verify API endpoints
-- Full system integration
-
-### Code Quality Tools
-
-**Linting** (ruff):
-```bash
-ruff check src/
-ruff check --fix src/  # Auto-fix issues
-```
-
-**Formatting** (black):
-```bash
-black src/
-black --check src/  # Check without modifying
-```
-
-**Type Checking** (mypy):
-```bash
-mypy src/
-```
-
-**All Quality Checks**:
-```bash
-ruff check src/ && black --check src/ && mypy src/
-```
 
 ## Development Principles
 
@@ -676,13 +492,21 @@ ruff check src/ && black --check src/ && mypy src/
 - Easy to swap implementations
 - Domain logic remains pure
 
+### Domain-Driven State Management
+
+**NEW**: State management moved from WebSocket orchestrator to domain layer
+- Interview aggregate root owns state transitions
+- State machine validates transitions: IDLE → QUESTIONING → EVALUATING → REVIEWING → COMPLETED
+- Business rules enforced at domain level
+- WebSocket orchestrator delegates state management to domain
+
 ### Code Standards
 
 **Python Style**:
 - PEP 8 compliance
 - Type hints throughout
 - Docstrings for all public APIs
-- Line length: 100 characters (black/ruff)
+- Line length: 100 characters
 
 **Architecture**:
 - Rich domain models (not anemic)
@@ -690,75 +514,92 @@ ruff check src/ && black --check src/ && mypy src/
 - Repository pattern for data access
 - Dependency injection for flexibility
 
-**Testing**:
-- Unit tests for domain logic
-- Integration tests for adapters
-- E2E tests for API flows
-- High coverage (>80% target)
-
 ## Implementation Status
 
-### ✅ Complete (v0.1.0 Foundation)
-- Domain models (5 entities)
-- Repository ports (5 interfaces)
-- PostgreSQL persistence (5 repositories + models + mappers)
-- OpenAI LLM adapter (full implementation with exemplar support) ✅
-- Pinecone vector adapter (full implementation) ✅
-- Mock adapters (6 total: LLM, Vector, STT, TTS, CV, Analytics) ✅
+### ✅ Complete (v0.2.1 Current)
+
+**Phase 1 Foundation**:
+- Domain models (8 entities including Evaluation)
+- Repository ports (13 interfaces)
+- PostgreSQL persistence (10 repositories)
+- OpenAI + Azure OpenAI LLM adapters
+- Pinecone + ChromaDB vector adapters
+- Mock adapters (6 total)
 - Database migrations (Alembic + async support)
-- Configuration management (Pydantic Settings + USE_MOCK_ADAPTERS flag)
-- Dependency injection container (mock adapter integration)
-- Use cases (AnalyzeCV, PlanInterview, GetNextQuestion, ProcessAnswer, CompleteInterview) ✅
-- Vector search integration in PlanInterviewUseCase (3 new helper methods) ✅
-- Exemplar-based question generation (LLMPort enhanced) ✅
-- DTOs (3 files: interview, answer, websocket)
-- Database setup scripts
-- REST API (health check + interview endpoints)
+- Configuration management
+- Dependency injection container
+
+**Phase 2 Evaluation Enhancement**:
+- Context-aware evaluation with entity separation
+- Parent-child evaluation relationships
+- Combined evaluation use case
+- Evaluation repository and persistence
+
+**Phase 3 State Management**:
+- Domain-Driven State Management
+- Interview state machine in domain layer
+- State transition validation
+- WebSocket orchestrator delegates to domain
+
+**Phase 4 Additional Features**:
+- JSON extraction from LLM markdown responses
+- Azure Speech services adapters
+- CV processing adapter
+- ChromaDB vector database adapter
+
+**Use Cases**:
+- AnalyzeCV, PlanInterview, GetNextQuestion
+- ProcessAnswerAdaptive, CompleteInterview
+- GenerateSummary, FollowUpDecision
+- CombineEvaluation (NEW)
+
+**API Layer**:
+- REST API (health + interview endpoints)
 - WebSocket handler (real-time interview sessions)
-- All 10 unit tests passing for PlanInterviewUseCase with mocks ✅
+- DTOs (4 files: interview, answer, audio, websocket)
 
 ### 🔄 In Progress
-- CV processing adapters (spaCy, document parsing)
-- Analytics service
-- Feedback generation use case
+
+- Speech service integration (Azure STT/TTS)
+- CV processing refinement
+- Advanced analytics
 
 ### ⏳ Planned (Future Phases)
+
 - Claude and Llama LLM adapters
-- Weaviate and ChromaDB vector adapters
-- Production speech service adapters (Azure STT, Edge TTS)
-- Feedback generation use case
+- Weaviate vector adapter alternative
 - Authentication & authorization
 - Rate limiting
-- Comprehensive test suites
-- API documentation (OpenAPI/Swagger)
+- Comprehensive E2E test suites
 - Docker deployment
 - CI/CD pipeline
 
 ## File Statistics
 
-**Total Python Files**: ~55 files
-**Domain Layer**: 16 files (models + ports)
-**Application Layer**: 11 files (5 use cases + 3 DTOs + __init__)
-**Adapters Layer**: 25 files (LLM, vector DB, 6 mocks, persistence, API)
+**Total Python Files**: ~75 files
+**Domain Layer**: 21 files (8 models + 13 ports)
+**Application Layer**: 14 files (8 use cases + 4 DTOs + __init__)
+**Adapters Layer**: 35 files (LLM, vector DB, 6 mocks, persistence, API, speech, CV)
 **Infrastructure Layer**: 9 files (config, database, DI)
-**Tests**: ~29 tests (unit tests with mock adapters)
+**Tests**: 150+ tests (85%+ coverage on core features)
 
-**Lines of Code** (estimated):
-- Domain: ~600 lines
-- Application: ~300 lines (use cases + DTOs)
-- Adapters: ~1800 lines (API + mock + existing)
-- Infrastructure: ~400 lines
-- Total: ~3100 lines (excluding tests)
+**Lines of Code**:
+- Domain: ~850 lines (+100 for Evaluation)
+- Application: ~1200 lines (+150 for CombineEvaluation)
+- Adapters: ~3000 lines (+300 for new adapters)
+- Infrastructure: ~450 lines
+- Total: ~5500 lines production code
+- Tests: ~3000 lines
 
 ## Dependencies Overview
 
-### Production Dependencies (16 packages)
-Core framework, LLM providers, vector DB, database, document processing, utilities
+### Production Dependencies (20+ packages)
+Core framework, LLM providers, vector DB, database, speech services, document processing, utilities
 
 ### Development Dependencies (9 packages)
 Testing, linting, formatting, type checking, development tools
 
-**Total Dependencies**: 25 packages
+**Total Dependencies**: 30+ packages
 
 ## Performance Considerations
 
@@ -773,13 +614,8 @@ Testing, linting, formatting, type checking, development tools
 - Indexed columns for frequent queries
 - Efficient ORM query patterns
 
-### Caching Strategy (Planned)
-- Frequent question embedding caching
-- LLM response caching for similar prompts
-- Vector search result caching
-
 ### Scalability
-- Stateless API design
+- Stateless API design (state in domain, not WebSocket)
 - Horizontal scaling ready
 - Database connection pooling
 - Async request handling
@@ -787,7 +623,7 @@ Testing, linting, formatting, type checking, development tools
 ## Security Measures
 
 ### Implemented ✅
-- Environment variable for secrets
+- Environment variables for secrets
 - .env.local gitignored
 - SQL injection prevention (parameterized queries)
 - Input validation via Pydantic
@@ -822,8 +658,7 @@ Testing, linting, formatting, type checking, development tools
 - [Project Overview & PDR](./project-overview-pdr.md) - Product requirements and roadmap
 - [System Architecture](./system-architecture.md) - Detailed architecture documentation
 - [Code Standards](./code-standards.md) - Coding conventions and best practices
-- [API Documentation](./system-architecture.md#api-architecture) - REST API reference
-- [Database Setup](../DATABASE_SETUP.md) - Database configuration guide
+- [Project Roadmap](./project-roadmap.md) - Development timeline and milestones
 
 ## External Resources
 
@@ -836,14 +671,15 @@ Testing, linting, formatting, type checking, development tools
 
 ## Unresolved Questions
 
-1. **Test Coverage Target**: Aim for 80% or 90%?
-2. **API Versioning**: v1 in URL or headers?
+1. **Test Coverage Target**: Maintain 85%+ or push for 90%?
+2. **API Versioning**: v1 in URL or headers when API stabilizes?
 3. **Logging Strategy**: JSON logs in production? Which logging library?
 4. **Monitoring**: Prometheus/Grafana or cloud-native solutions?
 5. **Deployment Target**: AWS, GCP, Azure, or multi-cloud?
+6. **State Persistence**: How to handle WebSocket disconnections with domain state?
 
 ---
 
 **Document Status**: Living document, updated with each milestone
-**Next Review**: After Phase 1 completion
+**Next Review**: After major architectural changes
 **Maintainers**: Elios Development Team

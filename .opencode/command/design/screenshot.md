@@ -6,7 +6,7 @@ Think hard to plan & start designing follow exactly this screenshot:
 <screenshot>$ARGUMENTS</screenshot>
 
 ## Workflow:
-1. Use `eyes` analyze tool to describe super details of the screenshot.
+1. Use `ai-multimodal` skills to describe super details of the screenshot.
 2. Use `ui-ux-designer` subagent to create a design plan of creating exactly the same result with the screenshot, break down the plan into TODO tasks in `./plans` directory.
 3. Then implement the plan step by step.
 4. If user doesn't specify, create the design in pure HTML/CSS/JS.
