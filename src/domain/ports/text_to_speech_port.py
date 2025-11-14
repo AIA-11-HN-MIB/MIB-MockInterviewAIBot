@@ -1,6 +1,7 @@
 """Text-to-Speech port interface."""
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 
 class TextToSpeechPort(ABC):
@@ -51,10 +52,25 @@ class TextToSpeechPort(ABC):
         pass
 
     @abstractmethod
-    async def get_available_voices(self) -> list[str]:
-        """Get list of available voice names.
+    async def get_available_voices(self) -> list[dict[str, Any]]:
+        """Get list of available voices with metadata.
 
         Returns:
-            List of voice name strings (e.g., ["en-US-AriaNeural", "en-GB-SoniaNeural"])
+            List of dicts with keys: name, locale, gender, voice_type
+            Example:
+            [
+                {
+                    "name": "en-US-AriaNeural",
+                    "locale": "en-US",
+                    "gender": "Female",
+                    "voice_type": "Neural"
+                },
+                {
+                    "name": "en-GB-SoniaNeural",
+                    "locale": "en-GB",
+                    "gender": "Female",
+                    "voice_type": "Neural"
+                }
+            ]
         """
         pass

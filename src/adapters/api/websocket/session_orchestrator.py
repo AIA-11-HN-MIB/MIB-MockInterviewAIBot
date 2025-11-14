@@ -166,7 +166,57 @@ class InterviewSessionOrchestrator:
                 )
             break
 
-    async def _handle_main_question_answer(self, answer_text: str) -> None:
+    async def handle_voice_answer(
+        self,
+        audio_bytes: bytes,
+        question_id: UUID,
+        transcription: str,
+        voice_metrics: dict[str, float],
+    ) -> None:
+        """Handle voice answer with STT transcription and voice metrics.
+
+        Similar to handle_answer but specifically for voice answers with metrics.
+
+        Args:
+            audio_bytes: Raw audio data (for future storage if needed)
+            question_id: Question ID being answered
+            transcription: STT transcription of audio
+            voice_metrics: Voice quality metrics (intonation, fluency, confidence, WPM)
+
+        Raises:
+            ValueError: If called in invalid state
+        """
+        async for session in get_async_session():
+            interview_repo = self.container.interview_repository_port(session)
+
+            # Load fresh state from DB
+            interview = await self._get_interview_or_raise(interview_repo)
+
+            # Route based on domain status
+            from ....domain.models.interview import InterviewStatus
+
+            if interview.status == InterviewStatus.QUESTIONING:
+                await self._handle_main_question_answer(
+                    answer_text=transcription,
+                    voice_metrics=voice_metrics,
+                )
+            elif interview.status == InterviewStatus.FOLLOW_UP:
+                await self._handle_followup_answer(
+                    answer_text=transcription,
+                    voice_metrics=voice_metrics,
+                )
+            else:
+                raise ValueError(
+                    f"Cannot handle voice answer in status {interview.status}. "
+                    f"Expected QUESTIONING or FOLLOW_UP"
+                )
+            break
+
+    async def _handle_main_question_answer(
+        self,
+        answer_text: str,
+        voice_metrics: dict[str, float] | None = None,
+    ) -> None:
         """Handle answer to main question.
 
         Flow:
@@ -210,6 +260,7 @@ class InterviewSessionOrchestrator:
                 interview_id=self.interview_id,
                 question_id=current_question_id,
                 answer_text=answer_text,
+                voice_metrics=voice_metrics,
             )
 
             # Send evaluation
@@ -240,7 +291,13 @@ class InterviewSessionOrchestrator:
             # If follow-up needed, generate and send
             if decision["needs_followup"]:
                 await self._generate_and_send_followup(
-                    answer, evaluation, decision, question_repo, follow_up_repo, interview_repo, current_question_id
+                    answer,
+                    evaluation,
+                    decision,
+                    question_repo,
+                    follow_up_repo,
+                    interview_repo,
+                    current_question_id,
                 )
                 break
 
@@ -254,7 +311,11 @@ class InterviewSessionOrchestrator:
 
             break
 
-    async def _handle_followup_answer(self, answer_text: str) -> None:
+    async def _handle_followup_answer(
+        self,
+        answer_text: str,
+        voice_metrics: dict[str, float] | None = None,
+    ) -> None:
         """Handle answer to follow-up question.
 
         Flow:
@@ -265,6 +326,7 @@ class InterviewSessionOrchestrator:
 
         Args:
             answer_text: Candidate's answer text
+            voice_metrics: Optional voice quality metrics for voice answers
         """
         async for session in get_async_session():
             interview_repo = self.container.interview_repository_port(session)
@@ -303,6 +365,7 @@ class InterviewSessionOrchestrator:
                 interview_id=self.interview_id,
                 question_id=current_followup_id,
                 answer_text=answer_text,
+                voice_metrics=voice_metrics,
             )
 
             # Send evaluation
@@ -333,7 +396,13 @@ class InterviewSessionOrchestrator:
             # If another follow-up needed, generate and send
             if decision["needs_followup"]:
                 await self._generate_and_send_followup(
-                    answer, evaluation, decision, question_repo, follow_up_repo, interview_repo, parent_question_id
+                    answer,
+                    evaluation,
+                    decision,
+                    question_repo,
+                    follow_up_repo,
+                    interview_repo,
+                    parent_question_id,
                 )
                 break
 
@@ -381,8 +450,7 @@ class InterviewSessionOrchestrator:
             if unresolved_gaps:
                 # GapSeverity is a str Enum, so str(g.severity) gives the value
                 highest_severity = max(
-                    unresolved_gaps,
-                    key=lambda g: severity_order.get(str(g.severity).lower(), 0)
+                    unresolved_gaps, key=lambda g: severity_order.get(str(g.severity).lower(), 0)
                 )
                 severity = str(highest_severity.severity)
 
@@ -434,7 +502,7 @@ class InterviewSessionOrchestrator:
                 "interview_id": str(self.interview_id),
                 "follow_up_id": str(follow_up.id),
                 "parent_question_id": str(parent_question_id),
-            }
+            },
         )
 
     async def _send_next_main_question(
@@ -509,7 +577,7 @@ class InterviewSessionOrchestrator:
                 "interview_id": str(self.interview_id),
                 "question_id": str(question.id),
                 "status": interview.status.value if interview else "unknown",
-            }
+            },
         )
 
     async def _complete_interview(
@@ -609,9 +677,7 @@ class InterviewSessionOrchestrator:
             }
         )
 
-    async def _get_interview_or_raise(
-        self, interview_repo: InterviewRepositoryPort
-    ) -> Any:
+    async def _get_interview_or_raise(self, interview_repo: InterviewRepositoryPort) -> Any:
         """Get interview by ID or raise ValueError if not found.
 
         Args:
@@ -651,8 +717,16 @@ class InterviewSessionOrchestrator:
             return {
                 "interview_id": str(self.interview_id),
                 "status": interview.status.value,
-                "current_question_id": str(interview.get_current_question_id()) if interview.get_current_question_id() else None,
-                "parent_question_id": str(interview.current_parent_question_id) if interview.current_parent_question_id else None,
+                "current_question_id": (
+                    str(interview.get_current_question_id())
+                    if interview.get_current_question_id()
+                    else None
+                ),
+                "parent_question_id": (
+                    str(interview.current_parent_question_id)
+                    if interview.current_parent_question_id
+                    else None
+                ),
                 "followup_count": interview.current_followup_count,
                 "progress": f"{interview.current_question_index}/{len(interview.question_ids)}",
                 "created_at": self.created_at.isoformat(),

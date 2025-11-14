@@ -1,6 +1,7 @@
 """Mock Text-to-Speech adapter for development and testing."""
 
 import struct
+from typing import Any
 
 from ...domain.ports.text_to_speech_port import TextToSpeechPort
 
@@ -76,18 +77,43 @@ class MockTTSAdapter(TextToSpeechPort):
             f.write(audio_bytes)
         return output_path
 
-    async def get_available_voices(self) -> list[str]:
-        """Get list of available voice names.
+    async def get_available_voices(self) -> list[dict[str, Any]]:
+        """Get list of available voices with metadata.
 
         Returns:
-            List of mock voice name strings
+            List of dicts with name, locale, gender, voice_type
         """
         return [
-            "en-US-AriaNeural",
-            "en-US-JennyNeural",
-            "en-US-GuyNeural",
-            "en-GB-SoniaNeural",
-            "en-GB-RyanNeural",
+            {
+                "name": "en-US-AriaNeural",
+                "locale": "en-US",
+                "gender": "Female",
+                "voice_type": "Neural",
+            },
+            {
+                "name": "en-US-JennyNeural",
+                "locale": "en-US",
+                "gender": "Female",
+                "voice_type": "Neural",
+            },
+            {
+                "name": "en-US-GuyNeural",
+                "locale": "en-US",
+                "gender": "Male",
+                "voice_type": "Neural",
+            },
+            {
+                "name": "en-GB-SoniaNeural",
+                "locale": "en-GB",
+                "gender": "Female",
+                "voice_type": "Neural",
+            },
+            {
+                "name": "en-GB-RyanNeural",
+                "locale": "en-GB",
+                "gender": "Male",
+                "voice_type": "Neural",
+            },
         ]
 
     def _create_wav_bytes(

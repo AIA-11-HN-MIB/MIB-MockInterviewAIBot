@@ -312,18 +312,17 @@ class Container:
                 self._tts_port = MockTTSAdapter()
             else:
                 # Use Azure Speech SDK
-                from ...adapters.speech.azure_tts_adapter import AzureTextToSpeechAdapter
+                from ...adapters.speech.azure_tts_adapter import AzureTTSAdapter
 
                 if not self.settings.azure_speech_key:
                     raise ValueError("Azure Speech API key not configured")
                 if not self.settings.azure_speech_region:
                     raise ValueError("Azure Speech region not configured")
 
-                self._tts_port = AzureTextToSpeechAdapter(
-                    api_key=self.settings.azure_speech_key,
+                self._tts_port = AzureTTSAdapter(
+                    subscription_key=self.settings.azure_speech_key,
                     region=self.settings.azure_speech_region,
                     default_voice=self.settings.azure_speech_voice,
-                    cache_size=self.settings.azure_speech_cache_size,
                 )
 
         return self._tts_port

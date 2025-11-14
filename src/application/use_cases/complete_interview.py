@@ -97,7 +97,8 @@ class CompleteInterviewUseCase:
         # 3. Store summary in interview metadata
         if interview.plan_metadata is None:
             interview.plan_metadata = {}
-        interview.plan_metadata["completion_summary"] = summary
+        # Convert Pydantic model to dict for JSON serialization
+        interview.plan_metadata["completion_summary"] = summary.model_dump(mode="json")
 
         # 4. Mark interview as complete (state transition)
         interview.complete()
