@@ -1,0 +1,49 @@
+{
+  "common": [
+    [{"LOWER": "python"}],  
+    [{"LOWER": "sql"}],
+    [{"LOWER": "java"}],
+    [{"LOWER": "javascript"}],
+    [{"LOWER": "html"}, {"LOWER": "css"}],
+    [{"LOWER": "react"}, {"OP": "?"}],  
+    [{"LOWER": "node"}, {"LOWER": "js"}],
+    [{"LOWER": "docker"}],
+    [{"LOWER": "aws"}],
+    [{"LOWER": "git"}]
+  ],
+  "en": [
+    [{"LOWER": "machine"}, {"LOWER": "learning"}],
+    [{"LOWER": "data"}, {"LOWER": "analysis"}],
+    [{"LOWER": "project"}, {"LOWER": "management"}],
+    [{"LOWER": "team"}, {"LOWER": "leadership"}],
+    [{"LOWER": "communication"}, {"POS": "NOUN", "OP": "?"}],
+    [{"LOWER": "problem"}, {"LOWER": "solving"}],
+    [{"LEMMA": "excel"}, {"LOWER": "proficiency"}],  
+    [{"LOWER": "agile"}, {"LOWER": "methodology"}],
+    [{"LOWER": "software"}, {"LOWER": "development"}],
+    [{"LOWER": "cloud"}, {"LOWER": "computing"}],
+    [{"LOWER": "devops"}],
+    [{"LOWER": "cybersecurity"}],
+    [{"LOWER": "ui"}, {"LOWER": "ux"}, {"LOWER": "design"}],
+    [{"LOWER": "big"}, {"LOWER": "data"}],
+    [{"LOWER": "artificial"}, {"LOWER": "intelligence"}]
+  ],
+  "vi": [
+    [{"LOWER": "machine"}, {"LOWER": "learning"}],
+    [{"LOWER": "quản lý"}, {"LOWER": "dự án"}],
+    [{"LOWER": "lập trình"}],
+    [{"LOWER": "phân tích"}, {"LOWER": "dữ liệu"}],
+    [{"LOWER": "quản lý"}, {"LOWER": "nhóm"}],
+    [{"LOWER": "kỹ năng"}, {"LOWER": "giao tiếp"}],
+    [{"LOWER": "giải quyết"}, {"LOWER": "vấn đề"}],
+    [{"LOWER": "thành thạo"}, {"LOWER": "excel"}],
+    [{"LOWER": "phương pháp"}, {"LOWER": "agile"}],
+    [{"LOWER": "phát triển"}, {"LOWER": "phần mềm"}],
+    [{"LOWER": "điện toán"}, {"LOWER": "đám mây"}],
+    [{"LOWER": "devops"}],
+    [{"LOWER": "an ninh"}, {"LOWER": "mạng"}],
+    [{"LOWER": "thiết kế"}, {"LOWER": "ui"}, {"LOWER": "ux"}],
+    [{"LOWER": "dữ liệu"}, {"LOWER": "lớn"}],
+    [{"LOWER": "trí tuệ"}, {"LOWER": "nhân tạo"}]
+  ]
+}

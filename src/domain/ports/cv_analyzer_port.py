@@ -3,7 +3,8 @@
 from abc import ABC, abstractmethod
 
 from ..models.cv_analysis import CVAnalysis
-
+from ..models.candidate import Candidate
+from uuid import UUID
 
 class CVAnalyzerPort(ABC):
     """Interface for CV analysis operations.
@@ -29,16 +30,23 @@ class CVAnalyzerPort(ABC):
         """
         pass
 
-    # @abstractmethod
-    # async def read_cv(self, file_path: str) -> str:
-    #     """Read CV file and extract text content.
+    @abstractmethod
+    async def generate_candidate_from_summary(
+        self,
+        summary_info: str,
+        cv_file_path: str,
+        candidate_id: UUID
+    ) -> Candidate:
+        """Generate a Candidate object from CV summary information using GPT-4o-mini.
 
-    #     Args:
-    #         file_path: Path to CV file
-    #     Returns:
-    #         Extracted text content
-    #     """
-    #     pass
+        Args:
+            summary_info: JSON string containing CV summary information
+            cv_file_path: Path to the candidate's CV file
+            candidate_id: ID of the candidate
+        Returns:
+            Candidate: Populated Candidate object
+        """
+        pass
 
     # @abstractmethod
     # async def generate_cv_summary(
