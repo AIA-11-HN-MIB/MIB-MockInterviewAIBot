@@ -27,6 +27,7 @@ from ...adapters.persistence import (
     PostgreSQLAnswerRepository,
     PostgreSQLCandidateRepository,
     PostgreSQLCVAnalysisRepository,
+    PostgreSQLEvaluationRepository,
     PostgreSQLFollowUpQuestionRepository,
     PostgreSQLInterviewRepository,
     PostgreSQLQuestionRepository,
@@ -40,6 +41,7 @@ from ...domain.ports import (
     CandidateRepositoryPort,
     CVAnalysisRepositoryPort,
     CVAnalyzerPort,
+    EvaluationRepositoryPort,
     FollowUpQuestionRepositoryPort,
     InterviewRepositoryPort,
     LLMPort,
@@ -223,6 +225,19 @@ class Container:
             Configured answer repository
         """
         return PostgreSQLAnswerRepository(session)
+
+    def evaluation_repository_port(
+        self, session: AsyncSession
+    ) -> EvaluationRepositoryPort:
+        """Get evaluation repository port implementation.
+
+        Args:
+            session: Async database session
+
+        Returns:
+            Configured evaluation repository
+        """
+        return PostgreSQLEvaluationRepository(session)
 
     def cv_analysis_repository_port(
         self, session: AsyncSession

@@ -8,7 +8,11 @@ license: MIT
 
 ## Research Methodology
 
+Always honoring **YAGNI**, **KISS**, and **DRY** principles.
+**Be honest, be brutal, straight to the point, and be concise.**
+
 ### Phase 1: Scope Definition
+
 First, you will clearly define the research scope by:
 - Identifying key terms and concepts to investigate
 - Determining the recency requirements (how current must information be)
@@ -20,12 +24,14 @@ First, you will clearly define the research scope by:
 You will employ a multi-source research strategy:
 
 1. **Search Strategy**:
-   - Check if `gemini` bash command is available, if so, execute `gemini -m gemini-2.5-flash -p "...your search prompt..."` command and save the output to `./plans/<plan-name>/reports/YYMMDD-<your-research-topic>.md` file (including all citations).
+   - Check if `gemini` bash command is available, if so, execute `gemini -m gemini-2.5-flash -p "...your search prompt..."` bash command (timeout: 10 minutes) and save the output to `./plans/<plan-name>/reports/YYMMDD-<your-research-topic>.md` file (including all citations).
    - If `gemini` bash command is not available, fallback to `WebSearch` tool.
+   - Run multiple `gemini` bash commands or `WebSearch` tools in parallel to search for relevant information.
    - Craft precise search queries with relevant keywords
    - Include terms like "best practices", "2024", "latest", "security", "performance"
    - Search for official documentation, GitHub repositories, and authoritative blogs
    - Prioritize results from recognized authorities (official docs, major tech companies, respected developers)
+   - **IMPORTANT:** You are allowed to perform at most **5 researches (max 5 tool calls)**, user might request less than this amount, **strictly respect it**, think carefully based on the task before performing each related research topic.
 
 2. **Deep Content Analysis**:
    - When you found a potential Github repository URL, use `docs-seeker` skill to find read it.
@@ -54,7 +60,9 @@ You will analyze gathered information by:
 
 ### Phase 4: Report Generation
 
-**Notes:** Research reports are saved in `./plans/<plan-name>/reports/YYMMDD-<your-research-topic>.md`.
+**Notes:** 
+- Research reports are saved in `./plans/<plan-name>/reports/YYMMDD-<your-research-topic>.md`.
+- If you are not given a plan name, ask main agent to provide it and continue the process.
 
 You will create a comprehensive markdown report with the following structure:
 

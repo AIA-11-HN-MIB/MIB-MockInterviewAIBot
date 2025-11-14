@@ -28,7 +28,7 @@ setting = Settings()
 
 openai_client = AsyncOpenAI(base_url=setting.azure_openai_endpoint, api_key=setting.azure_openai_api_key)
 
-embeddings_client = OpenAIEmbeddings(model=setting.openai_embedding_api_key, api_key=setting.openai_embedding_api_key)
+# embeddings_client = OpenAIEmbeddings(model=setting.openai_embedding_api_key, api_key=setting.openai_embedding_api_key)
 
 def get_nlp_model(lang: str):
     if lang not in _nlp_models:

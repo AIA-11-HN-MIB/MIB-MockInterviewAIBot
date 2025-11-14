@@ -5,6 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from ..models.answer import AnswerEvaluation
+from ..models.evaluation import FollowUpEvaluationContext
 from ..models.question import Question
 
 
@@ -45,6 +46,7 @@ class LLMPort(ABC):
         question: Question,
         answer_text: str,
         context: dict[str, Any],
+        followup_context: FollowUpEvaluationContext | None = None,
     ) -> AnswerEvaluation:
         """Evaluate a candidate's answer.
 
@@ -52,6 +54,9 @@ class LLMPort(ABC):
             question: The question that was asked
             answer_text: Candidate's answer
             context: Additional context for evaluation
+            followup_context: Optional context for follow-up question evaluation.
+                Includes previous evaluations, cumulative gaps, attempt number.
+                Used to provide LLM with history and apply attempt-based penalties.
 
         Returns:
             Evaluation results with score and feedback
@@ -184,5 +189,28 @@ class LLMPort(ABC):
 
         Returns:
             Follow-up question text
+        """
+        pass
+
+    @abstractmethod
+    async def generate_interview_recommendations(
+        self,
+        context: dict[str, Any],
+    ) -> dict[str, list[str]]:
+        """Generate personalized interview recommendations.
+
+        Args:
+            context: Interview context including:
+                - interview_id: str
+                - total_answers: int
+                - gap_progression: dict (gaps filled, remaining, etc.)
+                - evaluations: list[dict] (scores, strengths, weaknesses per answer)
+
+        Returns:
+            Dict with keys:
+                - strengths: list[str] (top 3-5 strengths)
+                - weaknesses: list[str] (top 3-5 weaknesses)
+                - study_topics: list[str] (topic-specific study recommendations)
+                - technique_tips: list[str] (voice, pacing, structure tips)
         """
         pass

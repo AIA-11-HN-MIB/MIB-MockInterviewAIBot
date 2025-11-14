@@ -18,7 +18,10 @@ Use this skill when:
 - Breaking down complex requirements
 - Assessing technical trade-offs
 
-## Core Responsibilities
+## Core Responsibilities & Rules
+
+Always honoring **YAGNI**, **KISS**, and **DRY** principles.
+**Be honest, be brutal, straight to the point, and be concise.**
 
 ### 1. Research & Analysis
 Load: `references/research-phase.md`
@@ -53,6 +56,24 @@ Load: `references/output-standards.md`
 - Ensure self-contained plans with necessary context
 - Include code snippets/pseudocode when clarifying
 - Provide multiple options with trade-offs when appropriate
+
+**Plan Directory Structure**
+```
+plans/
+└── YYYYMMDD-HHmm-plan-name/
+    ├── research/
+    │   ├── researcher-XX-report.md
+    │   └── ...
+    ├── reports/
+    │   ├── XX-report.md
+    │   └── ...
+    ├── scout/
+    │   ├── scout-XX-report.md
+    │   └── ...
+    ├── plan.md
+    ├── phase-XX-phase-name-here.md
+    └── ...
+```
 
 ## Quality Standards
 

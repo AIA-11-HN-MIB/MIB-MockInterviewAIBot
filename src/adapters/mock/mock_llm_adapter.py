@@ -5,6 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from ...domain.models.answer import AnswerEvaluation
+from ...domain.models.evaluation import FollowUpEvaluationContext
 from ...domain.models.question import Question
 from ...domain.ports.llm_port import LLMPort
 
@@ -47,10 +48,18 @@ class MockLLMAdapter(LLMPort):
         question: Question,
         answer_text: str,
         context: dict[str, Any],
+        followup_context: FollowUpEvaluationContext | None = None,
     ) -> AnswerEvaluation:
         """Generate mock evaluation with realistic scores."""
-        # Random score between 70-95 for realistic feel
-        score = random.uniform(70.0, 95.0)
+        # Adjust score based on follow-up context (if provided)
+        if followup_context:
+            # Mock: Lower scores for later attempts (simulate declining patience)
+            base_score = random.uniform(65.0, 85.0)
+            attempt_penalty = (followup_context.attempt_number - 1) * 5
+            score = max(50.0, base_score - attempt_penalty)
+        else:
+            # Random score between 70-95 for realistic feel
+            score = random.uniform(70.0, 95.0)
 
         # Simulate different evaluation patterns based on score
         if score >= 85:
@@ -239,3 +248,107 @@ A weaker answer would miss these comprehensive details."""
             return f"Let's dive deeper into {concepts_str}. Can you explain the underlying principles?"
         else:
             return f"Final question on {concepts_str}: How would you apply this in a real-world scenario?"
+
+    async def generate_interview_recommendations(
+        self,
+        context: dict[str, Any],
+    ) -> dict[str, list[str]]:
+        """Generate mock personalized recommendations.
+
+        Args:
+            context: Interview context with evaluations and gap progression
+
+        Returns:
+            Dict with strengths, weaknesses, study topics, and technique tips
+        """
+        evaluations = context.get("evaluations", [])
+        gap_progression = context.get("gap_progression", {})
+
+        # Calculate average score from evaluations
+        avg_score = (
+            sum(e["score"] for e in evaluations) / len(evaluations)
+            if evaluations
+            else 75.0
+        )
+
+        # Generate recommendations based on score
+        if avg_score >= 85:
+            strengths = [
+                "Exceptional understanding of core concepts",
+                "Strong analytical and problem-solving skills",
+                "Excellent communication and explanation abilities",
+                "Good use of real-world examples and context",
+            ]
+            weaknesses = [
+                "Could explore more edge cases in answers",
+                "Consider discussing performance trade-offs more explicitly",
+            ]
+            study_topics = [
+                "Advanced system design patterns",
+                "Performance optimization techniques",
+                "Security best practices",
+            ]
+            technique_tips = [
+                "Continue your clear and structured communication style",
+                "Consider adding more visual diagrams when explaining concepts",
+            ]
+        elif avg_score >= 70:
+            strengths = [
+                "Solid understanding of fundamental concepts",
+                "Good ability to explain technical topics",
+                "Relevant examples provided in most answers",
+            ]
+            weaknesses = [
+                "Some technical depth missing in complex topics",
+                "Could improve answer structure and organization",
+                "Occasionally missed key concepts in follow-up questions",
+            ]
+            study_topics = [
+                "Deep dive into data structures and algorithms",
+                "Practice system design scenarios",
+                "Review concurrency and threading concepts",
+                "Study testing strategies and best practices",
+            ]
+            technique_tips = [
+                "Use the STAR method (Situation, Task, Action, Result) for answering",
+                "Practice explaining concepts at multiple levels of detail",
+                "Slow down pace to ensure clarity in responses",
+            ]
+        else:
+            strengths = [
+                "Shows basic understanding of core concepts",
+                "Willing to tackle challenging questions",
+            ]
+            weaknesses = [
+                "Lacks depth in technical explanations",
+                "Missing critical concepts in several answers",
+                "Limited use of examples and practical applications",
+                "Answer structure needs improvement",
+            ]
+            study_topics = [
+                "Review fundamental programming concepts thoroughly",
+                "Practice basic data structures and algorithms",
+                "Study common design patterns",
+                "Build small projects to reinforce learning",
+                "Review language-specific best practices",
+            ]
+            technique_tips = [
+                "Practice explaining concepts out loud before answering",
+                "Use pen and paper to diagram ideas during preparation",
+                "Structure answers: state the concept, explain it, give an example",
+                "Take time to think before responding - silence is acceptable",
+                "Ask clarifying questions if prompt is unclear",
+            ]
+
+        # Add gap-specific recommendations
+        if gap_progression.get("gaps_remaining", 0) > 3:
+            study_topics.append(
+                "Focus on concepts that remained unclear after follow-up questions"
+            )
+
+        return {
+            "strengths": strengths,
+            "weaknesses": weaknesses,
+            "study_topics": study_topics,
+            "technique_tips": technique_tips,
+        }

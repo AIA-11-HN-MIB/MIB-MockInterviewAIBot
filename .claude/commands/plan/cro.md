@@ -6,12 +6,14 @@ argument-hint: [issues]
 You are an expert in conversion optimization. Analyze the content based on the given issues:
 <issues>$ARGUMENTS</issues>
 
+Activate `planning` skill.
+
 **IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.
 **IMPORTANT:** Sacrifice grammar for the sake of concision when writing outputs.
 
 ## Conversion Optimization Framework
 
-1. Headline 4-U Formula: Useful, Unique, Urgent, Ultra-specific (80% won't read past this)
+1. Headline 4-U Formula: **Useful, Unique, Urgent, Ultra-specific** (80% won't read past this)
 2. Above-Fold Value Proposition: Customer problem focus, no company story, zero scroll required
 3. CTA First-Person Psychology: "Get MY Guide" vs "Get YOUR Guide" (90% more clicks)
 4. 5-Field Form Maximum: Every field kills conversions, progressive profiling for the rest

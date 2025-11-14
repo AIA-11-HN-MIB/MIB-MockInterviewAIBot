@@ -52,7 +52,7 @@ class TestPlanInterviewUseCase:
         # Verify n=2
         assert interview.planned_question_count == 2
         assert len(interview.question_ids) == 2
-        assert interview.status == InterviewStatus.READY
+        assert interview.status == InterviewStatus.IDLE
         assert "strategy" in interview.plan_metadata
 
     @pytest.mark.asyncio
@@ -293,7 +293,7 @@ class TestPlanInterviewUseCase:
         )
 
         # Final status should be READY
-        assert interview.status == InterviewStatus.READY
+        assert interview.status == InterviewStatus.IDLE
         assert interview.cv_analysis_id == sample_cv_analysis.id
 
 

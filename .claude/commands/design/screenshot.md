@@ -6,8 +6,12 @@ argument-hint: [screenshot]
 Think hard to plan & start designing follow exactly this screenshot: 
 <screenshot>$ARGUMENTS</screenshot>
 
+**IMPORTANT**: Activate `aesthetic` skills.
+**IMPORTANT**: Analyze the list of skills  at `.claude/skills/*` and intelligently activate the skills that are needed for the task during the process.
+**Ensure token efficiency while maintaining high quality.**
+
 ## Workflow:
-1. Use `eyes` analyze tool to describe super details of the screenshot (design style, trends, fonts, colors, border, spacing, elements' positions, size, shape, texture, material, light, shadow, reflection, refraction, blur, glow, image, background transparency, transition, etc.)
+1. Use `ai-multimodal` skills to describe super details of the screenshot (design style, trends, fonts, colors, border, spacing, elements' positions, size, shape, texture, material, light, shadow, reflection, refraction, blur, glow, image, background transparency, transition, etc.)
    - **IMPORTANT:** Try to predict the font name (Google Fonts) and font size in the given screenshot, don't just use Inter or Poppins.
 2. Use `ui-ux-designer` subagent to create a design plan following the progressive disclosure structure so the final result matches the screenshot:
    - Create a directory `plans/YYYYMMDD-HHmm-plan-name` (example: `plans/20251101-1505-authentication-and-profile-implementation`).

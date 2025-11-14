@@ -8,6 +8,7 @@ import pytest
 
 from src.domain.models.answer import Answer, AnswerEvaluation
 from src.domain.models.cv_analysis import CVAnalysis, ExtractedSkill
+from src.domain.models.evaluation import Evaluation
 from src.domain.models.follow_up_question import FollowUpQuestion
 from src.domain.models.interview import Interview, InterviewStatus
 from src.domain.models.question import DifficultyLevel, Question, QuestionType
@@ -68,7 +69,7 @@ def sample_interview_adaptive(sample_cv_analysis: CVAnalysis) -> Interview:
     """Sample adaptive interview with plan_metadata."""
     interview = Interview(
         candidate_id=sample_cv_analysis.candidate_id,
-        status=InterviewStatus.READY,
+        status=InterviewStatus.IDLE,
         cv_analysis_id=sample_cv_analysis.id,
     )
     interview.plan_metadata = {
@@ -88,7 +89,7 @@ def sample_interview_legacy() -> Interview:
     """Sample legacy interview without plan_metadata."""
     return Interview(
         candidate_id=uuid4(),
-        status=InterviewStatus.IN_PROGRESS,
+        status=InterviewStatus.QUESTIONING,
     )
 
 
@@ -251,6 +252,51 @@ class MockCVAnalysisRepository:
         return self.analyses.get(cv_analysis_id)
 
 
+class MockEvaluationRepository:
+    """Mock evaluation repository for testing."""
+
+    def __init__(self) -> None:
+        self.evaluations: dict[UUID, Evaluation] = {}
+
+    async def save(self, evaluation: Evaluation) -> Evaluation:
+        """Save evaluation."""
+        self.evaluations[evaluation.id] = evaluation
+        return evaluation
+
+    async def get_by_id(self, evaluation_id: UUID) -> Evaluation | None:
+        """Get evaluation by ID."""
+        return self.evaluations.get(evaluation_id)
+
+    async def get_by_answer_id(self, answer_id: UUID) -> Evaluation | None:
+        """Get evaluation for answer."""
+        for evaluation in self.evaluations.values():
+            if evaluation.answer_id == answer_id:
+                return evaluation
+        return None
+
+    async def get_by_parent_evaluation_id(
+        self, parent_id: UUID
+    ) -> list[Evaluation]:
+        """Get follow-up evaluations for parent."""
+        return [
+            e
+            for e in self.evaluations.values()
+            if e.parent_evaluation_id == parent_id
+        ]
+
+    async def update(self, evaluation: Evaluation) -> Evaluation:
+        """Update evaluation."""
+        if evaluation.id not in self.evaluations:
+            raise ValueError(f"Evaluation {evaluation.id} not found")
+        self.evaluations[evaluation.id] = evaluation
+        return evaluation
+
+    async def delete(self, evaluation_id: UUID) -> None:
+        """Delete evaluation."""
+        if evaluation_id in self.evaluations:
+            del self.evaluations[evaluation_id]
+
+
 class MockVectorSearch:
     """Mock vector search for testing."""
 
@@ -371,6 +417,18 @@ class MockLLM:
         concepts_str = ', '.join(missing_concepts[:2]) if missing_concepts else "that concept"
         return f"Can you elaborate more on {concepts_str}? Please provide specific examples."
 
+    async def generate_interview_recommendations(
+        self,
+        context: dict[str, Any],
+    ) -> dict[str, list[str]]:
+        """Mock interview recommendations generation."""
+        return {
+            "strengths": ["Clear communication", "Good problem-solving", "Strong technical knowledge"],
+            "weaknesses": ["Could provide more examples", "Needs to elaborate on concepts"],
+            "study_topics": ["Advanced algorithms", "System design patterns", "Best practices"],
+            "technique_tips": ["Speak more slowly", "Use concrete examples", "Structure answers better"],
+        }
+
 
 @pytest.fixture
 def mock_question_repo() -> MockQuestionRepository:
@@ -412,3 +470,9 @@ def mock_llm() -> MockLLM:
 def mock_follow_up_question_repo() -> MockFollowUpQuestionRepository:
     """Mock follow-up question repository fixture."""
     return MockFollowUpQuestionRepository()
+
+
+@pytest.fixture
+def mock_evaluation_repo() -> MockEvaluationRepository:
+    """Mock evaluation repository fixture."""
+    return MockEvaluationRepository()

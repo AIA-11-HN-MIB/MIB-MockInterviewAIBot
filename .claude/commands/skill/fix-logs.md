@@ -3,8 +3,9 @@ description: Fix the agent skill based on `logs.txt` file.
 argument-hint: [prompt-or-path-to-skill]
 ---
 
-Ultrathink.
+Think harder.
 Use `skill-creator` and `claude-code` skills.
+Use `docs-seeker` skills to search for documentation if needed.
 
 ## Your mission
 Fix the agent skill based on the current `logs.txt` file (in the project root directory).

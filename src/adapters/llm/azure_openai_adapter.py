@@ -1,12 +1,14 @@
 """Azure OpenAI LLM adapter implementation."""
 
 import json
+import re
 from typing import Any
 from uuid import UUID
 
 from openai import AsyncAzureOpenAI
 
 from ...domain.models.answer import AnswerEvaluation
+from ...domain.models.evaluation import FollowUpEvaluationContext
 from ...domain.models.question import Question
 from ...domain.ports.llm_port import LLMPort
 
@@ -94,11 +96,31 @@ class AzureOpenAIAdapter(LLMPort):
         content = response.choices[0].message.content
         return content.strip() if content else ""
 
+    @staticmethod
+    def _extract_json_from_markdown(content: str) -> str:
+        """Extract JSON from markdown code fences if present.
+
+        Args:
+            content: Content that may contain markdown-wrapped JSON
+
+        Returns:
+            Clean JSON string
+        """
+        if not content:
+            return "{}"
+
+        # Remove markdown code fences (```json ... ``` or ``` ... ```)
+        content = re.sub(r'^```(?:json)?\s*\n', '', content.strip(), flags=re.MULTILINE)
+        content = re.sub(r'\n```\s*$', '', content.strip(), flags=re.MULTILINE)
+
+        return content.strip()
+
     async def evaluate_answer(
         self,
         question: Question,
         answer_text: str,
         context: dict[str, Any],
+        followup_context: FollowUpEvaluationContext | None = None,
     ) -> AnswerEvaluation:
         """Evaluate an answer using Azure OpenAI.
 
@@ -106,6 +128,7 @@ class AzureOpenAIAdapter(LLMPort):
             question: The question that was asked
             answer_text: Candidate's answer
             context: Additional context
+            followup_context: Optional context for follow-up evaluation with previous attempts
 
         Returns:
             Evaluation results
@@ -122,6 +145,29 @@ class AzureOpenAIAdapter(LLMPort):
         Candidate's Answer: {answer_text}
 
         {"Ideal Answer: " + question.ideal_answer if question.ideal_answer else ""}
+        """
+
+        # Add follow-up context if this is a follow-up question
+        if followup_context:
+            user_prompt += f"""
+
+        **FOLLOW-UP CONTEXT** (Attempt #{followup_context.attempt_number}):
+        This is a follow-up question after {followup_context.attempt_number - 1} previous attempt(s).
+
+        Previous Scores: {', '.join(f'{score:.1f}' for score in followup_context.previous_scores)}
+        Average Previous Score: {followup_context.average_previous_score:.1f}
+
+        Persistent Gaps from Previous Attempts:
+        {chr(10).join(f'  - {concept}' for concept in followup_context.get_persistent_gap_concepts())}
+
+        When evaluating this follow-up answer:
+        1. Focus on whether the candidate addressed the persistent gaps above
+        2. Check if they demonstrate learning from previous feedback
+        3. Evaluate both new content AND correction of previous gaps
+        4. Be stricter if they repeat the same mistakes (this is attempt #{followup_context.attempt_number})
+        """
+
+        user_prompt += """
 
         Evaluate this answer and provide:
         1. Overall score (0-100)
@@ -147,6 +193,7 @@ class AzureOpenAIAdapter(LLMPort):
         )
 
         content = response.choices[0].message.content or "{}"
+        content = self._extract_json_from_markdown(content)
         result = json.loads(content)
 
         return AnswerEvaluation(
@@ -286,6 +333,7 @@ class AzureOpenAIAdapter(LLMPort):
         )
 
         content = response.choices[0].message.content or "{}"
+        content = self._extract_json_from_markdown(content)
         result = json.loads(content)
         skills: list[dict[str, str]] = result.get("skills", [])
         return skills
@@ -436,6 +484,7 @@ Identify real conceptual gaps, not just missing synonyms."""
         )
 
         content = response.choices[0].message.content or "{}"
+        content = self._extract_json_from_markdown(content)
         result = json.loads(content)
 
         return {
@@ -513,4 +562,98 @@ Ask questions that probe specific missing concepts while considering the full in
 
         content = response.choices[0].message.content
         return content.strip() if content else "Can you elaborate on that?"
+
+    async def generate_interview_recommendations(
+        self,
+        context: dict[str, Any],
+    ) -> dict[str, list[str]]:
+        """Generate personalized interview recommendations using Azure OpenAI.
+
+        Args:
+            context: Interview context including:
+                - interview_id: str
+                - total_answers: int
+                - gap_progression: dict
+                - evaluations: list[dict]
+
+        Returns:
+            Dict with strengths, weaknesses, study topics, and technique tips
+        """
+        evaluations = context.get("evaluations", [])
+        gap_progression = context.get("gap_progression", {})
+
+        # Build evaluation summary
+        eval_summary = "\n".join(
+            [
+                f"- Question {i+1}: Score {e['score']:.1f}/100"
+                f"\n  Strengths: {', '.join(e.get('strengths', []))}"
+                f"\n  Weaknesses: {', '.join(e.get('weaknesses', []))}"
+                for i, e in enumerate(evaluations)
+            ]
+        )
+
+        prompt = f"""
+Interview Performance Analysis
+
+Total Questions Answered: {len(evaluations)}
+Gap Progression:
+- Questions with Follow-ups: {gap_progression.get('questions_with_followups', 0)}
+- Gaps Filled: {gap_progression.get('gaps_filled', 0)}
+- Gaps Remaining: {gap_progression.get('gaps_remaining', 0)}
+
+Detailed Evaluations:
+{eval_summary}
+
+Generate personalized interview feedback in JSON format with these exact keys:
+{{
+    "strengths": ["strength 1", "strength 2", ...],  // 3-5 specific strengths
+    "weaknesses": ["weakness 1", "weakness 2", ...],  // 3-5 specific weaknesses
+    "study_topics": ["topic 1", "topic 2", ...],  // 3-7 specific topics to study
+    "technique_tips": ["tip 1", "tip 2", ...]  // 2-5 interview technique improvements
+}}
+
+Make recommendations:
+- Specific and actionable (not generic)
+- Based on actual performance data
+- Prioritized by impact
+- Constructive and encouraging
+
+Return ONLY valid JSON."""
+
+        system_prompt = """You are an expert interview coach analyzing candidate performance.
+Provide specific, data-driven recommendations that help candidates improve."""
+
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.7,
+            max_tokens=800,
+            response_format={"type": "json_object"},
+        )
+
+        content = response.choices[0].message.content
+        if not content:
+            # Fallback recommendations
+            return {
+                "strengths": ["Good technical foundation"],
+                "weaknesses": ["Could provide more detail in answers"],
+                "study_topics": ["Review core concepts"],
+                "technique_tips": ["Practice explaining concepts clearly"],
+            }
+
+        try:
+            content = self._extract_json_from_markdown(content)
+            recommendations = json.loads(content)
+            return recommendations
+        except json.JSONDecodeError:
+            # Fallback if JSON parsing fails
+            return {
+                "strengths": ["Good technical foundation"],
+                "weaknesses": ["Could provide more detail in answers"],
+                "study_topics": ["Review core concepts"],
+                "technique_tips": ["Practice explaining concepts clearly"],
+            }
 

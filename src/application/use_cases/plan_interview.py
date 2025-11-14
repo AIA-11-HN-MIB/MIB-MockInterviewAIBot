@@ -85,10 +85,10 @@ class PlanInterviewUseCase:
         n = self._calculate_question_count(cv_analysis)
         logger.info(f"Calculated n={n} questions based on CV complexity")
 
-        # Step 3: Create interview (status=PREPARING)
+        # Step 3: Create interview
         interview = Interview(
             candidate_id=candidate_id,
-            status=InterviewStatus.PREPARING,
+            status=InterviewStatus.IDLE,
             cv_analysis_id=cv_analysis_id,
         )
         await self.interview_repo.save(interview)
@@ -115,7 +115,7 @@ class PlanInterviewUseCase:
                     pass  # Best effort cleanup
             raise
 
-        # Step 5: Update interview (status=READY)
+        # Step 5: Update interview
         interview.question_ids = question_ids
         interview.plan_metadata = {
             "n": n,
@@ -123,7 +123,7 @@ class PlanInterviewUseCase:
             "strategy": "adaptive_planning_v1",
             "cv_summary": cv_analysis.summary or "No summary",
         }
-        interview.mark_ready(cv_analysis_id)
+        interview.mark_idle(cv_analysis_id)
         await self.interview_repo.update(interview)
 
         logger.info(
