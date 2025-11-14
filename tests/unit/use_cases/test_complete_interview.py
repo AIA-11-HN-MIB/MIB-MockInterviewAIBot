@@ -1,19 +1,21 @@
-"""Tests for Phase 06: CompleteInterviewUseCase."""
+"""Tests for CompleteInterviewUseCase (refactored - atomic operation)."""
 
 from uuid import uuid4
 
 import pytest
 
+from src.application.dto.interview_completion_dto import InterviewCompletionResult
 from src.application.use_cases.complete_interview import CompleteInterviewUseCase
-from src.domain.models.answer import Answer, AnswerEvaluation
+from src.domain.models.answer import Answer
+from src.domain.models.evaluation import Evaluation
 from src.domain.models.interview import InterviewStatus
 
 
 class TestCompleteInterviewUseCase:
-    """Test interview completion with summary generation."""
+    """Test interview completion with summary generation (atomic operation)."""
 
     @pytest.mark.asyncio
-    async def test_complete_interview_with_summary_generation(
+    async def test_complete_interview_generates_summary(
         self,
         sample_interview_adaptive,
         sample_question_with_ideal_answer,
@@ -21,132 +23,98 @@ class TestCompleteInterviewUseCase:
         mock_answer_repo,
         mock_question_repo,
         mock_follow_up_question_repo,
+        mock_evaluation_repo,
         mock_llm,
     ):
-        """Test complete interview with summary generation enabled."""
-        # Setup interview
+        """Test complete interview always generates summary (atomic operation)."""
+        # Setup interview in EVALUATING status
+        sample_interview_adaptive.status = InterviewStatus.EVALUATING
         await mock_interview_repo.save(sample_interview_adaptive)
 
-        # Create question and answer
+        # Create question
         q1_id = sample_interview_adaptive.question_ids[0]
         q1 = sample_question_with_ideal_answer
         q1.id = q1_id
         await mock_question_repo.save(q1)
 
+        # Create answer
         answer1 = Answer(
             interview_id=sample_interview_adaptive.id,
             question_id=q1_id,
             candidate_id=sample_interview_adaptive.candidate_id,
-            text="Good answer",
+            text="Good answer about recursion",
             is_voice=False,
-            similarity_score=0.85,
-            gaps={"concepts": [], "keywords": [], "confirmed": False},
-        )
-        answer1.evaluate(
-            AnswerEvaluation(
-                score=85.0,
-                semantic_similarity=0.85,
-                completeness=0.9,
-                relevance=0.95,
-                sentiment="confident",
-                reasoning="Strong",
-                strengths=["Good"],
-                weaknesses=[],
-                improvement_suggestions=[],
-            )
         )
         await mock_answer_repo.save(answer1)
 
-        # Execute use case with all dependencies
+        # Create evaluation (NEW: separate entity)
+        evaluation1 = Evaluation(
+            answer_id=answer1.id,
+            question_id=q1_id,
+            interview_id=sample_interview_adaptive.id,
+            raw_score=85.0,
+            final_score=85.0,
+            completeness=0.9,
+            relevance=0.95,
+            sentiment="confident",
+            reasoning="Strong answer",
+            strengths=["Clear explanation"],
+            weaknesses=[],
+        )
+        await mock_evaluation_repo.save(evaluation1)
+
+        # Link evaluation to answer
+        answer1.evaluation_id = evaluation1.id
+        await mock_answer_repo.save(answer1)
+
+        # Execute use case (NEW: all dependencies required)
         use_case = CompleteInterviewUseCase(
             interview_repository=mock_interview_repo,
             answer_repository=mock_answer_repo,
             question_repository=mock_question_repo,
             follow_up_question_repository=mock_follow_up_question_repo,
+            evaluation_repository=mock_evaluation_repo,
             llm=mock_llm,
         )
 
-        interview, summary = await use_case.execute(
-            interview_id=sample_interview_adaptive.id,
-            generate_summary=True,
-        )
+        # NEW: Returns InterviewCompletionResult DTO
+        result = await use_case.execute(interview_id=sample_interview_adaptive.id)
 
-        # Verify interview completed
-        assert interview.status == InterviewStatus.COMPLETE
+        # Verify return type
+        assert isinstance(result, InterviewCompletionResult)
+        assert result.interview.status == InterviewStatus.COMPLETE
+        assert result.summary is not None  # Always present
 
-        # Verify summary generated
-        assert summary is not None
-        assert summary["interview_id"] == str(sample_interview_adaptive.id)
-        assert "overall_score" in summary
-        assert "strengths" in summary
+        # Verify summary structure
+        assert result.summary["interview_id"] == str(sample_interview_adaptive.id)
+        assert "overall_score" in result.summary
+        assert "strengths" in result.summary
+        assert "weaknesses" in result.summary
+        assert "total_questions" in result.summary
 
         # Verify summary stored in metadata
-        assert interview.plan_metadata is not None
-        assert "completion_summary" in interview.plan_metadata
-        assert interview.plan_metadata["completion_summary"] == summary
-
-    @pytest.mark.asyncio
-    async def test_complete_interview_without_summary_generation(
-        self,
-        sample_interview_adaptive,
-        mock_interview_repo,
-    ):
-        """Test complete interview with summary generation disabled."""
-        await mock_interview_repo.save(sample_interview_adaptive)
-
-        use_case = CompleteInterviewUseCase(
-            interview_repository=mock_interview_repo,
-        )
-
-        interview, summary = await use_case.execute(
-            interview_id=sample_interview_adaptive.id,
-            generate_summary=False,
-        )
-
-        # Verify interview completed
-        assert interview.status == InterviewStatus.COMPLETE
-
-        # Verify no summary generated
-        assert summary is None
-
-    @pytest.mark.asyncio
-    async def test_complete_interview_missing_dependencies(
-        self,
-        sample_interview_adaptive,
-        mock_interview_repo,
-        mock_answer_repo,
-    ):
-        """Test complete interview with missing dependencies -> no summary."""
-        await mock_interview_repo.save(sample_interview_adaptive)
-
-        # Missing question_repo, follow_up_repo, llm
-        use_case = CompleteInterviewUseCase(
-            interview_repository=mock_interview_repo,
-            answer_repository=mock_answer_repo,
-            question_repository=None,
-            follow_up_question_repository=None,
-            llm=None,
-        )
-
-        interview, summary = await use_case.execute(
-            interview_id=sample_interview_adaptive.id,
-            generate_summary=True,  # Requested but will be skipped
-        )
-
-        # Verify interview completed
-        assert interview.status == InterviewStatus.COMPLETE
-
-        # Verify no summary generated (missing dependencies)
-        assert summary is None
+        assert result.interview.plan_metadata is not None
+        assert "completion_summary" in result.interview.plan_metadata
+        assert result.interview.plan_metadata["completion_summary"] == result.summary
 
     @pytest.mark.asyncio
     async def test_complete_interview_not_found(
         self,
         mock_interview_repo,
+        mock_answer_repo,
+        mock_question_repo,
+        mock_follow_up_question_repo,
+        mock_evaluation_repo,
+        mock_llm,
     ):
         """Test error when interview not found."""
         use_case = CompleteInterviewUseCase(
             interview_repository=mock_interview_repo,
+            answer_repository=mock_answer_repo,
+            question_repository=mock_question_repo,
+            follow_up_question_repository=mock_follow_up_question_repo,
+            evaluation_repository=mock_evaluation_repo,
+            llm=mock_llm,
         )
 
         with pytest.raises(ValueError, match="Interview .* not found"):
@@ -157,39 +125,31 @@ class TestCompleteInterviewUseCase:
         self,
         sample_interview_adaptive,
         mock_interview_repo,
+        mock_answer_repo,
+        mock_question_repo,
+        mock_follow_up_question_repo,
+        mock_evaluation_repo,
+        mock_llm,
     ):
-        """Test error when interview not IN_PROGRESS."""
-        # Set status to COMPLETED
-        sample_interview_adaptive.status = InterviewStatus.COMPLETE
+        """Test error when interview not in EVALUATING status."""
+        # Set status to QUESTIONING (invalid for completion)
+        sample_interview_adaptive.status = InterviewStatus.QUESTIONING
         await mock_interview_repo.save(sample_interview_adaptive)
 
         use_case = CompleteInterviewUseCase(
             interview_repository=mock_interview_repo,
+            answer_repository=mock_answer_repo,
+            question_repository=mock_question_repo,
+            follow_up_question_repository=mock_follow_up_question_repo,
+            evaluation_repository=mock_evaluation_repo,
+            llm=mock_llm,
         )
 
         with pytest.raises(ValueError, match="Cannot complete interview with status"):
             await use_case.execute(interview_id=sample_interview_adaptive.id)
 
     @pytest.mark.asyncio
-    async def test_complete_interview_ready_status_invalid(
-        self,
-        sample_interview_adaptive,
-        mock_interview_repo,
-    ):
-        """Test error when interview status is READY (not started)."""
-        # Set status to READY
-        sample_interview_adaptive.status = InterviewStatus.IDLE
-        await mock_interview_repo.save(sample_interview_adaptive)
-
-        use_case = CompleteInterviewUseCase(
-            interview_repository=mock_interview_repo,
-        )
-
-        with pytest.raises(ValueError, match="Cannot complete interview with status"):
-            await use_case.execute(interview_id=sample_interview_adaptive.id)
-
-    @pytest.mark.asyncio
-    async def test_complete_interview_initializes_metadata(
+    async def test_complete_interview_with_multiple_evaluations(
         self,
         sample_interview_adaptive,
         sample_question_with_ideal_answer,
@@ -197,58 +157,121 @@ class TestCompleteInterviewUseCase:
         mock_answer_repo,
         mock_question_repo,
         mock_follow_up_question_repo,
+        mock_evaluation_repo,
         mock_llm,
     ):
-        """Test plan_metadata initialized if None before storing summary."""
-        # Setup interview with None metadata
-        sample_interview_adaptive.plan_metadata = None
+        """Test complete with multiple evaluated answers."""
+        sample_interview_adaptive.status = InterviewStatus.EVALUATING
         await mock_interview_repo.save(sample_interview_adaptive)
 
-        # Create minimal data for summary
-        q1_id = sample_interview_adaptive.question_ids[0]
-        q1 = sample_question_with_ideal_answer
-        q1.id = q1_id
-        await mock_question_repo.save(q1)
+        # Create 3 questions and answers
+        for idx, q_id in enumerate(sample_interview_adaptive.question_ids):
+            question = sample_question_with_ideal_answer
+            question.id = q_id
+            await mock_question_repo.save(question)
 
-        answer1 = Answer(
-            interview_id=sample_interview_adaptive.id,
-            question_id=q1_id,
-            candidate_id=sample_interview_adaptive.candidate_id,
-            text="Answer",
-            is_voice=False,
-            similarity_score=0.8,
-        )
-        answer1.evaluate(
-            AnswerEvaluation(
-                score=80.0,
-                semantic_similarity=0.8,
-                completeness=0.85,
+            answer = Answer(
+                interview_id=sample_interview_adaptive.id,
+                question_id=q_id,
+                candidate_id=sample_interview_adaptive.candidate_id,
+                text=f"Answer {idx + 1}",
+                is_voice=False,
+            )
+            await mock_answer_repo.save(answer)
+
+            evaluation = Evaluation(
+                answer_id=answer.id,
+                question_id=q_id,
+                interview_id=sample_interview_adaptive.id,
+                raw_score=80.0 + (idx * 5),
+                final_score=80.0 + (idx * 5),
+                completeness=0.8,
                 relevance=0.9,
                 sentiment="confident",
-                reasoning="Good",
-                strengths=["Clear"],
+                reasoning=f"Good answer {idx + 1}",
+                strengths=[f"Strength {idx + 1}"],
                 weaknesses=[],
-                improvement_suggestions=[],
             )
-        )
-        await mock_answer_repo.save(answer1)
+            await mock_evaluation_repo.save(evaluation)
+
+            answer.evaluation_id = evaluation.id
+            await mock_answer_repo.save(answer)
 
         use_case = CompleteInterviewUseCase(
             interview_repository=mock_interview_repo,
             answer_repository=mock_answer_repo,
             question_repository=mock_question_repo,
             follow_up_question_repository=mock_follow_up_question_repo,
+            evaluation_repository=mock_evaluation_repo,
             llm=mock_llm,
         )
 
-        interview, summary = await use_case.execute(
+        result = await use_case.execute(interview_id=sample_interview_adaptive.id)
+
+        assert result.interview.status == InterviewStatus.COMPLETE
+        assert result.summary["total_questions"] == 3
+        assert result.summary["overall_score"] > 0.0
+        assert len(result.summary["question_summaries"]) == 3
+
+    @pytest.mark.asyncio
+    async def test_complete_interview_initializes_metadata_if_none(
+        self,
+        sample_interview_adaptive,
+        sample_question_with_ideal_answer,
+        mock_interview_repo,
+        mock_answer_repo,
+        mock_question_repo,
+        mock_follow_up_question_repo,
+        mock_evaluation_repo,
+        mock_llm,
+    ):
+        """Test plan_metadata initialized if None before storing summary."""
+        sample_interview_adaptive.status = InterviewStatus.EVALUATING
+        sample_interview_adaptive.plan_metadata = None  # Force None
+        await mock_interview_repo.save(sample_interview_adaptive)
+
+        q1_id = sample_interview_adaptive.question_ids[0]
+        q1 = sample_question_with_ideal_answer
+        q1.id = q1_id
+        await mock_question_repo.save(q1)
+
+        answer = Answer(
             interview_id=sample_interview_adaptive.id,
-            generate_summary=True,
+            question_id=q1_id,
+            candidate_id=sample_interview_adaptive.candidate_id,
+            text="Answer",
+            is_voice=False,
+        )
+        await mock_answer_repo.save(answer)
+
+        evaluation = Evaluation(
+            answer_id=answer.id,
+            question_id=q1_id,
+            interview_id=sample_interview_adaptive.id,
+            raw_score=75.0,
+            final_score=75.0,
+            completeness=0.8,
+            relevance=0.85,
+        )
+        await mock_evaluation_repo.save(evaluation)
+
+        answer.evaluation_id = evaluation.id
+        await mock_answer_repo.save(answer)
+
+        use_case = CompleteInterviewUseCase(
+            interview_repository=mock_interview_repo,
+            answer_repository=mock_answer_repo,
+            question_repository=mock_question_repo,
+            follow_up_question_repository=mock_follow_up_question_repo,
+            evaluation_repository=mock_evaluation_repo,
+            llm=mock_llm,
         )
 
+        result = await use_case.execute(interview_id=sample_interview_adaptive.id)
+
         # Verify metadata initialized
-        assert interview.plan_metadata is not None
-        assert "completion_summary" in interview.plan_metadata
+        assert result.interview.plan_metadata is not None
+        assert "completion_summary" in result.interview.plan_metadata
 
     @pytest.mark.asyncio
     async def test_complete_interview_preserves_existing_metadata(
@@ -259,10 +282,11 @@ class TestCompleteInterviewUseCase:
         mock_answer_repo,
         mock_question_repo,
         mock_follow_up_question_repo,
+        mock_evaluation_repo,
         mock_llm,
     ):
         """Test existing plan_metadata preserved when adding summary."""
-        # Setup interview with existing metadata
+        sample_interview_adaptive.status = InterviewStatus.EVALUATING
         sample_interview_adaptive.plan_metadata = {
             "n": 3,
             "strategy": "adaptive_planning_v1",
@@ -270,85 +294,53 @@ class TestCompleteInterviewUseCase:
         }
         await mock_interview_repo.save(sample_interview_adaptive)
 
-        # Create minimal data
         q1_id = sample_interview_adaptive.question_ids[0]
         q1 = sample_question_with_ideal_answer
         q1.id = q1_id
         await mock_question_repo.save(q1)
 
-        answer1 = Answer(
+        answer = Answer(
             interview_id=sample_interview_adaptive.id,
             question_id=q1_id,
             candidate_id=sample_interview_adaptive.candidate_id,
             text="Answer",
             is_voice=False,
-            similarity_score=0.8,
         )
-        answer1.evaluate(
-            AnswerEvaluation(
-                score=80.0,
-                semantic_similarity=0.8,
-                completeness=0.85,
-                relevance=0.9,
-                sentiment="confident",
-                reasoning="Good",
-                strengths=["Clear"],
-                weaknesses=[],
-                improvement_suggestions=[],
-            )
+        await mock_answer_repo.save(answer)
+
+        evaluation = Evaluation(
+            answer_id=answer.id,
+            question_id=q1_id,
+            interview_id=sample_interview_adaptive.id,
+            raw_score=75.0,
+            final_score=75.0,
+            completeness=0.8,
+            relevance=0.85,
         )
-        await mock_answer_repo.save(answer1)
+        await mock_evaluation_repo.save(evaluation)
+
+        answer.evaluation_id = evaluation.id
+        await mock_answer_repo.save(answer)
 
         use_case = CompleteInterviewUseCase(
             interview_repository=mock_interview_repo,
             answer_repository=mock_answer_repo,
             question_repository=mock_question_repo,
             follow_up_question_repository=mock_follow_up_question_repo,
+            evaluation_repository=mock_evaluation_repo,
             llm=mock_llm,
         )
 
-        interview, summary = await use_case.execute(
-            interview_id=sample_interview_adaptive.id,
-            generate_summary=True,
-        )
+        result = await use_case.execute(interview_id=sample_interview_adaptive.id)
 
         # Verify existing metadata preserved
-        assert interview.plan_metadata["n"] == 3
-        assert interview.plan_metadata["strategy"] == "adaptive_planning_v1"
-        assert interview.plan_metadata["custom_field"] == "preserved"
-        assert "completion_summary" in interview.plan_metadata
+        assert result.interview.plan_metadata["n"] == 3
+        assert result.interview.plan_metadata["strategy"] == "adaptive_planning_v1"
+        assert result.interview.plan_metadata["custom_field"] == "preserved"
+        assert "completion_summary" in result.interview.plan_metadata
 
     @pytest.mark.asyncio
-    async def test_complete_interview_returns_tuple(
-        self,
-        sample_interview_adaptive,
-        mock_interview_repo,
-    ):
-        """Test return value is tuple (Interview, dict | None)."""
-        await mock_interview_repo.save(sample_interview_adaptive)
-
-        use_case = CompleteInterviewUseCase(
-            interview_repository=mock_interview_repo,
-        )
-
-        result = await use_case.execute(
-            interview_id=sample_interview_adaptive.id,
-            generate_summary=False,
-        )
-
-        # Verify tuple structure
-        assert isinstance(result, tuple)
-        assert len(result) == 2
-        interview, summary = result
-        assert interview is not None
-        assert summary is None
-
-
-class TestCompleteInterviewIntegration:
-    """Integration tests for complete interview with summary."""
-
-    @pytest.mark.asyncio
-    async def test_complete_flow_with_multiple_answers(
+    async def test_complete_interview_returns_dto_not_tuple(
         self,
         sample_interview_adaptive,
         sample_question_with_ideal_answer,
@@ -356,69 +348,55 @@ class TestCompleteInterviewIntegration:
         mock_answer_repo,
         mock_question_repo,
         mock_follow_up_question_repo,
+        mock_evaluation_repo,
         mock_llm,
     ):
-        """Test complete flow with multiple evaluated answers."""
+        """Test return value is InterviewCompletionResult DTO, not tuple."""
+        sample_interview_adaptive.status = InterviewStatus.EVALUATING
         await mock_interview_repo.save(sample_interview_adaptive)
 
-        # Create 3 questions
         q1_id = sample_interview_adaptive.question_ids[0]
-        q2_id = sample_interview_adaptive.question_ids[1]
-        q3_id = sample_interview_adaptive.question_ids[2]
-
         q1 = sample_question_with_ideal_answer
         q1.id = q1_id
         await mock_question_repo.save(q1)
 
-        q2 = sample_question_with_ideal_answer
-        q2.id = q2_id
-        await mock_question_repo.save(q2)
+        answer = Answer(
+            interview_id=sample_interview_adaptive.id,
+            question_id=q1_id,
+            candidate_id=sample_interview_adaptive.candidate_id,
+            text="Answer",
+            is_voice=False,
+        )
+        await mock_answer_repo.save(answer)
 
-        q3 = sample_question_with_ideal_answer
-        q3.id = q3_id
-        await mock_question_repo.save(q3)
+        evaluation = Evaluation(
+            answer_id=answer.id,
+            question_id=q1_id,
+            interview_id=sample_interview_adaptive.id,
+            raw_score=75.0,
+            final_score=75.0,
+            completeness=0.8,
+            relevance=0.85,
+        )
+        await mock_evaluation_repo.save(evaluation)
 
-        # Create 3 evaluated answers
-        for q_id in [q1_id, q2_id, q3_id]:
-            answer = Answer(
-                interview_id=sample_interview_adaptive.id,
-                question_id=q_id,
-                candidate_id=sample_interview_adaptive.candidate_id,
-                text="Good answer",
-                is_voice=False,
-                similarity_score=0.85,
-            )
-            answer.evaluate(
-                AnswerEvaluation(
-                    score=85.0,
-                    semantic_similarity=0.85,
-                    completeness=0.9,
-                    relevance=0.95,
-                    sentiment="confident",
-                    reasoning="Strong",
-                    strengths=["Good"],
-                    weaknesses=[],
-                    improvement_suggestions=[],
-                )
-            )
-            await mock_answer_repo.save(answer)
+        answer.evaluation_id = evaluation.id
+        await mock_answer_repo.save(answer)
 
         use_case = CompleteInterviewUseCase(
             interview_repository=mock_interview_repo,
             answer_repository=mock_answer_repo,
             question_repository=mock_question_repo,
             follow_up_question_repository=mock_follow_up_question_repo,
+            evaluation_repository=mock_evaluation_repo,
             llm=mock_llm,
         )
 
-        interview, summary = await use_case.execute(
-            interview_id=sample_interview_adaptive.id,
-            generate_summary=True,
-        )
+        result = await use_case.execute(interview_id=sample_interview_adaptive.id)
 
-        # Verify complete flow
-        assert interview.status == InterviewStatus.COMPLETE
-        assert summary is not None
-        assert summary["total_questions"] == 3
-        assert summary["overall_score"] > 0.0
-        assert len(summary["question_summaries"]) == 3
+        # Verify DTO structure (NOT tuple)
+        assert isinstance(result, InterviewCompletionResult)
+        assert hasattr(result, "interview")
+        assert hasattr(result, "summary")
+        assert result.interview is not None
+        assert result.summary is not None  # Always present

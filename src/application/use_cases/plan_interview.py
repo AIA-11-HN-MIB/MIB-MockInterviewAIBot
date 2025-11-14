@@ -123,7 +123,7 @@ class PlanInterviewUseCase:
             "strategy": "adaptive_planning_v1",
             "cv_summary": cv_analysis.summary or "No summary",
         }
-        interview.mark_ready(cv_analysis_id)
+        interview.mark_idle(cv_analysis_id)
         await self.interview_repo.update(interview)
 
         logger.info(

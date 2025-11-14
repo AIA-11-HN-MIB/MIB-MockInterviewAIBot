@@ -21,6 +21,22 @@ from ...domain.ports.question_repository_port import QuestionRepositoryPort
 class GenerateSummaryUseCase:
     """Generate comprehensive interview summary.
 
+    .. deprecated::
+        Use :class:`CompleteInterviewUseCase` instead.
+        This use case is deprecated and will be removed in the next major version.
+
+    DEPRECATED: This use case has been merged into CompleteInterviewUseCase.
+    Summary generation is now part of the atomic interview completion operation.
+
+    Migration Guide:
+        Replace GenerateSummaryUseCase with CompleteInterviewUseCase.
+        The new use case handles both completion and summary generation together.
+
+    Reason for Deprecation:
+        Eliminates use case composition anti-pattern. Interview completion and
+        summary generation are inherently related operations that should execute
+        atomically, not as separate use cases.
+
     Aggregates all evaluations (main questions + follow-ups), analyzes gap
     progression, and generates personalized recommendations using LLM.
     """
@@ -34,6 +50,16 @@ class GenerateSummaryUseCase:
         evaluation_repository: EvaluationRepositoryPort,
         llm: LLMPort,
     ):
+        import warnings
+
+        warnings.warn(
+            "GenerateSummaryUseCase is deprecated. "
+            "Use CompleteInterviewUseCase instead. "
+            "This class will be removed in the next major version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         self.interview_repo = interview_repository
         self.answer_repo = answer_repository
         self.question_repo = question_repository
