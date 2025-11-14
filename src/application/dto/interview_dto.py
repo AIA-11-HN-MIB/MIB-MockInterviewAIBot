@@ -10,6 +10,7 @@ from pydantic import BaseModel
 # Response DTOs
 class InterviewResponse(BaseModel):
     """Response with interview details and WebSocket URL."""
+
     id: UUID
     candidate_id: UUID
     status: str
@@ -40,6 +41,7 @@ class InterviewResponse(BaseModel):
 
 class QuestionResponse(BaseModel):
     """Response with question details."""
+
     id: UUID
     text: str
     question_type: str
@@ -53,21 +55,25 @@ class QuestionResponse(BaseModel):
 # NEW: Planning DTOs
 class PlanInterviewRequest(BaseModel):
     """Request to plan interview with adaptive questions."""
+
     cv_analysis_id: UUID
     candidate_id: UUID
 
 
 class PlanningStatusResponse(BaseModel):
     """Response with planning status."""
+
     interview_id: UUID
     status: str  # PREPARING, READY, IN_PROGRESS
     planned_question_count: int | None
-    plan_metadata: dict | None
+    plan_metadata: dict[str, Any] | None
     message: str
+    ws_url: str  # WebSocket URL for real-time interview session
 
 
 class FollowUpQuestionResponse(BaseModel):
     """Response with follow-up question details."""
+
     id: UUID
     parent_question_id: UUID
     text: str
@@ -80,6 +86,7 @@ class InterviewSummaryResponse(BaseModel):
 
     Used for polling endpoint to retrieve summary after completion.
     """
+
     interview_id: str
     overall_score: float
     theoretical_score_avg: float
