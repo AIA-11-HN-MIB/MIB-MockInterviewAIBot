@@ -1,9 +1,10 @@
 """Interview REST API endpoints."""
 
 import os
-from uuid import UUID
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....application.dto.interview_dto import (
@@ -13,25 +14,22 @@ from ....application.dto.interview_dto import (
     PlanningStatusResponse,
     QuestionResponse,
 )
+from ....application.use_cases.analyze_cv import AnalyzeCVUseCase
 from ....application.use_cases.get_next_question import GetNextQuestionUseCase
 from ....application.use_cases.plan_interview import PlanInterviewUseCase
-from ....application.use_cases.analyze_cv import AnalyzeCVUseCase
 from ....domain.models.interview import InterviewStatus
 from ....infrastructure.config.settings import get_settings
 from ....infrastructure.database.session import get_async_session
 from ....infrastructure.dependency_injection.container import get_container
-from ....infrastructure.config.settings import get_settings
 
 router = APIRouter(prefix="/interviews", tags=["Interviews"])
 
-@router.post(
-    "/cv/upload",
-    summary="Upload CV for further analyze"
-)
+
+@router.post("/cv/upload", summary="Upload CV for further analyze")
 async def upload_cv(
     file: UploadFile = File(..., description="PDF CV file"),
     session: AsyncSession = Depends(get_async_session),
-    ):
+):
     """
     Upload a CV file to the server.
 
@@ -39,9 +37,7 @@ async def upload_cv(
     Returns the file path where the CV is stored.
     """
     if not file.filename.endswith(".pdf"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File must be a PDF")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a PDF")
 
     try:
         # Generate a unique filename
@@ -72,13 +68,14 @@ async def upload_cv(
 
     except Exception as e:
         # Clean up the file if there was an error
-        if 'file_path' in locals() and os.path.exists(file_path):
+        if "file_path" in locals() and os.path.exists(file_path):
             os.remove(file_path)
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error uploading file: {str(e)}"
+            detail=f"Error uploading file: {str(e)}",
         )
+
 
 @router.get(
     "/{interview_id}",
@@ -157,9 +154,7 @@ async def start_interview(
         base_url = settings.ws_base_url
         return InterviewResponse.from_domain(updated, base_url)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.get(
@@ -199,9 +194,7 @@ async def get_current_question(
             )
 
         # Get interview for context
-        interview = await container.interview_repository_port(
-            session
-        ).get_by_id(interview_id)
+        interview = await container.interview_repository_port(session).get_by_id(interview_id)
 
         if not interview:
             raise HTTPException(
@@ -218,9 +211,7 @@ async def get_current_question(
             total=len(interview.question_ids),
         )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 # NEW: Adaptive Planning Endpoints
@@ -277,18 +268,21 @@ async def plan_interview(
             candidate_id=request.candidate_id,
         )
 
+        # Construct WebSocket URL for interview session
+        settings = get_settings()
+        ws_url = f"{settings.ws_base_url}/ws/interviews/{interview.id}"
+
         return PlanningStatusResponse(
             interview_id=interview.id,
             status=interview.status.value,
             planned_question_count=interview.planned_question_count,
             plan_metadata=interview.plan_metadata,
             message=f"Interview planned with {interview.planned_question_count} questions",
+            ws_url=ws_url,  # WebSocket URL for real-time interview session
         )
 
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.get(
@@ -325,12 +319,19 @@ async def get_planning_status(
     # Determine message based on status
     if interview.status == InterviewStatus.IDLE:
         message = f"Interview ready with {interview.planned_question_count} questions"
-    elif interview.status == InterviewStatus.QUESTIONING or interview.status == InterviewStatus.EVALUATING:
+    elif (
+        interview.status == InterviewStatus.QUESTIONING
+        or interview.status == InterviewStatus.EVALUATING
+    ):
         message = "Interview started"
     elif interview.status == InterviewStatus.COMPLETE:
         message = "Interview completed"
     else:
         message = f"Interview status: {interview.status.value}"
+
+    # Construct WebSocket URL for interview session
+    settings = get_settings()
+    ws_url = f"{settings.ws_base_url}/ws/interviews/{interview.id}"
 
     return PlanningStatusResponse(
         interview_id=interview.id,
@@ -338,6 +339,7 @@ async def get_planning_status(
         planned_question_count=interview.planned_question_count,
         plan_metadata=interview.plan_metadata,
         message=message,
+        ws_url=ws_url,  # WebSocket URL for real-time interview session
     )
 
 
@@ -385,11 +387,7 @@ async def get_interview_summary(
         )
 
     # Extract summary from metadata
-    summary = (
-        interview.plan_metadata.get("completion_summary")
-        if interview.plan_metadata
-        else None
-    )
+    summary = interview.plan_metadata.get("completion_summary") if interview.plan_metadata else None
 
     if not summary:
         raise HTTPException(

@@ -93,8 +93,8 @@ class MockVectorSearchAdapter(VectorSearchPort):
         answer_embedding: list[float],
         reference_embeddings: list[list[float]],
     ) -> float:
-        """Return mock similarity score between 0.65 and 0.9."""
-        return random.uniform(0.65, 0.9)
+
+        return random.uniform(0.85, 0.9)
 
     async def get_embedding(
         self,

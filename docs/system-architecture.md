@@ -1,7 +1,7 @@
 # System Architecture
 
-**Last Updated**: 2025-11-14
-**Version**: 0.2.1
+**Last Updated**: 2025-11-15
+**Version**: 0.2.2
 **Project**: Elios AI Interview Service
 **Repository**: https://github.com/elios/elios-ai-service
 
@@ -1443,7 +1443,8 @@ create_async_engine(
 GET  /health                                      # Health check ✅
 
 # Interviews ✅
-POST   /api/interviews                            # Create interview session ✅
+POST   /api/interviews/plan                       # Plan interview with adaptive questions ✅
+GET    /api/interviews/{id}/plan                  # Get planning status (includes ws_url) ✅
 GET    /api/interviews/{id}                       # Get interview details ✅
 PUT    /api/interviews/{id}/start                 # Start interview ✅
 GET    /api/interviews/{id}/questions/current     # Get current question ✅
@@ -1477,6 +1478,11 @@ GET /api/interviews/{id}/feedback                 # Get comprehensive feedback �
 ### WebSocket API ✅
 
 **Endpoint**: `/ws/interviews/{interview_id}`
+
+**Connection Flow**:
+1. Client calls POST /api/interviews/plan → Receives ws_url in response
+2. Client connects to ws_url for real-time interview session
+3. WebSocket handles question delivery, answer evaluation, follow-ups
 
 **Protocol**:
 

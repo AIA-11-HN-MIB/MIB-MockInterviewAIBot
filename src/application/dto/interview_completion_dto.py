@@ -4,44 +4,34 @@ from dataclasses import dataclass
 from typing import Any
 
 from ...domain.models.interview import Interview
+from .detailed_feedback_dto import DetailedInterviewFeedback
 
 
 @dataclass
 class InterviewCompletionResult:
-    """Result of interview completion with comprehensive summary.
+    """Result of interview completion with detailed feedback.
 
     This DTO encapsulates both the completed interview entity and its
-    generated summary. Both fields are always present (never None).
+    detailed evaluation feedback. Both fields are always present (never None).
 
     Attributes:
         interview: Completed interview entity with status=COMPLETE
-        summary: Comprehensive interview summary dict containing:
-            - interview_id: str
-            - overall_score: float
-            - theoretical_score_avg: float
-            - speaking_score_avg: float
-            - total_questions: int
-            - total_follow_ups: int
-            - question_summaries: list[dict]
-            - gap_progression: dict
-            - strengths: list[str]
-            - weaknesses: list[str]
-            - study_recommendations: list[str]
-            - technique_tips: list[str]
-            - completion_time: str (ISO format)
+        summary: Detailed interview feedback with comprehensive evaluation data
+            (DetailedInterviewFeedback DTO containing per-question evaluations,
+            aggregate metrics, gap progression, and LLM recommendations)
     """
 
     interview: Interview
-    summary: dict[str, Any]
+    summary: DetailedInterviewFeedback
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dict for serialization.
 
         Returns:
-            Dictionary with interview_id, status, and full summary
+            Dictionary with interview_id, status, and detailed feedback
         """
         return {
             "interview_id": str(self.interview.id),
             "status": self.interview.status.value,
-            "summary": self.summary,
+            "summary": self.summary.model_dump(mode="json"),
         }

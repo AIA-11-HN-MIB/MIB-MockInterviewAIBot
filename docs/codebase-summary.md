@@ -1,7 +1,7 @@
 # Codebase Summary
 
-**Last Updated**: 2025-11-14
-**Version**: 0.2.1
+**Last Updated**: 2025-11-15
+**Version**: 0.2.2
 **Repository**: https://github.com/elios/elios-ai-service
 
 ## Table of Contents
@@ -27,7 +27,8 @@
 
 Elios AI Interview Service is Python-based AI-powered mock interview platform built with Clean Architecture principles (Hexagonal/Ports & Adapters pattern). Platform emphasizes separation of concerns, testability, flexibility through abstract interfaces and dependency injection. Integrates OpenAI GPT-4 for NLP, Pinecone for vector-based semantic search, PostgreSQL for persistent storage.
 
-**Recent Major Changes** (2025-11-14):
+**Recent Major Changes** (2025-11-15):
+- WebSocket URL injection in planning responses (seamless client flow)
 - Context-aware evaluation with entity separation
 - Domain-Driven State Management (migrated from WebSocket orchestrator)
 - Follow-up question evaluation refactoring
@@ -65,7 +66,7 @@ EliosAIService/
 │   │       └── evaluation_repository_port.py    # Evaluation persistence (NEW)
 │   ├── application/             # Use cases and orchestration
 │   │   ├── dto/                 # Data Transfer Objects (4 files)
-│   │   │   ├── interview_dto.py # Interview request/response DTOs
+│   │   │   ├── interview_dto.py # Interview DTOs (incl. PlanningStatusResponse w/ ws_url)
 │   │   │   ├── answer_dto.py    # Answer request/response DTOs
 │   │   │   ├── audio_dto.py     # Audio processing DTOs (NEW)
 │   │   │   └── websocket_dto.py # WebSocket message DTOs
@@ -238,6 +239,15 @@ EliosAIService/
 
 **Location**: `src/application/`
 **Responsibility**: Orchestrate domain objects to accomplish business flows
+
+#### DTOs (`application/dto/`)
+
+**PlanningStatusResponse** (`interview_dto.py`):
+- Response for interview planning endpoints
+- **Field Added (2025-11-15)**: `ws_url` - WebSocket URL for real-time session
+- Client receives ws_url immediately after planning completes
+- Enables seamless transition to WebSocket interview without URL construction
+- Fields: interview_id, status, planned_question_count, plan_metadata, message, ws_url
 
 #### Use Cases (`application/use_cases/`)
 

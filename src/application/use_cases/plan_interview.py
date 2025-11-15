@@ -86,7 +86,7 @@ class PlanInterviewUseCase:
         # Step 3: Create interview
         interview = Interview(
             candidate_id=candidate_id,
-            status=InterviewStatus.IDLE,
+            status=InterviewStatus.PLANNING,
             cv_analysis_id=cv_analysis_id,
         )
         await self.interview_repo.save(interview)

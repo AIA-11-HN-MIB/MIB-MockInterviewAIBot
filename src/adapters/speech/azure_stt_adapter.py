@@ -152,7 +152,12 @@ class AzureSpeechToTextAdapter(SpeechToTextPort):
                 # Extract text and metrics
                 text = result.text
                 voice_metrics = self._calculate_voice_metrics(result, audio_bytes)
-                duration_seconds = result.duration.total_seconds()
+                # Handle duration: Azure SDK returns int (100-nanosecond ticks) or timedelta
+                if isinstance(result.duration, int):
+                    # Convert from 100-nanosecond ticks to seconds
+                    duration_seconds = result.duration / 10_000_000.0
+                else:
+                    duration_seconds = result.duration.total_seconds()
 
                 logger.info(f"Transcribed {len(text)} chars, duration={duration_seconds:.2f}s")
 
@@ -213,7 +218,12 @@ class AzureSpeechToTextAdapter(SpeechToTextPort):
 
             # Calculate metrics
             text = result.text
-            duration_seconds = result.duration.total_seconds()
+            # Handle duration: Azure SDK returns int (100-nanosecond ticks) or timedelta
+            if isinstance(result.duration, int):
+                # Convert from 100-nanosecond ticks to seconds
+                duration_seconds = result.duration / 10_000_000.0
+            else:
+                duration_seconds = result.duration.total_seconds()
 
             # Intonation score (pitch variance) - estimated from confidence and length
             # Higher confidence + longer speech = better intonation

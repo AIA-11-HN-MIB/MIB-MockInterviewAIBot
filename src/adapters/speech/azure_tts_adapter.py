@@ -1,8 +1,8 @@
 """Azure Text-to-Speech adapter implementation."""
 
 import os
-import azure.cognitiveservices.speech as speechsdk
-from typing import Optional
+import azure.cognitiveservices.speech as speechsdk  # type: ignore
+from typing import Any, Optional
 
 from ...domain.ports.text_to_speech_port import TextToSpeechPort
 
@@ -52,22 +52,21 @@ class AzureTTSAdapter(TextToSpeechPort):
 
         # Create speech config
         self.speech_config = speechsdk.SpeechConfig(
-            subscription=self.subscription_key,
-            region=self.region
+            subscription=self.subscription_key, region=self.region
         )
 
     async def synthesize_speech(
         self,
         text: str,
-        language: str = "en-US",
-        voice: Optional[str] = None,
+        voice: str = "en-US-AriaNeural",
+        speed: float = 1.0,
     ) -> bytes:
         """Convert text to speech audio using Azure Speech Services.
 
         Args:
             text: Text to synthesize
-            language: Language code (e.g., "en-US", "vi-VN")
-            voice: Optional specific voice name (e.g., "en-US-JennyNeural")
+            voice: Voice name (locale-specific, e.g., "en-US-JennyNeural")
+            speed: Speaking rate multiplier (0.5-2.0, default 1.0)
 
         Returns:
             Audio data as bytes (WAV format)
@@ -80,22 +79,25 @@ class AzureTTSAdapter(TextToSpeechPort):
         if not text or not text.strip():
             raise ValueError("Text cannot be empty")
 
-        # Select voice
-        selected_voice = voice or self.DEFAULT_VOICES.get(
-            language, self.default_voice
-        )
+        # Select voice (use parameter or default)
+        selected_voice = voice or self.default_voice
 
         # Configure voice
         self.speech_config.speech_synthesis_voice_name = selected_voice
 
         # Create synthesizer with null output (we'll get bytes directly)
         speech_synthesizer = speechsdk.SpeechSynthesizer(
-            speech_config=self.speech_config,
-            audio_config=None  # None means output to memory
+            speech_config=self.speech_config, audio_config=None  # None means output to memory
         )
 
-        # Synthesize speech (Azure SDK is sync, but wrapped in async)
-        result = speech_synthesizer.speak_text_async(text).get()  # type: ignore
+        # Synthesize speech with speed adjustment if needed
+        if speed != 1.0:
+            # Use SSML for speed control
+            ssml = self._create_ssml_with_speed(text, selected_voice, speed)
+            result = speech_synthesizer.speak_ssml_async(ssml).get()  # type: ignore
+        else:
+            # Use plain text synthesis
+            result = speech_synthesizer.speak_text_async(text).get()  # type: ignore
 
         # Process result
         if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:  # type: ignore
@@ -113,16 +115,16 @@ class AzureTTSAdapter(TextToSpeechPort):
         self,
         text: str,
         output_path: str,
-        language: str = "en-US",
-        voice: Optional[str] = None,
+        voice: str = "en-US-AriaNeural",
+        speed: float = 1.0,
     ) -> str:
         """Convert text to speech and save to file using Azure Speech Services.
 
         Args:
             text: Text to synthesize
             output_path: Path where audio file should be saved
-            language: Language code
-            voice: Optional specific voice name
+            voice: Voice name (locale-specific)
+            speed: Speaking rate multiplier (0.5-2.0, default 1.0)
 
         Returns:
             Path to saved audio file
@@ -134,7 +136,7 @@ class AzureTTSAdapter(TextToSpeechPort):
         # Validate input
         if not text or not text.strip():
             raise ValueError("Text cannot be empty")
-        
+
         if not output_path:
             raise ValueError("Output path cannot be empty")
 
@@ -143,10 +145,8 @@ class AzureTTSAdapter(TextToSpeechPort):
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir, exist_ok=True)
 
-        # Select voice
-        selected_voice = voice or self.DEFAULT_VOICES.get(
-            language, self.default_voice
-        )
+        # Select voice (use parameter or default)
+        selected_voice = voice or self.default_voice
 
         # Configure voice
         self.speech_config.speech_synthesis_voice_name = selected_voice
@@ -156,12 +156,17 @@ class AzureTTSAdapter(TextToSpeechPort):
 
         # Create synthesizer
         speech_synthesizer = speechsdk.SpeechSynthesizer(
-            speech_config=self.speech_config,
-            audio_config=audio_config
+            speech_config=self.speech_config, audio_config=audio_config
         )
 
-        # Synthesize speech
-        result = speech_synthesizer.speak_text_async(text).get()  # type: ignore
+        # Synthesize speech with speed adjustment if needed
+        if speed != 1.0:
+            # Use SSML for speed control
+            ssml = self._create_ssml_with_speed(text, selected_voice, speed)
+            result = speech_synthesizer.speak_ssml_async(ssml).get()  # type: ignore
+        else:
+            # Use plain text synthesis
+            result = speech_synthesizer.speak_text_async(text).get()  # type: ignore
 
         # Process result
         if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:  # type: ignore
@@ -175,25 +180,27 @@ class AzureTTSAdapter(TextToSpeechPort):
         else:
             raise RuntimeError(f"Unexpected synthesis result: {result.reason}")  # type: ignore
 
-    async def list_available_voices(
-        self,
-        language: Optional[str] = None,
-    ) -> list[dict]:
-        """List available voices using Azure Speech Services.
-
-        Args:
-            language: Optional language filter (e.g., "en-US")
+    async def get_available_voices(self) -> list[dict[str, Any]]:
+        """Get list of available voices with metadata.
 
         Returns:
-            List of available voices with metadata (name, locale, gender, etc.)
+            List of dicts with keys: name, locale, gender, voice_type
+            Example: [
+                {
+                    "name": "en-US-AriaNeural",
+                    "locale": "en-US",
+                    "gender": "Female",
+                    "voice_type": "Neural"
+                },
+                ...
+            ]
 
         Raises:
             RuntimeError: If voice list retrieval fails
         """
         # Create synthesizer to access voice list
         speech_synthesizer = speechsdk.SpeechSynthesizer(
-            speech_config=self.speech_config,
-            audio_config=None
+            speech_config=self.speech_config, audio_config=None
         )
 
         # Get voice list
@@ -203,18 +210,14 @@ class AzureTTSAdapter(TextToSpeechPort):
         if result.reason == speechsdk.ResultReason.VoicesListRetrieved:  # type: ignore
             voices = []
             for voice in result.voices:  # type: ignore
-                # Filter by language if specified
-                if language and not voice.locale.startswith(language):  # type: ignore
-                    continue
-
-                voices.append({
-                    "name": voice.short_name,  # type: ignore
-                    "locale": voice.locale,  # type: ignore
-                    "gender": voice.gender.name,  # type: ignore
-                    "voice_type": voice.voice_type.name,  # type: ignore
-                    "local_name": voice.local_name,  # type: ignore
-                    "style_list": voice.style_list if hasattr(voice, "style_list") else [],  # type: ignore
-                })
+                voices.append(
+                    {
+                        "name": voice.short_name,  # type: ignore
+                        "locale": voice.locale,  # type: ignore
+                        "gender": voice.gender.name,  # type: ignore
+                        "voice_type": voice.voice_type.name,  # type: ignore
+                    }
+                )
             return voices
         elif result.reason == speechsdk.ResultReason.Canceled:  # type: ignore
             cancellation = result.cancellation_details  # type: ignore
@@ -261,8 +264,7 @@ class AzureTTSAdapter(TextToSpeechPort):
 
         # Create synthesizer
         speech_synthesizer = speechsdk.SpeechSynthesizer(
-            speech_config=self.speech_config,
-            audio_config=audio_config
+            speech_config=self.speech_config, audio_config=audio_config
         )
 
         # Synthesize from SSML
@@ -304,6 +306,37 @@ class AzureTTSAdapter(TextToSpeechPort):
         <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
             <voice name="{voice}">
                 <prosody rate="{rate}" pitch="{pitch}" volume="{volume}">
+                    {text}
+                </prosody>
+            </voice>
+        </speak>
+        """
+        return ssml.strip()
+
+    def _create_ssml_with_speed(
+        self,
+        text: str,
+        voice: str,
+        speed: float,
+    ) -> str:
+        """Create SSML with speaking rate adjustment.
+
+        Args:
+            text: Text to synthesize
+            voice: Voice name
+            speed: Speed multiplier (0.5 = 50% slower, 2.0 = 100% faster)
+
+        Returns:
+            SSML markup string
+        """
+        # Convert speed multiplier to percentage
+        # 1.0 = 0%, 1.5 = +50%, 0.5 = -50%
+        rate_percent = f"{int((speed - 1.0) * 100):+d}%"
+
+        ssml = f"""
+        <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
+            <voice name="{voice}">
+                <prosody rate="{rate_percent}">
                     {text}
                 </prosody>
             </voice>
