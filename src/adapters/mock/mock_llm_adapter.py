@@ -33,9 +33,10 @@ class MockLLMAdapter(LLMPort):
             exemplars: Optional list of similar questions (for testing)
 
         Returns:
-            Mock question text
+            Mock question text (verbal/discussion-based, no code writing or diagrams)
         """
-        base_question = f"Mock question about {skill} at {difficulty} difficulty?"
+        # Mock generates verbal/discussion-based questions (aligns with constraints)
+        base_question = f"Explain the trade-offs when using {skill} at {difficulty} level"
 
         # Indicate exemplars were provided (for testing purposes)
         if exemplars:

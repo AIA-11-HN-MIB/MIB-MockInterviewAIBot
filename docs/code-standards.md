@@ -311,6 +311,132 @@ class Interview(BaseModel):
 
 **Migration Path**: Moved from adapter-level state management (WebSocket orchestrator) to domain-driven approach in v0.2.1.
 
+### LLM Prompt Constraint Pattern
+
+**Added**: v0.2.2 (QA Question Constraints)
+
+**When to Use**: Generate LLM prompts requiring specific output format constraints (e.g., verbal-only questions, structured JSON, specific content rules).
+
+**Pattern Structure**:
+```python
+class OpenAIAdapter(LLMPort):
+    """LLM adapter with prompt constraint enforcement."""
+
+    async def generate_question(
+        self,
+        context: dict[str, Any],
+        skill: str,
+        difficulty: str,
+        exemplars: list[dict] | None = None,
+    ) -> str:
+        """Generate question with explicit constraints.
+
+        Prompt Structure:
+        1. System role definition
+        2. Context (CV summary, skill, difficulty)
+        3. Exemplars (if available)
+        4. **CONSTRAINTS** (explicitly forbid unwanted patterns)
+        5. Final instruction
+        """
+
+        # Build constraint text (identical across all real LLM adapters)
+        constraint_text = """
+**IMPORTANT CONSTRAINTS**:
+The question MUST be verbal/discussion-based. DO NOT generate questions that require:
+- Writing code ("write a function", "implement", "create a class", "code a solution")
+- Drawing diagrams ("draw", "sketch", "diagram", "visualize", "map out")
+- Whiteboard exercises ("design on whiteboard", "show on board", "illustrate")
+- Visual outputs ("create a flowchart", "design a schema visually")
+
+Focus on conceptual understanding, best practices, trade-offs, and problem-solving approaches that can be explained verbally.
+"""
+
+        # Constraint placement: After exemplars, before final instruction
+        prompt = f"""
+You are an AI interview question generator.
+
+Context:
+- Skill: {skill}
+- Difficulty: {difficulty}
+- CV Summary: {context.get('cv_summary', 'N/A')}
+
+{"Exemplar Questions:\n" + "\n".join(exemplars) if exemplars else ""}
+
+{constraint_text}
+
+Generate ONE question for this skill and difficulty.
+"""
+
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+        )
+
+        return response.choices[0].message.content.strip()
+```
+
+**Key Principles**:
+- ✅ Constraint text IDENTICAL across all real LLM adapters (OpenAI, Azure)
+- ✅ Placement: After context/exemplars, before final instruction
+- ✅ Explicit forbidden patterns with examples ("write a function", "draw")
+- ✅ Positive guidance (what TO focus on: "conceptual understanding")
+- ✅ Mock adapter behavioral alignment (generates same style as real adapters)
+- ✅ Constraint text extracted as constant for reusability
+
+**Mock Adapter Alignment**:
+```python
+class MockLLMAdapter(LLMPort):
+    """Mock adapter that generates questions matching constraint behavior."""
+
+    async def generate_question(self, context, skill, difficulty, exemplars=None) -> str:
+        # Generate questions that would pass constraint validation
+        patterns = [
+            f"Explain the trade-offs between {{approach_a}} and {{approach_b}} when working with {skill}.",
+            f"How would you approach {{problem}} in {skill}? What factors would you consider?",
+            f"Describe the key principles of {{concept}} in {skill} and when to apply them.",
+        ]
+        # Returns question that does NOT require code/diagrams/whiteboard
+        return random.choice(patterns).format(...)
+```
+
+**Testing Constraint Compliance**:
+```python
+# Validation regex patterns (from testing)
+CODE_PATTERNS = [
+    r'\bwrite\s+(a\s+)?(function|method|class|code)',
+    r'\bimplement\s+(a\s+)?(function|solution|algorithm)',
+    r'\bcreate\s+(a\s+)?(class|function|method)',
+    r'\bcode\s+(a\s+)?solution',
+]
+
+DIAGRAM_PATTERNS = [
+    r'\bdraw\s+(a\s+)?(diagram|flowchart|chart)',
+    r'\bsketch\s+(a\s+)?(diagram|solution)',
+    r'\bdiagram\s+(the|a)',
+]
+
+WHITEBOARD_PATTERNS = [
+    r'\bwhiteboard\s+(exercise|problem|question)',
+    r'\bdesign\s+on\s+(the\s+)?whiteboard',
+    r'\bshow\s+on\s+(the\s+)?board',
+]
+
+def validate_question_constraints(question_text: str) -> tuple[bool, str]:
+    """Returns (is_valid, violation_reason)."""
+    for pattern in CODE_PATTERNS + DIAGRAM_PATTERNS + WHITEBOARD_PATTERNS:
+        if re.search(pattern, question_text, re.IGNORECASE):
+            return False, f"Violates constraint: {pattern}"
+    return True, ""
+```
+
+**Implementation Checklist**:
+- [ ] Constraint text identical across real LLM adapters (OpenAI, Azure)
+- [ ] Placement after exemplars, before final instruction
+- [ ] Mock adapter generates constraint-compliant questions
+- [ ] Constraint validation in tests (regex patterns)
+- [ ] Documentation updated (this section + system-architecture.md)
+
 ### Context-Aware Evaluation Pattern
 
 **Added**: v0.2.1 (Phase 4 - Adaptive Answers)

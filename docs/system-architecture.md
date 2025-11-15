@@ -860,9 +860,11 @@ def get_container() -> Container:
                          │
                          ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│     Generate Question with Exemplars                             │
+│     Generate Question with Exemplars & Constraints               │
 │  llm.generate_question(context, skill, difficulty, exemplars)   │
 │  → LLM uses exemplars for inspiration, generates NEW question   │
+│  → Constraints prevent code/diagram/whiteboard tasks            │
+│  → Focus on verbal/discussion-based questions only              │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ↓
@@ -898,9 +900,29 @@ def get_container() -> Container:
 **Key Enhancements**:
 - Vector search retrieves exemplar questions before generation
 - LLM generates questions inspired by exemplars (not copies)
+- **Question constraints**: Prompts enforce verbal/discussion-based questions
+  - NO code writing tasks ("write a function", "implement")
+  - NO diagram drawing ("draw", "sketch", "diagram")
+  - NO whiteboard exercises ("design on whiteboard")
+  - Focus on conceptual understanding, trade-offs, best practices
+- Constraints applied in all LLM adapters (OpenAI, Azure, Mock)
+- Constraint placement: After exemplars, before final instruction
 - Questions stored in vector DB for future exemplar searches
 - Fallback: Generate without exemplars if vector search fails
 - Non-blocking embedding storage (failures don't stop flow)
+
+**Constraint Example**:
+```
+**IMPORTANT CONSTRAINTS**:
+The question MUST be verbal/discussion-based. DO NOT generate questions that require:
+- Writing code ("write a function", "implement", "create a class")
+- Drawing diagrams ("draw", "sketch", "diagram", "visualize")
+- Whiteboard exercises ("design on whiteboard", "show on board")
+- Visual outputs ("create a flowchart", "design a schema visually")
+
+Focus on conceptual understanding, best practices, trade-offs, and
+problem-solving approaches that can be explained verbally.
+```
 
 ## Data Flow
 
