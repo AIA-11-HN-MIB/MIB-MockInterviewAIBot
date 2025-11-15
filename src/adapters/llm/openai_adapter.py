@@ -162,9 +162,21 @@ Focus on conceptual understanding, best practices, trade-offs, and problem-solvi
         5. 2-3 strengths
         6. 2-3 weaknesses
         7. 2-3 improvement suggestions
-        8. Brief reasoning for the score
+        8. Brief reasoning for the score"""
 
-        Return as JSON with keys: score, completeness, relevance, sentiment, strengths, weaknesses, improvements, reasoning
+        # Add similarity evaluation if ideal answer exists
+        if question.ideal_answer:
+            user_prompt += """
+        9. Semantic similarity score (0.0-1.0): Evaluate the semantic similarity between the candidate's answer and the ideal answer.
+           Consider: meaning similarity, concept coverage, and overall alignment.
+           Where 0.0 = completely different, 1.0 = very similar/identical."""
+
+        user_prompt += """
+
+        Return as JSON with keys: score, completeness, relevance, sentiment, strengths, weaknesses, improvements, reasoning"""
+        if question.ideal_answer:
+            user_prompt += ", semantic_similarity"
+        user_prompt += """
         """
 
         response = await self.client.chat.completions.create(
@@ -180,9 +192,18 @@ Focus on conceptual understanding, best practices, trade-offs, and problem-solvi
         content = response.choices[0].message.content or "{}"
         result = json.loads(content)
 
+        # Extract semantic_similarity if ideal_answer exists, otherwise default to 0.0
+        semantic_similarity = 0.0
+        if question.ideal_answer:
+            similarity_value = result.get("semantic_similarity")
+            if similarity_value is not None:
+                # Clamp to valid range [0.0, 1.0]
+                semantic_similarity = max(0.0, min(1.0, float(similarity_value)))
+            # If not provided by LLM, keep default 0.0
+
         return AnswerEvaluation(
             score=float(result.get("score", 0)),
-            semantic_similarity=0.0,  # Will be calculated by vector search
+            semantic_similarity=semantic_similarity,
             completeness=float(result.get("completeness", 0)),
             relevance=float(result.get("relevance", 0)),
             sentiment=result.get("sentiment"),

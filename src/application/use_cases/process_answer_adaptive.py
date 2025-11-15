@@ -51,7 +51,7 @@ class ProcessAnswerAdaptiveUseCase:
             question_repository: Question storage
             follow_up_question_repository: Follow-up question storage
             llm: LLM service for evaluation and gap detection
-            vector_search: Vector database for similarity calculation
+            vector_search: Vector database (deprecated for similarity, kept for backward compatibility)
         """
         self.answer_repo = answer_repository
         self.evaluation_repo = evaluation_repository
@@ -154,15 +154,13 @@ class ProcessAnswerAdaptiveUseCase:
             followup_context=followup_context,
         )
 
-        # Step 7: Calculate similarity (if ideal_answer exists)
+        # Step 7: Extract similarity score from LLM evaluation (if ideal_answer exists)
         similarity_score = None
-        if question.has_ideal_answer():
-            similarity_score = await self._calculate_similarity(
-                answer_text, question.ideal_answer
-            )
+        if question.has_ideal_answer() and llm_eval.semantic_similarity is not None:
+            similarity_score = max(0.01, llm_eval.semantic_similarity)  # Avoid zero
             logger.info(f"Similarity score: {similarity_score:.2f}")
 
-        # Step 6: Detect gaps
+        # Step 8: Detect gaps
         gaps_dict = await self._detect_gaps_hybrid(
             answer_text=answer_text,
             ideal_answer=question.ideal_answer or "",
@@ -219,26 +217,26 @@ class ProcessAnswerAdaptiveUseCase:
                 f"final_score={evaluation.final_score:.1f}, attempt={attempt_number}"
             )
 
-        # Step 8: Save answer first (to get ID)
+        # Step 10: Save answer first (to get ID)
         saved_answer = await self.answer_repo.save(answer)
 
-        # Step 9: Update evaluation with correct answer_id
+        # Step 11: Update evaluation with correct answer_id
         evaluation.answer_id = saved_answer.id
         for gap in evaluation.gaps:
             gap.evaluation_id = evaluation.id
 
-        # Step 10: Save evaluation
+        # Step 12: Save evaluation
         saved_evaluation = await self.evaluation_repo.save(evaluation)
 
-        # Step 11: Link answer to evaluation
+        # Step 13: Link answer to evaluation
         saved_answer.evaluation_id = saved_evaluation.id
         saved_answer = await self.answer_repo.update(saved_answer)
 
-        # Step 12: Update interview
+        # Step 14: Update interview
         interview.add_answer(saved_answer.id)
         await self.interview_repo.update(interview)
 
-        # Step 13: Check if more questions
+        # Step 15: Check if more questions
         has_more = interview.has_more_questions()
 
         logger.info(
@@ -292,26 +290,6 @@ class ProcessAnswerAdaptiveUseCase:
             raise ValueError(f"Parent question {follow_up.parent_question_id} not found")
 
         return parent
-
-    async def _calculate_similarity(self, answer_text: str, ideal_answer: str) -> float:
-        """Calculate cosine similarity between answer and ideal_answer.
-
-        Args:
-            answer_text: Candidate's answer
-            ideal_answer: Reference ideal answer
-
-        Returns:
-            Similarity score (0-1)
-        """
-        answer_embedding = await self.vector_search.get_embedding(answer_text)
-        ideal_embedding = await self.vector_search.get_embedding(ideal_answer)
-
-        similarity = await self.vector_search.find_similar_answers(
-            answer_embedding=answer_embedding,
-            reference_embeddings=[ideal_embedding],
-        )
-
-        return max(0.01, similarity)  # Avoid zero
 
     async def _detect_gaps_hybrid(
         self, answer_text: str, ideal_answer: str, question_text: str
