@@ -91,11 +91,51 @@ class PlanInterviewUseCase:
         )
         await self.interview_repo.save(interview)
 
-        # Step 4: Generate n questions with embeddings (sequential for MVP)
+        # Step 4: Generate n questions with embeddings (batch generation)
         question_ids = []
         try:
+            # Prepare all question specs upfront
+            question_specs = await self._prepare_question_specs(cv_analysis, n)
+
+            # Generate all questions in batch
+            question_texts = await self.llm.generate_questions_batch(
+                question_specs=question_specs,
+                context={
+                    "summary": cv_analysis.summary or "No summary",
+                    "skills": [s.skill for s in cv_analysis.get_top_skills(limit=5)],
+                    "experience": cv_analysis.work_experience_years or 0,
+                },
+            )
+
+            # Generate all ideal answers in batch
+            ideal_answers = await self.llm.generate_ideal_answers_batch(
+                question_texts=question_texts,
+                context={
+                    "summary": cv_analysis.summary or "No summary",
+                    "skills": [s.skill for s in cv_analysis.get_top_skills(limit=5)],
+                    "experience": cv_analysis.work_experience_years or 0,
+                },
+            )
+
+            # Generate all rationales in batch
+            question_ideal_pairs = list(zip(question_texts, ideal_answers))
+            rationales = await self.llm.generate_rationales_batch(question_ideal_pairs)
+
+            # Create Question entities and save them
+            skills = cv_analysis.get_top_skills(limit=5)
             for i in range(n):
-                question = await self._generate_question_with_ideal_answer(cv_analysis, i, n)
+                question_type, difficulty = self._get_question_distribution(i, n)
+                skill = skills[i % len(skills)].skill if skills else "general knowledge"
+
+                question = Question(
+                    text=question_texts[i],
+                    question_type=question_type,
+                    difficulty=difficulty,
+                    skills=[skill],
+                    ideal_answer=ideal_answers[i],
+                    rationale=rationales[i],
+                )
+
                 await self.question_repo.save(question)
                 question_ids.append(question.id)
                 logger.info(f"Generated question {i + 1}/{n}: {question.id}")
@@ -157,6 +197,46 @@ class PlanInterviewUseCase:
 
         return n
 
+    async def _prepare_question_specs(
+        self,
+        cv_analysis: CVAnalysis,
+        n: int,
+    ) -> list[dict[str, Any]]:
+        """Prepare question specifications for batch generation.
+
+        Args:
+            cv_analysis: CV data for context
+            n: Total number of questions to generate
+
+        Returns:
+            List of question specification dicts, each containing:
+                - skill: str
+                - difficulty: str
+                - exemplars: list[dict[str, Any]] | None
+        """
+        question_specs = []
+        skills = cv_analysis.get_top_skills(limit=5)
+
+        for i in range(n):
+            question_type, difficulty = self._get_question_distribution(i, n)
+            skill = skills[i % len(skills)].skill if skills else "general knowledge"
+
+            # Find exemplar questions from vector DB
+            exemplars = await self._find_exemplar_questions(
+                skill=skill,
+                question_type=question_type,
+                difficulty=difficulty,
+                cv_analysis=cv_analysis,
+            )
+
+            question_specs.append({
+                "skill": skill,
+                "difficulty": difficulty.value,
+                "exemplars": exemplars if exemplars else None,
+            })
+
+        return question_specs
+
     def _build_search_query(
         self,
         skill: str,
@@ -199,7 +279,7 @@ class PlanInterviewUseCase:
         try:
             # Query by skill and difficulty
             questions = await self.question_repo.find_by_skill(skill, difficulty)
-            
+
             # Filter by question type
             questions_by_type = [q for q in questions if q.question_type == question_type][:5]
 

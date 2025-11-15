@@ -1,6 +1,7 @@
 """OpenAI LLM adapter implementation."""
 
 import json
+import re
 from typing import Any
 from uuid import UUID
 
@@ -99,6 +100,25 @@ Focus on conceptual understanding, best practices, trade-offs, and problem-solvi
 
         content = response.choices[0].message.content
         return content.strip() if content else ""
+
+    @staticmethod
+    def _extract_json_from_markdown(content: str) -> str:
+        """Extract JSON from markdown code fences if present.
+
+        Args:
+            content: Content that may contain markdown-wrapped JSON
+
+        Returns:
+            Clean JSON string
+        """
+        if not content:
+            return "{}"
+
+        # Remove markdown code fences (```json ... ``` or ``` ... ```)
+        content = re.sub(r'^```(?:json)?\s*\n', '', content.strip(), flags=re.MULTILINE)
+        content = re.sub(r'\n```\s*$', '', content.strip(), flags=re.MULTILINE)
+
+        return content.strip()
 
     async def evaluate_answer(
         self,
@@ -656,3 +676,239 @@ Provide specific, data-driven recommendations that help candidates improve."""
                 "study_topics": ["Review core concepts"],
                 "technique_tips": ["Practice explaining concepts clearly"],
             }
+
+    async def generate_questions_batch(
+        self,
+        question_specs: list[dict[str, Any]],
+        context: dict[str, Any],
+    ) -> list[str]:
+        """Generate multiple interview questions in a single batch call using OpenAI.
+
+        Args:
+            question_specs: List of question specifications. Each dict should contain:
+                - skill: str - Target skill to test
+                - difficulty: str - Question difficulty level
+                - exemplars: list[dict[str, Any]] | None - Optional exemplar questions
+            context: Interview context (CV analysis, etc.)
+
+        Returns:
+            List of generated question texts in the same order as question_specs
+        """
+        system_prompt = """You are an expert technical interviewer.
+        Generate clear, relevant interview questions based on the context provided."""
+
+        # Build batch prompt with all question specs
+        questions_section = ""
+        for i, spec in enumerate(question_specs, 1):
+            skill = spec.get("skill", "general knowledge")
+            difficulty = spec.get("difficulty", "medium")
+            exemplars = spec.get("exemplars", [])
+
+            questions_section += f"\n\nQuestion {i}:\n"
+            questions_section += f"- Skill to test: {skill}\n"
+            questions_section += f"- Difficulty: {difficulty}\n"
+
+            if exemplars:
+                questions_section += "- Similar questions for inspiration (do NOT copy exactly):\n"
+                for j, ex in enumerate(exemplars[:3], 1):
+                    questions_section += f"  {j}. \"{ex.get('text', '')}\" ({ex.get('difficulty', 'UNKNOWN')})\n"
+
+        user_prompt = f"""
+        Generate {len(question_specs)} interview questions based on the following specifications:
+
+        Context:
+        - Candidate's background: {context.get('summary', 'Not provided')}
+        - Key Skills: {', '.join(context.get('skills', [])[:10])}
+        - Experience: {context.get('experience', 'Not specified')} years
+
+        {questions_section}
+
+        **IMPORTANT CONSTRAINTS**:
+        The questions MUST be verbal/discussion-based. DO NOT generate questions that require:
+        - Writing code ("write a function", "implement", "create a class", "code a solution")
+        - Drawing diagrams ("draw", "sketch", "diagram", "visualize", "map out")
+        - Whiteboard exercises ("design on whiteboard", "show on board", "illustrate")
+        - Visual outputs ("create a flowchart", "design a schema visually")
+
+        Focus on conceptual understanding, best practices, trade-offs, and problem-solving approaches that can be explained verbally.
+
+        Return as JSON with this exact format:
+        {{
+            "questions": ["question 1 text", "question 2 text", ...]
+        }}
+
+        The questions array must contain exactly {len(question_specs)} questions in the same order as the specifications above.
+        """
+
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=self.temperature,
+            response_format={"type": "json_object"},
+        )
+
+        content = response.choices[0].message.content
+        if not content:
+            raise ValueError("Empty response from LLM for batch question generation")
+
+        try:
+            content = self._extract_json_from_markdown(content)
+            result = json.loads(content)
+            questions = result.get("questions", [])
+
+            if len(questions) != len(question_specs):
+                raise ValueError(
+                    f"Expected {len(question_specs)} questions, got {len(questions)}"
+                )
+
+            return [q.strip() if q else "" for q in questions]
+        except (json.JSONDecodeError, KeyError) as e:
+            raise ValueError(f"Failed to parse batch question response: {e}") from e
+
+    async def generate_ideal_answers_batch(
+        self,
+        question_texts: list[str],
+        context: dict[str, Any],
+    ) -> list[str]:
+        """Generate ideal answers for multiple questions in a single batch call using OpenAI.
+
+        Args:
+            question_texts: List of interview questions
+            context: CV summary, skills, etc.
+
+        Returns:
+            List of ideal answer texts (150-300 words each) in the same order as question_texts
+        """
+        system_prompt = """You are an expert technical interviewer creating reference answers.
+        Generate comprehensive, technically accurate ideal answers."""
+
+        # Build batch prompt with all questions
+        questions_section = ""
+        for i, question in enumerate(question_texts, 1):
+            questions_section += f"\n\nQuestion {i}:\n{question}"
+
+        user_prompt = f"""
+        Generate ideal answers for the following {len(question_texts)} interview questions:
+
+        Candidate Background:
+        - Summary: {context.get('summary', 'Not provided')}
+        - Key Skills: {', '.join(context.get('skills', [])[:10])}
+        - Experience: {context.get('experience', 'Not specified')} years
+
+        {questions_section}
+
+        For each question, generate an ideal answer that:
+        - Is 150-300 words
+        - Demonstrates expert-level understanding
+        - Covers key concepts comprehensively
+        - Includes practical examples if relevant
+        - Is technically accurate
+
+        Return as JSON with this exact format:
+        {{
+            "answers": ["ideal answer 1", "ideal answer 2", ...]
+        }}
+
+        The answers array must contain exactly {len(question_texts)} answers in the same order as the questions above.
+        """
+
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.3,  # Low for consistency
+            max_tokens=len(question_texts) * 500,  # Approximate max tokens
+            response_format={"type": "json_object"},
+        )
+
+        content = response.choices[0].message.content
+        if not content:
+            raise ValueError("Empty response from LLM for batch ideal answer generation")
+
+        try:
+            content = self._extract_json_from_markdown(content)
+            result = json.loads(content)
+            answers = result.get("answers", [])
+
+            if len(answers) != len(question_texts):
+                raise ValueError(
+                    f"Expected {len(question_texts)} answers, got {len(answers)}"
+                )
+
+            return [a.strip() if a else "" for a in answers]
+        except (json.JSONDecodeError, KeyError) as e:
+            raise ValueError(f"Failed to parse batch ideal answer response: {e}") from e
+
+    async def generate_rationales_batch(
+        self,
+        question_ideal_pairs: list[tuple[str, str]],
+    ) -> list[str]:
+        """Generate rationales for multiple question-answer pairs in a single batch call using OpenAI.
+
+        Args:
+            question_ideal_pairs: List of (question_text, ideal_answer) tuples
+
+        Returns:
+            List of rationale texts (50-100 words each) in the same order as question_ideal_pairs
+        """
+        system_prompt = """You are an expert technical interviewer explaining evaluation criteria.
+        Explain why an answer demonstrates mastery."""
+
+        # Build batch prompt with all question-answer pairs
+        pairs_section = ""
+        for i, (question, ideal_answer) in enumerate(question_ideal_pairs, 1):
+            pairs_section += f"\n\nPair {i}:\n"
+            pairs_section += f"Question: {question}\n"
+            pairs_section += f"Ideal Answer: {ideal_answer}"
+
+        user_prompt = f"""
+        Explain WHY each of the following {len(question_ideal_pairs)} ideal answers is ideal:
+
+        {pairs_section}
+
+        For each pair, explain in 50-100 words:
+        - What key concepts are covered
+        - Why this demonstrates mastery
+        - What would be missing in a weaker answer
+
+        Return as JSON with this exact format:
+        {{
+            "rationales": ["rationale 1", "rationale 2", ...]
+        }}
+
+        The rationales array must contain exactly {len(question_ideal_pairs)} rationales in the same order as the pairs above.
+        """
+
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.3,
+            max_tokens=len(question_ideal_pairs) * 200,  # Approximate max tokens
+            response_format={"type": "json_object"},
+        )
+
+        content = response.choices[0].message.content
+        if not content:
+            raise ValueError("Empty response from LLM for batch rationale generation")
+
+        try:
+            content = self._extract_json_from_markdown(content)
+            result = json.loads(content)
+            rationales = result.get("rationales", [])
+
+            if len(rationales) != len(question_ideal_pairs):
+                raise ValueError(
+                    f"Expected {len(question_ideal_pairs)} rationales, got {len(rationales)}"
+                )
+
+            return [r.strip() if r else "" for r in rationales]
+        except (json.JSONDecodeError, KeyError) as e:
+            raise ValueError(f"Failed to parse batch rationale response: {e}") from e

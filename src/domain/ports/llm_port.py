@@ -214,3 +214,55 @@ class LLMPort(ABC):
                 - technique_tips: list[str] (voice, pacing, structure tips)
         """
         pass
+
+    @abstractmethod
+    async def generate_questions_batch(
+        self,
+        question_specs: list[dict[str, Any]],
+        context: dict[str, Any],
+    ) -> list[str]:
+        """Generate multiple interview questions in a single batch call.
+
+        Args:
+            question_specs: List of question specifications. Each dict should contain:
+                - skill: str - Target skill to test
+                - difficulty: str - Question difficulty level
+                - exemplars: list[dict[str, Any]] | None - Optional exemplar questions
+            context: Interview context (CV analysis, etc.)
+
+        Returns:
+            List of generated question texts in the same order as question_specs
+        """
+        pass
+
+    @abstractmethod
+    async def generate_ideal_answers_batch(
+        self,
+        question_texts: list[str],
+        context: dict[str, Any],
+    ) -> list[str]:
+        """Generate ideal answers for multiple questions in a single batch call.
+
+        Args:
+            question_texts: List of interview questions
+            context: CV summary, skills, etc.
+
+        Returns:
+            List of ideal answer texts (150-300 words each) in the same order as question_texts
+        """
+        pass
+
+    @abstractmethod
+    async def generate_rationales_batch(
+        self,
+        question_ideal_pairs: list[tuple[str, str]],
+    ) -> list[str]:
+        """Generate rationales for multiple question-answer pairs in a single batch call.
+
+        Args:
+            question_ideal_pairs: List of (question_text, ideal_answer) tuples
+
+        Returns:
+            List of rationale texts (50-100 words each) in the same order as question_ideal_pairs
+        """
+        pass
